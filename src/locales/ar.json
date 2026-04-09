@@ -1,0 +1,80 @@
+{
+  "common": {
+    "ok": "حسناً",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "error": "خطأ",
+    "loading": "جارٍ التحميل…",
+    "retry": "إعادة المحاولة",
+    "back": "رجوع",
+    "done": "تم"
+  },
+  "auth": {
+    "login": {
+      "title": "مرحباً بعودتك",
+      "subtitle": "سجّل الدخول إلى حسابك",
+      "emailLabel": "البريد الإلكتروني",
+      "passwordLabel": "كلمة المرور",
+      "forgotPassword": "نسيت كلمة المرور؟",
+      "signIn": "تسجيل الدخول",
+      "noAccount": "ليس لديك حساب؟",
+      "signUp": "إنشاء حساب",
+      "orContinueWith": "أو تابع باستخدام"
+    },
+    "register": {
+      "title": "إنشاء حساب",
+      "subtitle": "انضم إلينا اليوم",
+      "nameLabel": "الاسم الكامل",
+      "emailLabel": "البريد الإلكتروني",
+      "passwordLabel": "كلمة المرور",
+      "confirmPasswordLabel": "تأكيد كلمة المرور",
+      "createAccount": "إنشاء حساب",
+      "alreadyHaveAccount": "لديك حساب بالفعل؟"
+    },
+    "forgotPassword": {
+      "title": "نسيت كلمة المرور",
+      "subtitle": "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين",
+      "emailLabel": "البريد الإلكتروني",
+      "sendLink": "إرسال رابط إعادة التعيين",
+      "backToSignIn": "العودة إلى تسجيل الدخول"
+    },
+    "errors": {
+      "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح",
+      "weakPassword": "يجب أن تتكوّن كلمة المرور من 8 أحرف على الأقل",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "userNotFound": "لم يُعثر على حساب بهذا البريد الإلكتروني",
+      "wrongPassword": "كلمة المرور غير صحيحة",
+      "emailInUse": "هذا البريد الإلكتروني مستخدم بالفعل"
+    }
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "editProfile": "تعديل الملف الشخصي",
+    "signOut": "تسجيل الخروج",
+    "nameLabel": "الاسم",
+    "bioLabel": "نبذة",
+    "save": "حفظ",
+    "avatarAlt": "الصورة الشخصية",
+    "changeAvatar": "تغيير الصورة"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "appearance": "المظهر",
+    "darkMode": "الوضع الداكن",
+    "language": "اللغة",
+    "notifications": "الإشعارات",
+    "pushNotifications": "الإشعارات الفورية",
+    "privacy": "الخصوصية",
+    "privacyPolicy": "سياسة الخصوصية",
+    "termsOfService": "شروط الخدمة",
+    "about": "حول التطبيق",
+    "version": "الإصدار"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "markRead": "وضع علامة مقروء",
+    "noNotifications": "لا توجد إشعارات بعد",
+    "noNotificationsSubtitle": "عندما تتلقى إشعارات، ستظهر هنا.",
+    "pullToRefresh": "اسحب للتحديث"
+  }
+}

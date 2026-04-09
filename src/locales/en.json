@@ -1,0 +1,80 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "error": "Error",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "back": "Back",
+    "done": "Done"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your account",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "forgotPassword": "Forgot password?",
+      "signIn": "Sign In",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up",
+      "orContinueWith": "Or continue with"
+    },
+    "register": {
+      "title": "Create account",
+      "subtitle": "Join us today",
+      "nameLabel": "Full name",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "confirmPasswordLabel": "Confirm password",
+      "createAccount": "Create Account",
+      "alreadyHaveAccount": "Already have an account?"
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email and we'll send you a reset link",
+      "emailLabel": "Email",
+      "sendLink": "Send Reset Link",
+      "backToSignIn": "Back to Sign In"
+    },
+    "errors": {
+      "invalidEmail": "Please enter a valid email address",
+      "weakPassword": "Password must be at least 8 characters",
+      "passwordMismatch": "Passwords do not match",
+      "userNotFound": "No account found with this email",
+      "wrongPassword": "Incorrect password",
+      "emailInUse": "This email is already in use"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "signOut": "Sign Out",
+    "nameLabel": "Name",
+    "bioLabel": "Bio",
+    "save": "Save",
+    "avatarAlt": "Profile photo",
+    "changeAvatar": "Change photo"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "darkMode": "Dark Mode",
+    "language": "Language",
+    "notifications": "Notifications",
+    "pushNotifications": "Push Notifications",
+    "privacy": "Privacy",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "about": "About",
+    "version": "Version"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markRead": "Mark as read",
+    "noNotifications": "No notifications yet",
+    "noNotificationsSubtitle": "When you receive notifications, they'll show up here.",
+    "pullToRefresh": "Pull to refresh"
+  }
+}
