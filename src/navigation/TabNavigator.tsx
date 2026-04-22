@@ -7,6 +7,7 @@ import HomeScreen from '@/features/home/screens/HomeScreen';
 import HistoryScreen from '@/features/symptoms/screens/HistoryScreen';
 import LogSymptomsScreen from '@/features/symptoms/screens/LogSymptomsScreen';
 import { NotificationsScreen } from '@/features/notifications/screens/NotificationsScreen';
+import MapScreen from '@/features/map/screens/MapScreen';
 import SettingsNavigator from './SettingsNavigator';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -21,6 +22,9 @@ function HistoryIcon({ color }: { color: string }) {
 }
 function NotifIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>🔔</Text>;
+}
+function MapIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 20 }}>🗺️</Text>;
 }
 function SettingsIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>⚙️</Text>;
@@ -74,6 +78,14 @@ export default function TabNavigator() {
         options={{
           tabBarLabel: 'History',
           tabBarIcon: ({ color }) => <HistoryIcon color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{
+          tabBarLabel: 'Map',
+          tabBarIcon: ({ color }) => <MapIcon color={color} />,
         }}
       />
       <Tab.Screen

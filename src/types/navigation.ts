@@ -12,6 +12,7 @@ export type AuthStackParamList = {
 export type TabParamList = {
   Home: undefined;
   History: undefined;
+  Map: undefined;
   Log: undefined;
   Notifications: undefined;
   Settings: undefined;
