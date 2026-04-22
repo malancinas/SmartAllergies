@@ -1,5 +1,7 @@
 export type PollenLevel = 'none' | 'low' | 'medium' | 'high' | 'very_high';
 
+export type PollenConfidence = 'high' | 'medium' | 'low';
+
 export interface PollenTypeData {
   level: PollenLevel;
   /** Raw grains/m³ value (summed for tree and weed categories) */
@@ -13,6 +15,18 @@ export interface DailyPollenForecast {
   weed: PollenTypeData;
   /** Overall worst level across all types */
   overallLevel: PollenLevel;
+}
+
+export interface SourceMetadata {
+  name: string;
+  lastUpdated: string; // ISO8601
+  /** 'local' = data from this area, 'regional' = nearest data is distant */
+  coverage: 'local' | 'regional';
+}
+
+export interface MergedDailyPollenForecast extends DailyPollenForecast {
+  confidence: PollenConfidence;
+  sourceMetadata: SourceMetadata[];
 }
 
 export interface HourlyPollenPoint {

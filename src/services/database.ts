@@ -10,7 +10,8 @@ const MIGRATIONS = [
     severity INTEGER NOT NULL,
     latitude REAL,
     longitude REAL,
-    notes TEXT
+    notes TEXT,
+    medications TEXT
   )`,
   `CREATE TABLE IF NOT EXISTS log_symptoms (
     log_id TEXT NOT NULL,
@@ -42,6 +43,13 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     await _db.execAsync(sql);
   }
 
+  // Additive migration: add medications column to existing databases
+  try {
+    await _db.execAsync(`ALTER TABLE symptom_logs ADD COLUMN medications TEXT`);
+  } catch {
+    // Column already exists on fresh installs (included in CREATE TABLE above) — safe to ignore
+  }
+
   logger.debug('Database initialised');
   return _db;
 }
@@ -55,6 +63,7 @@ export interface SymptomLogRow {
   latitude: number | null;
   longitude: number | null;
   notes: string | null;
+  medications: string | null;
   symptoms: string[]; // populated by join
 }
 
@@ -68,18 +77,20 @@ export async function insertSymptomLog(params: {
   latitude?: number;
   longitude?: number;
   notes?: string;
+  medications?: string;
 }): Promise<void> {
   const db = await getDatabase();
 
   await db.runAsync(
-    `INSERT INTO symptom_logs (id, logged_at, severity, latitude, longitude, notes)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO symptom_logs (id, logged_at, severity, latitude, longitude, notes, medications)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     params.id,
     params.loggedAt,
     params.severity,
     params.latitude ?? null,
     params.longitude ?? null,
     params.notes ?? null,
+    params.medications ?? null,
   );
 
   for (const symptom of params.symptoms) {

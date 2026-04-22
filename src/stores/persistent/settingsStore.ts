@@ -12,6 +12,8 @@ interface SettingsState {
   alertThreshold: AlertThreshold;
   /** Hour of day (0–23) to send the morning allergy alert */
   alertHour: number;
+  /** Opt-in to contributing anonymised symptom data to the community signal */
+  communityShareEnabled: boolean;
 }
 
 interface SettingsActions {
@@ -21,6 +23,7 @@ interface SettingsActions {
   setAllergyAlertEnabled: (enabled: boolean) => void;
   setAlertThreshold: (threshold: AlertThreshold) => void;
   setAlertHour: (hour: number) => void;
+  setCommunityShareEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState & SettingsActions>()(
@@ -32,6 +35,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       allergyAlertEnabled: true,
       alertThreshold: 'medium',
       alertHour: 7,
+      communityShareEnabled: false,
 
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
@@ -39,6 +43,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       setAllergyAlertEnabled: (allergyAlertEnabled) => set({ allergyAlertEnabled }),
       setAlertThreshold: (alertThreshold) => set({ alertThreshold }),
       setAlertHour: (alertHour) => set({ alertHour }),
+      setCommunityShareEnabled: (communityShareEnabled) => set({ communityShareEnabled }),
     }),
     {
       name: 'settings-storage',

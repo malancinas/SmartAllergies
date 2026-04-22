@@ -28,6 +28,7 @@ export interface SymptomLog {
   latitude: number | null;
   longitude: number | null;
   notes: string | null;
+  medications: string | null;
 }
 
 export interface CreateSymptomLogInput {
@@ -35,6 +36,7 @@ export interface CreateSymptomLogInput {
   severity: number;
   timeSlot: TimeSlotKey;
   notes?: string;
+  medications?: string;
   latitude?: number;
   longitude?: number;
 }

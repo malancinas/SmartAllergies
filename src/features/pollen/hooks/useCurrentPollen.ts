@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { useLocation } from './useLocation';
-import { usePollenForecast, useWeatherForecast } from '../api';
-import type { DailyPollenForecast, WeatherPoint } from '../types';
+import { useWeatherForecast } from '../api';
+import { useMergedPollen } from './useMergedPollen';
+import type { MergedDailyPollenForecast, WeatherPoint } from '../types';
 
 interface UseCurrentPollenResult {
-  today: DailyPollenForecast | null;
-  forecast: DailyPollenForecast[];
+  today: MergedDailyPollenForecast | null;
+  forecast: MergedDailyPollenForecast[];
   todayWeather: WeatherPoint | null;
   limitedCoverage: boolean;
   loading: boolean;
@@ -16,7 +17,7 @@ interface UseCurrentPollenResult {
 export function useCurrentPollen(): UseCurrentPollenResult {
   const { location, permissionDenied, loading: locLoading } = useLocation();
 
-  const pollenQuery = usePollenForecast(
+  const mergedPollen = useMergedPollen(
     location?.latitude ?? null,
     location?.longitude ?? null,
   );
@@ -25,13 +26,8 @@ export function useCurrentPollen(): UseCurrentPollenResult {
     location?.longitude ?? null,
   );
 
-  const todayStr = new Date().toISOString().slice(0, 10);
   const currentHour = new Date().toISOString().slice(0, 13);
-
-  const today = useMemo(
-    () => pollenQuery.data?.daily.find((d) => d.date === todayStr) ?? null,
-    [pollenQuery.data, todayStr],
-  );
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   const todayWeather = useMemo(() => {
     if (!weatherQuery.data) return null;
@@ -44,16 +40,15 @@ export function useCurrentPollen(): UseCurrentPollenResult {
 
   const loading =
     locLoading ||
-    (location !== null && (pollenQuery.isFetching || weatherQuery.isFetching));
+    (location !== null && (mergedPollen.loading || weatherQuery.isFetching));
 
-  const error =
-    (pollenQuery.error as Error | null) ?? (weatherQuery.error as Error | null);
+  const error = mergedPollen.error ?? (weatherQuery.error as Error | null);
 
   return {
-    today,
-    forecast: pollenQuery.data?.daily ?? [],
+    today: mergedPollen.today,
+    forecast: mergedPollen.forecast,
     todayWeather,
-    limitedCoverage: pollenQuery.data?.limitedCoverage ?? false,
+    limitedCoverage: mergedPollen.limitedCoverage,
     loading,
     error,
     permissionDenied,

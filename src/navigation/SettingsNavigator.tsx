@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '@/types/navigation';
 import { SettingsScreen } from '@/features/settings/screens/SettingsScreen';
 import { LanguageScreen } from '@/features/settings/screens/LanguageScreen';
+import SubscriptionScreen from '@/features/subscription/screens/SubscriptionScreen';
+import ExportScreen from '@/features/export/screens/ExportScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -11,6 +13,16 @@ export default function SettingsNavigator() {
     <Stack.Navigator>
       <Stack.Screen name="SettingsMain" component={SettingsScreen} options={{ title: 'Settings' }} />
       <Stack.Screen name="Language" component={LanguageScreen} options={{ title: 'Language' }} />
+      <Stack.Screen
+        name="Subscription"
+        component={SubscriptionScreen}
+        options={{ title: 'Your Plan' }}
+      />
+      <Stack.Screen
+        name="Export"
+        component={ExportScreen}
+        options={{ title: 'Allergist Report' }}
+      />
     </Stack.Navigator>
   );
 }

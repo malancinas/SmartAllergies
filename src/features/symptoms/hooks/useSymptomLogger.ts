@@ -40,6 +40,7 @@ export function useSymptomLogger() {
           latitude: input.latitude,
           longitude: input.longitude,
           notes: input.notes,
+          medications: input.medications,
         });
 
         // Invalidate history so HistoryScreen and forecasting engine re-read

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -7,12 +7,23 @@ import { useForecast } from '@/features/forecasting/hooks/useForecast';
 import { RiskBanner } from '../components/RiskBanner';
 import { PollenSummary } from '../components/PollenSummary';
 import { ForecastStrip } from '../components/ForecastStrip';
+import { DataQualitySheet } from '../components/DataQualitySheet';
+import { CommunityBanner } from '@/features/community/components/CommunityBanner';
+import { useCommunitySignal } from '@/features/community/hooks/useCommunitySignal';
+import { usePollenStore } from '@/features/pollen/store';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const { today: todayPollen, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading } =
     useCurrentPollen();
   const { today: riskToday, upcoming, weights, loading: forecastLoading } = useForecast();
+  const [qualitySheetVisible, setQualitySheetVisible] = useState(false);
+
+  const location = usePollenStore((s) => s.location);
+  const { aggregate, loading: communityLoading } = useCommunitySignal(
+    location?.latitude ?? null,
+    location?.longitude ?? null,
+  );
 
   const loading = pollenLoading || forecastLoading;
 
@@ -56,9 +67,16 @@ export default function HomeScreen() {
             <RiskBanner level={riskToday.level} personalised={weights.personalised} />
           )}
 
+          {/* Community signal */}
+          <CommunityBanner aggregate={aggregate} loading={communityLoading} />
+
           {/* Today's pollen breakdown */}
           {todayPollen && (
-            <PollenSummary today={todayPollen} limitedCoverage={limitedCoverage} />
+            <PollenSummary
+              today={todayPollen}
+              limitedCoverage={limitedCoverage}
+              onQualityPress={() => setQualitySheetVisible(true)}
+            />
           )}
 
           {/* 5-day forecast strip */}
@@ -78,6 +96,15 @@ export default function HomeScreen() {
           )}
         </Stack>
       </ScrollView>
+
+      {/* Data quality sheet — rendered outside ScrollView so it overlays correctly */}
+      {todayPollen && (
+        <DataQualitySheet
+          visible={qualitySheetVisible}
+          onClose={() => setQualitySheetVisible(false)}
+          today={todayPollen}
+        />
+      )}
     </Screen>
   );
 }

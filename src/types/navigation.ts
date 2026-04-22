@@ -25,4 +25,6 @@ export type ProfileStackParamList = {
 export type SettingsStackParamList = {
   SettingsMain: undefined;
   Language: undefined;
+  Subscription: undefined;
+  Export: undefined;
 };

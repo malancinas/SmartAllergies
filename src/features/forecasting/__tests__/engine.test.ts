@@ -18,6 +18,7 @@ function makeLog(date: string, severity: number): SymptomLog {
     latitude: null,
     longitude: null,
     notes: null,
+    medications: null,
   };
 }
 

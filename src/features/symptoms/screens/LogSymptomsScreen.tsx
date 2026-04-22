@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
-import { Button } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
 import { SymptomGrid } from '../components/SymptomGrid';
 import { SeverityInput } from '../components/SeverityInput';
 import { useSymptomLogger } from '../hooks/useSymptomLogger';
+import { useSubmitSignal } from '@/features/community/hooks/useSubmitSignal';
+import { useAuthStore } from '@/stores/persistent/authStore';
+import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
+import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
+import { FREE_LIMITS } from '@/features/subscription/types';
+import { getDatabase } from '@/services/database';
 import { TIME_SLOTS } from '../types';
 import type { SymptomType, TimeSlotKey } from '../types';
 
@@ -13,10 +19,15 @@ export default function LogSymptomsScreen() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<SymptomType[]>([]);
   const [severity, setSeverity] = useState(5);
   const [timeSlot, setTimeSlot] = useState<TimeSlotKey>('morning');
+  const [medications, setMedications] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [paywallVisible, setPaywallVisible] = useState(false);
 
   const { logSymptoms } = useSymptomLogger();
+  const { submit: submitSignal } = useSubmitSignal();
   const { location } = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const tier = useSubscriptionStore((s) => s.tier);
 
   function toggleSymptom(symptom: SymptomType) {
     setSelectedSymptoms((prev) =>
@@ -24,9 +35,24 @@ export default function LogSymptomsScreen() {
     );
   }
 
+  async function checkLogLimit(): Promise<boolean> {
+    if (tier === 'pro') return true;
+    const db = await getDatabase();
+    const result = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM symptom_logs',
+    );
+    return (result?.count ?? 0) < FREE_LIMITS.MAX_SYMPTOM_LOGS;
+  }
+
   async function handleSubmit() {
     if (selectedSymptoms.length === 0) {
       Alert.alert('No symptoms selected', 'Please select at least one symptom before saving.');
+      return;
+    }
+
+    const withinLimit = await checkLogLimit();
+    if (!withinLimit) {
+      setPaywallVisible(true);
       return;
     }
 
@@ -36,13 +62,25 @@ export default function LogSymptomsScreen() {
         symptoms: selectedSymptoms,
         severity,
         timeSlot,
+        medications: medications.trim() || undefined,
         latitude: location?.latitude,
         longitude: location?.longitude,
       });
 
+      // Submit to community signal (guards inside — Pro + opted-in only)
+      if (user && location) {
+        submitSignal({
+          userId: user.id,
+          lat: location.latitude,
+          lon: location.longitude,
+          severity,
+        });
+      }
+
       // Reset form
       setSelectedSymptoms([]);
       setSeverity(5);
+      setMedications('');
       Alert.alert('Saved', 'Your symptoms have been logged.');
     } catch {
       Alert.alert('Error', 'Could not save your log. Please try again.');
@@ -112,11 +150,26 @@ export default function LogSymptomsScreen() {
             </View>
           </View>
 
+          {/* Medications */}
+          <Input
+            label="Medications taken (optional)"
+            placeholder="e.g. loratadine 10mg"
+            value={medications}
+            onChangeText={setMedications}
+          />
+
           {/* Location indicator */}
           {location && (
             <View className="flex-row items-center">
               <Text className="text-xs text-neutral-400">📍 Using your location</Text>
             </View>
+          )}
+
+          {/* Free tier notice */}
+          {tier === 'free' && (
+            <Text className="text-xs text-neutral-400 text-center">
+              Free plan: up to {FREE_LIMITS.MAX_SYMPTOM_LOGS} logs. Upgrade to Pro for unlimited.
+            </Text>
           )}
 
           {/* Submit */}
@@ -127,6 +180,12 @@ export default function LogSymptomsScreen() {
           />
         </Stack>
       </ScrollView>
+
+      <PaywallSheet
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        featureName="Unlimited symptom logging"
+      />
     </Screen>
   );
 }

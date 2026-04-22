@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { Card } from '@/components/ui';
-import type { DailyPollenForecast, PollenLevel } from '@/features/pollen/types';
+import { DataQualityIndicator } from './DataQualityIndicator';
+import type { MergedDailyPollenForecast, PollenLevel } from '@/features/pollen/types';
 
 const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string }> = {
   none: { bg: 'bg-neutral-100 dark:bg-neutral-700', text: 'text-neutral-500', label: 'None' },
@@ -22,16 +23,22 @@ function PollenPill({ label, level }: { label: string; level: PollenLevel }) {
 }
 
 interface PollenSummaryProps {
-  today: DailyPollenForecast;
+  today: MergedDailyPollenForecast;
   limitedCoverage: boolean;
+  onQualityPress?: () => void;
 }
 
-export function PollenSummary({ today, limitedCoverage }: PollenSummaryProps) {
+export function PollenSummary({ today, limitedCoverage, onQualityPress }: PollenSummaryProps) {
   return (
     <Card variant="outlined">
-      <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">
-        Today's pollen
-      </Text>
+      <View className="flex-row items-center mb-3">
+        <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+          Today's pollen
+        </Text>
+        {onQualityPress && (
+          <DataQualityIndicator confidence={today.confidence} onPress={onQualityPress} />
+        )}
+      </View>
       <View className="flex-row gap-2">
         <PollenPill label="Tree" level={today.tree.level} />
         <PollenPill label="Grass" level={today.grass.level} />

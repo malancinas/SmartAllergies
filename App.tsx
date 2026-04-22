@@ -11,6 +11,8 @@ import RootNavigator from '@/navigation/RootNavigator';
 import { Loader } from '@/components/ui/Loader';
 import { ToastContainer } from '@/components/ui/Toast';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
+import { useAuthStore } from '@/stores/persistent/authStore';
+import { initRevenueCat, syncEntitlement, loginRevenueCat } from '@/features/subscription/service';
 
 i18n.use(initReactI18next).init({
   lng: useSettingsStore.getState().language ?? 'en',
@@ -37,12 +39,23 @@ const queryClient = new QueryClient({
 
 function AppWithI18n() {
   const language = useSettingsStore((s) => s.language);
+  const user = useAuthStore((s) => s.user);
 
   React.useEffect(() => {
     if (i18n.language !== language) {
       i18n.changeLanguage(language);
     }
   }, [language]);
+
+  React.useEffect(() => {
+    initRevenueCat(user?.id);
+    if (user?.id) {
+      loginRevenueCat(user.id).catch(() => {});
+    } else {
+      syncEntitlement().catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return (
     <>
