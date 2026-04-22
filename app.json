@@ -3,7 +3,10 @@
     "name": "AppTemplate",
     "slug": "app-template",
     "scheme": "apptemplate",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "version": "1.0.0",
     "sdkVersion": "54.0.0",
     "icon": "./assets/images/icon.png",
@@ -22,6 +25,22 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
-    }
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "SmartAllergies uses your location to fetch local pollen and weather data."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff"
+        }
+      ]
+    ]
   }
 }

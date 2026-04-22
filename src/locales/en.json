@@ -76,5 +76,85 @@
     "noNotifications": "No notifications yet",
     "noNotificationsSubtitle": "When you receive notifications, they'll show up here.",
     "pullToRefresh": "Pull to refresh"
+  },
+  "pollen": {
+    "title": "Pollen",
+    "today": "Today's pollen",
+    "tree": "Tree",
+    "grass": "Grass",
+    "weed": "Weed",
+    "levels": {
+      "none": "None",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "very_high": "Very high"
+    },
+    "risk": {
+      "low": "Low risk today",
+      "medium": "Medium risk today",
+      "high": "High risk today"
+    },
+    "riskSub": {
+      "low": "Pollen levels are low. Enjoy the outdoors!",
+      "medium": "Consider taking antihistamines before going out.",
+      "high": "Stay indoors if possible. Keep windows closed."
+    },
+    "personalising": "Personalising… log more symptoms to improve accuracy.",
+    "limitedCoverage": "Limited pollen data for your region",
+    "fetchingData": "Fetching pollen data…",
+    "locationDenied": "Enable location access to see your local pollen forecast.",
+    "comingUp": "Coming up"
+  },
+  "symptoms": {
+    "title": "Log symptoms",
+    "subtitle": "How are you feeling right now?",
+    "symptomsLabel": "Symptoms",
+    "severityLabel": "Overall severity",
+    "timeLabel": "Time of day",
+    "usingLocation": "Using your location",
+    "save": "Save log",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "savedMessage": "Your symptoms have been logged.",
+    "noSymptoms": "No symptoms selected",
+    "noSymptomsMessage": "Please select at least one symptom before saving.",
+    "error": "Could not save your log. Please try again.",
+    "types": {
+      "sneezing": "Sneezing",
+      "itchy_eyes": "Itchy eyes",
+      "runny_nose": "Runny nose",
+      "congestion": "Congestion",
+      "skin_reaction": "Skin reaction",
+      "headache": "Headache"
+    },
+    "timeSlots": {
+      "early_morning": "Early morning",
+      "morning": "Morning",
+      "midday": "Midday",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "night": "Night"
+    },
+    "severity": {
+      "1": "Barely noticeable",
+      "3": "Mild",
+      "5": "Moderate",
+      "7": "Fairly severe",
+      "10": "Worst ever"
+    },
+    "history": {
+      "title": "History",
+      "noLogs": "No logs yet. Use the Log tab to start tracking your symptoms.",
+      "topSymptoms": "Your most common symptoms",
+      "entries": "entries",
+      "progressMessage": "Log {{count}} more {{item}} to unlock your personal trigger analysis."
+    },
+    "alerts": {
+      "sectionTitle": "Allergy Alerts",
+      "dailyAlert": "Daily allergy alert",
+      "alertWhen": "Alert when risk is",
+      "alertTime": "Alert time"
+    }
   }
 }

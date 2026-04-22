@@ -2,16 +2,25 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type AlertThreshold = 'medium' | 'high';
+
 interface SettingsState {
   theme: 'light' | 'dark' | 'system';
   language: string;
   notificationsEnabled: boolean;
+  allergyAlertEnabled: boolean;
+  alertThreshold: AlertThreshold;
+  /** Hour of day (0–23) to send the morning allergy alert */
+  alertHour: number;
 }
 
 interface SettingsActions {
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setLanguage: (language: string) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
+  setAllergyAlertEnabled: (enabled: boolean) => void;
+  setAlertThreshold: (threshold: AlertThreshold) => void;
+  setAlertHour: (hour: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState & SettingsActions>()(
@@ -20,12 +29,16 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       theme: 'system',
       language: 'en',
       notificationsEnabled: true,
+      allergyAlertEnabled: true,
+      alertThreshold: 'medium',
+      alertHour: 7,
 
       setTheme: (theme) => set({ theme }),
-
       setLanguage: (language) => set({ language }),
-
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
+      setAllergyAlertEnabled: (allergyAlertEnabled) => set({ allergyAlertEnabled }),
+      setAlertThreshold: (alertThreshold) => set({ alertThreshold }),
+      setAlertHour: (alertHour) => set({ alertHour }),
     }),
     {
       name: 'settings-storage',

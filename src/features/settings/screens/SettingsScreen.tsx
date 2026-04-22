@@ -6,10 +6,27 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 type SettingsNavProp = NativeStackNavigationProp<{ Language: undefined }>;
 import Constants from 'expo-constants';
 import { useSettings } from '../hooks/useSettings';
+import { useSettingsStore } from '@/stores/persistent/settingsStore';
+import type { AlertThreshold } from '@/stores/persistent/settingsStore';
+
+const HOURS = [5, 6, 7, 8, 9, 10];
+function hourLabel(h: number): string {
+  const suffix = h < 12 ? 'am' : 'pm';
+  const display = h > 12 ? h - 12 : h;
+  return `${display}${suffix}`;
+}
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
   const { theme, setTheme, language, notificationsEnabled, toggleNotifications } = useSettings();
+  const {
+    allergyAlertEnabled,
+    alertThreshold,
+    alertHour,
+    setAllergyAlertEnabled,
+    setAlertThreshold,
+    setAlertHour,
+  } = useSettingsStore();
 
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
@@ -53,6 +70,71 @@ export function SettingsScreen() {
           <Text className="text-base text-gray-900 dark:text-white">Push Notifications</Text>
           <Switch value={notificationsEnabled} onValueChange={toggleNotifications} />
         </View>
+      </View>
+
+      {/* Allergy Alerts */}
+      <View className="px-6 pt-6">
+        <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+          Allergy Alerts
+        </Text>
+        <View className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800">
+          <Text className="text-base text-gray-900 dark:text-white">Daily allergy alert</Text>
+          <Switch value={allergyAlertEnabled} onValueChange={setAllergyAlertEnabled} />
+        </View>
+
+        {allergyAlertEnabled && (
+          <>
+            <View className="py-3 border-b border-gray-100 dark:border-gray-800">
+              <Text className="text-base text-gray-900 dark:text-white mb-2">Alert when risk is</Text>
+              <View className="flex-row gap-2">
+                {(['medium', 'high'] as AlertThreshold[]).map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => setAlertThreshold(t)}
+                    className={`px-4 py-2 rounded-full border ${
+                      alertThreshold === t
+                        ? 'bg-primary-500 border-primary-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm font-medium capitalize ${
+                        alertThreshold === t ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {t}+
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View className="py-3 border-b border-gray-100 dark:border-gray-800">
+              <Text className="text-base text-gray-900 dark:text-white mb-2">Alert time</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {HOURS.map((h) => (
+                  <Pressable
+                    key={h}
+                    onPress={() => setAlertHour(h)}
+                    className={`px-3 py-1.5 rounded-full border ${
+                      alertHour === h
+                        ? 'bg-primary-500 border-primary-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm font-medium ${
+                        alertHour === h ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {hourLabel(h)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Privacy */}
