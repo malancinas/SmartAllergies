@@ -1,5 +1,29 @@
 import './global.css';
-import React from 'react';
+import React, { Component } from 'react';
+import { View, Text, ScrollView } from 'react-native';
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: 'red', marginBottom: 10 }}>
+            App crashed
+          </Text>
+          <ScrollView>
+            <Text style={{ fontSize: 13, color: '#333' }}>
+              {(this.state.error as Error).message}{'\n\n'}
+              {(this.state.error as Error).stack}
+            </Text>
+          </ScrollView>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -68,12 +92,14 @@ function AppWithI18n() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AppWithI18n />
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <AppWithI18n />
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
