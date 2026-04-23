@@ -5,6 +5,28 @@ that can't be committed to the repo.
 
 ---
 
+## Resuming work — how to get back to where you are
+
+All of Section 1 is complete. The app builds and runs on the Android emulator.
+
+To pick up where you left off:
+
+1. Start the emulator: **Android Studio → Virtual Device Manager → ▶**
+2. Wait for Android to fully boot
+3. In your project terminal:
+   ```powershell
+   $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+   npx expo run:android
+   ```
+
+**What's done:**
+- Bundle ID, Google OAuth (iOS + web), `.env.development`, prebuild, JAVA_HOME, Android emulator build
+- Android Maps API key injected via `app.config.js` from `ANDROID_MAPS_API_KEY` in `.env.development`
+
+**What's next:** Section 2 — Supabase setup (2.1), then Pollen API key (2.2), RevenueCat (2.3).
+
+---
+
 ## 1 — First run
 
 ### ✅ 1.1 Bundle ID
@@ -46,25 +68,12 @@ To run it again in future:
    npx expo run:android
    ```
 
-### 1.8 Android Maps API key (skip until you need Android maps)
+### ✅ 1.8 Android Maps API key
 
-After prebuild generates `android/`, open
-`android/app/src/main/AndroidManifest.xml` and add inside the `<application>` tag:
-
-```xml
-<meta-data
-  android:name="com.google.android.geo.API_KEY"
-  android:value="YOUR_ANDROID_MAPS_KEY" />
-```
-
-To get the key:
-1. **Google Cloud Console → APIs & Services → Credentials → Create Credentials → API key**
-2. Restrict it: **Application restrictions → Android apps**, add package
-   `com.malancinas.localallergies` + your debug SHA-1:
-   ```powershell
-   keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
-   ```
-3. **API restrictions → Maps SDK for Android**
+Key stored in `.env.development` as `ANDROID_MAPS_API_KEY`.
+`app.config.js` injects it into `android.config.googleMaps.apiKey` at prebuild time —
+no manual edits to `AndroidManifest.xml` needed. Run `npx expo prebuild --clean` to
+regenerate the manifest with the key baked in.
 
 ---
 
