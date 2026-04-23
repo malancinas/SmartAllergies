@@ -16,11 +16,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "bundleIdentifier": "com.yourcompany.localallergies",
+      "bundleIdentifier": "com.malancinas.localallergies",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.yourcompany.localallergies",
+      "package": "com.malancinas.localallergies",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -51,7 +51,7 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID"
+          "iosUrlScheme": "com.googleusercontent.apps.356012542328-bhc46uh02rl7tpmf0m2qhm24g8rhoe3v"
         }
       ]
     ]

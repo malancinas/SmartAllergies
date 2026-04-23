@@ -11,9 +11,9 @@ build without it.
 ### 1.1 Choose your bundle identifier
 
 The bundle ID is baked into the native build and hard to change later. Decide now.
-Convention is `com.<yourname>.localallergies` — e.g. `com.noahalan.localallergies`.
+Bundle ID: `com.malancinas.localallergies` ✓ (already set in app.json)
 
-Open [app.json](app.json) and replace both occurrences of `com.yourcompany.localallergies`:
+Open [app.json](app.json) and replace both occurrences of `com.malancinas.localallergies`:
 
 ```json
 "ios": {
