@@ -10,7 +10,7 @@ import {
   REVENUECAT_ANDROID_KEY,
 } from '@env';
 
-const REQUIRED_KEYS = ['API_BASE_URL', 'GOOGLE_CLIENT_ID', 'APP_ENV'] as const;
+const REQUIRED_KEYS = ['GOOGLE_CLIENT_ID', 'APP_ENV'] as const;
 
 const rawValues: Record<string, string | undefined> = {
   API_BASE_URL,
@@ -35,7 +35,7 @@ for (const key of REQUIRED_KEYS) {
 }
 
 export const ENV: {
-  API_BASE_URL: string;
+  API_BASE_URL?: string;
   GOOGLE_CLIENT_ID: string;
   POSTHOG_API_KEY?: string;
   APP_ENV: 'development' | 'production' | 'staging';
@@ -45,7 +45,7 @@ export const ENV: {
   REVENUECAT_IOS_KEY?: string;
   REVENUECAT_ANDROID_KEY?: string;
 } = {
-  API_BASE_URL: rawValues.API_BASE_URL as string,
+  API_BASE_URL: rawValues.API_BASE_URL || undefined,
   GOOGLE_CLIENT_ID: rawValues.GOOGLE_CLIENT_ID as string,
   POSTHOG_API_KEY: rawValues.POSTHOG_API_KEY || undefined,
   APP_ENV: rawValues.APP_ENV as 'development' | 'production' | 'staging',

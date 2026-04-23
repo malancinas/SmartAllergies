@@ -30,9 +30,13 @@ export function useLocation(): UseLocationResult {
       }
 
       try {
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        const timeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Location timeout')), 10000),
+        );
+        const pos = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          timeout,
+        ]);
         if (!cancelled) {
           setLocation({
             latitude: pos.coords.latitude,

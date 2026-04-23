@@ -12,6 +12,7 @@ import { CommunityBanner } from '@/features/community/components/CommunityBanner
 import { useCommunitySignal } from '@/features/community/hooks/useCommunitySignal';
 import { usePollenStore } from '@/features/pollen/store';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
+import { AddressSearch } from '../components/AddressSearch';
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -56,14 +57,8 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Location permission denied */}
-          {permissionDenied && (
-            <View className="bg-neutral-100 dark:bg-neutral-800 rounded-xl p-4">
-              <Text className="text-sm text-neutral-500 text-center">
-                📍 Enable location access to see your local pollen forecast.
-              </Text>
-            </View>
-          )}
+          {/* Location permission denied — let user enter an address instead */}
+          {permissionDenied && <AddressSearch />}
 
           {/* Loading state */}
           {loading && !riskToday && (

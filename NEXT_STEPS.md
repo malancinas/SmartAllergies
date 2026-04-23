@@ -5,6 +5,16 @@ that can't be committed to the repo.
 
 ---
 
+## 0 — Before shipping: remove auth bypass
+
+`BYPASS_AUTH = true` is set at the top of
+[src/navigation/RootNavigator.tsx](src/navigation/RootNavigator.tsx).
+This skips login and onboarding entirely so you can test the app without Supabase.
+
+**Before TestFlight / Play Store:** set it to `false` once Supabase auth is working (step 2.1).
+
+---
+
 ## Resuming work — how to get back to where you are
 
 All of Section 1 is complete. The app builds and runs on the Android emulator.
@@ -23,7 +33,7 @@ To pick up where you left off:
 - Bundle ID, Google OAuth (iOS + web), `.env.development`, prebuild, JAVA_HOME, Android emulator build
 - Android Maps API key injected via `app.config.js` from `ANDROID_MAPS_API_KEY` in `.env.development`
 
-**What's next:** Section 2 — Supabase setup (2.1), then Pollen API key (2.2), RevenueCat (2.3).
+**What's next:** Section 2 — Supabase setup (2.1) **must be done first** — auth (sign in, create account, Google) will not work until Supabase is configured. Then Pollen API key (2.2), RevenueCat (2.3).
 
 ---
 
@@ -85,6 +95,8 @@ Work through these after you have the app running on the emulator.
 
 ### 2.1 Supabase setup
 
+> **Required for auth.** Sign in, create account, and Continue with Google all go through Supabase. None of them work until steps 2.1a–2.1c are done.
+
 #### 2.1a Create a Supabase project
 
 1. Go to [supabase.com](https://supabase.com) and sign in.
@@ -97,7 +109,13 @@ Work through these after you have the app running on the emulator.
    SUPABASE_ANON_KEY=eyJh...
    ```
 
-#### 2.1b Create the pollen grid table
+#### 2.1b Enable auth providers in Supabase
+
+1. In the Supabase dashboard go to **Authentication → Providers**.
+2. **Email** — enable it, disable "Confirm email" while testing (you can re-enable before launch).
+3. **Google** — enable it, paste in your Google OAuth **Web Client ID** and **Client Secret** from Google Cloud Console (the same client you already have: `356012542328-4aknf741dacvpc4a7efsgk0qfs5bj32b`). You'll need to add `https://<your-project-ref>.supabase.co/auth/v1/callback` as an authorised redirect URI back in Google Cloud Console.
+
+#### 2.1d Create the pollen grid table
 
 In **SQL Editor → New query**, run:
 ```sql
@@ -111,7 +129,7 @@ CREATE TABLE pollen_uk_grid (
 );
 ```
 
-#### 2.1c Create the community signals table and enable RLS
+#### 2.1e Create the community signals table and enable RLS
 
 In **SQL Editor**, run:
 ```sql
@@ -132,7 +150,7 @@ CREATE POLICY "anon select aggregate" ON community_signals
   FOR SELECT TO anon USING (true);
 ```
 
-#### 2.1d Deploy the pollen Edge Function
+#### 2.1f Deploy the pollen Edge Function
 
 1. Install the Supabase CLI:
    ```bash

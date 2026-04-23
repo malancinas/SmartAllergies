@@ -20,16 +20,22 @@ const linking = {
   },
 };
 
+// ⚠️ DEV BYPASS — set to false before shipping (see NEXT_STEPS.md §0)
+const BYPASS_AUTH = true;
+
 export default function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasOnboarded = useSettingsStore((s) => s.hasOnboarded);
 
+  const showMain = BYPASS_AUTH || isAuthenticated;
+  const showOnboarding = !BYPASS_AUTH && !hasOnboarded;
+
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!hasOnboarded ? (
+        {showOnboarding ? (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
-        ) : isAuthenticated ? (
+        ) : showMain ? (
           <Stack.Screen name="Main" component={TabNavigator} />
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />
