@@ -11,44 +11,44 @@ that can't be committed to the repo.
 `com.malancinas.localallergies` — set in app.json.
 
 ### ✅ 1.2 Google OAuth iOS client
-`iosUrlScheme` set in app.json.
+`iosUrlScheme` set in app.json using client `356012542328-bhc46uh02rl7tpmf0m2qhm24g8rhoe3v`.
 
 ### ✅ 1.3 Google OAuth web client ID
 `GOOGLE_CLIENT_ID` set in `.env.development`.
 
 ### ✅ 1.4 `.env.development` created
 
----
+### ✅ 1.5 Prebuild run
+`npx expo prebuild --clean` completed successfully.
 
-### 👉 1.5 Run prebuild and launch — DO THIS NOW
+### ✅ 1.6 JAVA_HOME configured
+Android Studio's bundled JDK is at `C:\Program Files\Android\Android Studio\jbr`.
+This was added to System environment variables. If you ever open a new terminal and
+the Android build fails with `JAVA_HOME is not set`, run this in your terminal first:
 
-The `react-native-maps` plugin issue has been fixed. Run:
-
-```bash
-npx expo prebuild --clean
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 ```
 
-Once that finishes without errors, launch on the iOS simulator:
+Then retry `npx expo run:android`. You only need this if the system variable hasn't
+taken effect in that terminal session.
 
-```bash
-npx expo run:ios
-```
+### 👉 1.7 Android emulator — currently compiling
 
-If you don't have Xcode installed yet, install it from the Mac App Store first
-(it is large — allow 30–60 min). The simulator is included with Xcode.
+Once compilation finishes the app will install on the emulator automatically.
+To run it again in future:
 
-You must re-run `prebuild --clean` any time you change `app.json` plugins or
-add/remove native dependencies.
+1. Open Android Studio → **Virtual Device Manager** → press ▶ to start the emulator
+2. Wait for Android to fully boot
+3. In your project terminal:
+   ```powershell
+   $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+   npx expo run:android
+   ```
 
----
+### 1.8 Android Maps API key (skip until you need Android maps)
 
-### 1.6 Android Maps API key (skip until you need Android)
-
-The Android map basemap needs a Google Maps API key injected into the native
-manifest. This was removed from `app.json` (the plugin wasn't compatible) and
-must be added manually after prebuild generates the `android/` folder.
-
-After `npx expo prebuild --clean` has run, open
+After prebuild generates `android/`, open
 `android/app/src/main/AndroidManifest.xml` and add inside the `<application>` tag:
 
 ```xml
@@ -58,19 +58,19 @@ After `npx expo prebuild --clean` has run, open
 ```
 
 To get the key:
-1. Go to **Google Cloud Console → APIs & Services → Credentials → Create Credentials → API key**.
+1. **Google Cloud Console → APIs & Services → Credentials → Create Credentials → API key**
 2. Restrict it: **Application restrictions → Android apps**, add package
-   `com.malancinas.localallergies` + your debug keystore SHA-1:
-   ```bash
-   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+   `com.malancinas.localallergies` + your debug SHA-1:
+   ```powershell
+   keytool -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
    ```
-3. **API restrictions → Maps SDK for Android**.
+3. **API restrictions → Maps SDK for Android**
 
 ---
 
 ## 2 — Before public release
 
-Work through these after you have the app running locally.
+Work through these after you have the app running on the emulator.
 
 ---
 
@@ -79,10 +79,9 @@ Work through these after you have the app running locally.
 #### 2.1a Create a Supabase project
 
 1. Go to [supabase.com](https://supabase.com) and sign in.
-2. Click **New project**. Name it `localallergies`, pick a region close to your
-   users (`eu-west-2` for UK).
+2. Click **New project**. Name it `localallergies`, region `eu-west-2` (UK).
 3. Save the database password somewhere safe.
-4. Once the project is ready, go to **Settings → API**.
+4. Once ready, go to **Settings → API**.
 5. Copy **Project URL** and **anon public** key into `.env.development`:
    ```env
    SUPABASE_URL=https://xxxx.supabase.co
@@ -91,39 +90,38 @@ Work through these after you have the app running locally.
 
 #### 2.1b Create the pollen grid table
 
-1. In your Supabase project, go to **SQL Editor → New query**.
-2. Paste and run:
-   ```sql
-   CREATE TABLE pollen_uk_grid (
-     id          bigserial PRIMARY KEY,
-     date        date NOT NULL,
-     pollen_type text NOT NULL,
-     geojson     jsonb NOT NULL,
-     updated_at  timestamptz NOT NULL DEFAULT now(),
-     UNIQUE (date, pollen_type)
-   );
-   ```
+In **SQL Editor → New query**, run:
+```sql
+CREATE TABLE pollen_uk_grid (
+  id          bigserial PRIMARY KEY,
+  date        date NOT NULL,
+  pollen_type text NOT NULL,
+  geojson     jsonb NOT NULL,
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (date, pollen_type)
+);
+```
 
 #### 2.1c Create the community signals table and enable RLS
 
-1. In **SQL Editor**, paste and run:
-   ```sql
-   CREATE TABLE IF NOT EXISTS community_signals (
-     id           bigserial PRIMARY KEY,
-     user_id_hash text NOT NULL,
-     geohash      text NOT NULL,
-     severity     integer NOT NULL,
-     created_at   timestamptz NOT NULL DEFAULT now()
-   );
+In **SQL Editor**, run:
+```sql
+CREATE TABLE IF NOT EXISTS community_signals (
+  id           bigserial PRIMARY KEY,
+  user_id_hash text NOT NULL,
+  geohash      text NOT NULL,
+  severity     integer NOT NULL,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
 
-   ALTER TABLE community_signals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE community_signals ENABLE ROW LEVEL SECURITY;
 
-   CREATE POLICY "anon insert" ON community_signals
-     FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "anon insert" ON community_signals
+  FOR INSERT TO anon WITH CHECK (true);
 
-   CREATE POLICY "anon select aggregate" ON community_signals
-     FOR SELECT TO anon USING (true);
-   ```
+CREATE POLICY "anon select aggregate" ON community_signals
+  FOR SELECT TO anon USING (true);
+```
 
 #### 2.1d Deploy the pollen Edge Function
 
@@ -131,21 +129,20 @@ Work through these after you have the app running locally.
    ```bash
    npm install -g supabase
    ```
-2. Log in and link to your project:
+2. Log in and link:
    ```bash
    supabase login
    supabase link --project-ref YOUR_PROJECT_REF
    ```
-   Your project ref is the ID in the Supabase dashboard URL:
-   `https://supabase.com/dashboard/project/YOUR_PROJECT_REF`
-3. Deploy the function:
+   Project ref is the ID in your Supabase dashboard URL.
+3. Deploy:
    ```bash
    supabase functions deploy pollen-uk-grid
    ```
-4. In the dashboard go to **Edge Functions → pollen-uk-grid → Secrets**, add:
+4. In the dashboard → **Edge Functions → pollen-uk-grid → Secrets**, add:
    - `SUPABASE_URL` → your project URL
    - `SUPABASE_SERVICE_ROLE_KEY` → from **Settings → API → service_role**
-5. Go to **Edge Functions → pollen-uk-grid → Schedule**, set cron to `0 6 * * *`.
+5. Set schedule to `0 6 * * *` under **Edge Functions → pollen-uk-grid → Schedule**.
 6. Trigger once manually to populate today's data:
    ```bash
    supabase functions invoke pollen-uk-grid
@@ -155,9 +152,9 @@ Work through these after you have the app running locally.
 
 ### 2.2 Google Cloud — Pollen API key
 
-1. In **APIs & Services → Library**, search for **Pollen API** and enable it.
+1. **APIs & Services → Library** → search **Pollen API** → Enable.
 2. **Credentials → Create Credentials → API key**.
-3. Edit the key: restrict to **Pollen API** only (leave app restrictions open for dev).
+3. Edit the key → restrict to **Pollen API** only.
 4. Add to `.env.development`:
    ```env
    GOOGLE_POLLEN_API_KEY=AIzaSy...
@@ -167,29 +164,31 @@ Work through these after you have the app running locally.
 
 ### 2.3 RevenueCat — subscriptions
 
-#### 2.3a Create app store products first
+#### 2.3a Create products in the app stores first
 
-**App Store Connect (iOS):**
+**App Store Connect:**
 1. Sign in at [appstoreconnect.apple.com](https://appstoreconnect.apple.com).
-2. Go to your app → **Subscriptions → Create subscription group** (name: `Local Allergies Pro`).
-3. Add a subscription:
+2. Create your app using bundle ID `com.malancinas.localallergies`.
+3. **Subscriptions → Create subscription group** → name: `Local Allergies Pro`.
+4. Add subscription:
    - Product ID: `com.malancinas.localallergies.pro.monthly`
    - Duration: 1 month, set a price tier.
-4. Submit for review.
+5. Submit for review.
 
-**Google Play Console (Android):**
+**Google Play Console:**
 1. Go to [play.google.com/console](https://play.google.com/console).
-2. Go to **Monetize → Subscriptions → Create subscription**.
-3. Product ID: `localallergies_pro_monthly`.
+2. Create app with package `com.malancinas.localallergies`.
+3. **Monetize → Subscriptions → Create subscription**.
+4. Product ID: `localallergies_pro_monthly`.
 
-#### 2.3b Set up RevenueCat
+#### 2.3b Configure RevenueCat
 
-1. Create an account at [app.revenuecat.com](https://app.revenuecat.com).
-2. Create a project called `Local Allergies`.
+1. Create account at [app.revenuecat.com](https://app.revenuecat.com).
+2. New project → `Local Allergies`.
 3. Add iOS app (bundle ID `com.malancinas.localallergies`) and Android app.
-4. **Entitlements → Create entitlement** — name it exactly `pro`.
-5. Add your product IDs under **Products** and attach both to the `pro` entitlement.
-6. Copy the SDK keys from **API keys**:
+4. **Entitlements → Create** → name exactly `pro`.
+5. Add your product IDs under **Products**, attach both to the `pro` entitlement.
+6. Copy SDK keys from **API keys** into `.env.development`:
    ```env
    REVENUECAT_IOS_KEY=appl_xxxx
    REVENUECAT_ANDROID_KEY=goog_xxxx
@@ -200,26 +199,26 @@ Work through these after you have the app running locally.
 ### 2.4 Push notifications
 
 **iOS:**
-1. At [developer.apple.com](https://developer.apple.com) → **Keys → Create a Key**, enable **APNs**. Download the `.p8` file once.
-2. Note your **Key ID** and **Team ID** (top-right of the portal).
+1. [developer.apple.com](https://developer.apple.com) → **Keys → Create a Key** → enable APNs.
+2. Download the `.p8` file (one-time download). Note your Key ID and Team ID.
 3. Run `eas credentials` and upload the `.p8` when prompted.
 
 **Android:**
-1. At [console.firebase.google.com](https://console.firebase.google.com), create a project.
-2. **Add app → Android**, enter `com.malancinas.localallergies`.
+1. [console.firebase.google.com](https://console.firebase.google.com) → create project.
+2. **Add app → Android** → enter `com.malancinas.localallergies`.
 3. Download `google-services.json`.
-4. After `prebuild`, place it at `android/app/google-services.json`.
+4. After prebuild, place at `android/app/google-services.json`.
 
 ---
 
 ### 2.5 App icon and splash screen
 
-Replace the placeholder images before your first TestFlight build.
+Replace before first TestFlight / Play Store build — icons are baked into the binary.
 
 | File | Size | Notes |
 |---|---|---|
 | `assets/images/icon.png` | 1024×1024px | No transparency — Apple rejects it |
-| `assets/images/adaptive-icon.png` | 1024×1024px | Transparent background for Android |
+| `assets/images/adaptive-icon.png` | 1024×1024px | Transparent background (Android) |
 | `assets/splash/splash.png` | 2048×2048px | Loading screen |
 
 After replacing, run `npx expo prebuild --clean` again.
@@ -229,15 +228,15 @@ After replacing, run `npx expo prebuild --clean` again.
 ### 2.6 Privacy policy
 
 1. Write a policy covering: GPS location, symptom logs, anonymised community data,
-   no data sold to third parties, how to request deletion.
-2. Host it at a public URL (GitHub Pages, Notion, your own domain).
-3. Update the two placeholder URLs in
+   no data sold, how to request deletion.
+2. Host at a public URL (GitHub Pages, Notion, your own domain).
+3. Update the placeholder URLs in
    [src/features/settings/screens/SettingsScreen.tsx](src/features/settings/screens/SettingsScreen.tsx):
    ```
-   https://example.com/privacy  →  your URL
-   https://example.com/terms    →  your URL
+   https://example.com/privacy  →  your real URL
+   https://example.com/terms    →  your real URL
    ```
-4. Complete Apple's **App Privacy** section in App Store Connect (declare location and health data).
+4. In App Store Connect → **App Privacy**, declare location and health data collection.
 
 ---
 
@@ -245,9 +244,9 @@ After replacing, run `npx expo prebuild --clean` again.
 
 ### 3.1 Home screen widget (iOS / Android)
 
-- **iOS**: Use `expo-widgets` (SDK 54 preview). Read today's pollen level from a
-  shared App Group UserDefaults key written by the main app.
-- **Android**: Requires a custom `AppWidgetProvider`. Add as a custom plugin in
+- **iOS**: Use `expo-widgets` (SDK 54 preview). Write today's pollen level to a shared
+  App Group UserDefaults key from the main app, read it in the widget target.
+- **Android**: Requires a custom `AppWidgetProvider`. Add as a custom Expo plugin in
   `plugins/` that generates the widget XML at prebuild time.
 
 ### 3.2 Species breakdown detail view (Pro)
@@ -257,6 +256,6 @@ collapsed to a single index in [src/features/pollen/pollenMerger.ts](src/feature
 
 To implement:
 1. Add `species?: Record<string, number>` to `PollenTypeData` in `types.ts`.
-2. Populate it in `googlePollenApi.ts` from `plantDescription.plantInfo`.
-3. Build a `SpeciesBreakdownSheet` bottom sheet on pollen pill tap.
+2. Populate from `plantDescription.plantInfo` in `googlePollenApi.ts`.
+3. Build a `SpeciesBreakdownSheet` bottom sheet shown on pollen pill tap.
 4. Gate behind `useProGate()`.
