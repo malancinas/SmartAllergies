@@ -116,7 +116,7 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
 </head>
 <body>
   <div class="header">
-    <h1>SmartAllergies — Allergy Report</h1>
+    <h1>Local Allergies — Allergy Report</h1>
     <p>Generated ${formatDate(summary.generatedAt)} &nbsp;·&nbsp; Period: ${formatDate(summary.fromDate + 'T00:00:00')} – ${formatDate(summary.toDate + 'T00:00:00')}</p>
   </div>
 
@@ -171,7 +171,7 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
 
   <div class="disclaimer">
     This report is for informational purposes only. Please consult your allergist or physician for medical advice.
-    SmartAllergies does not provide medical diagnoses.
+    Local Allergies does not provide medical diagnoses.
   </div>
 </body>
 </html>`;

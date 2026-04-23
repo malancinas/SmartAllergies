@@ -145,7 +145,7 @@ function buildSnapshotHtml(date: string, logs: SymptomLog[]): string {
   <div class="card">
     <div class="header">
       <div>
-        <div class="app-name">SmartAllergies</div>
+        <div class="app-name">Local Allergies</div>
         <div class="date">${displayDate}</div>
       </div>
     </div>
@@ -161,7 +161,7 @@ function buildSnapshotHtml(date: string, logs: SymptomLog[]): string {
     ${symptomRows}
     ` : ''}
 
-    <div class="footer">Tracked with SmartAllergies</div>
+    <div class="footer">Tracked with Local Allergies</div>
   </div>
 </body>
 </html>`;

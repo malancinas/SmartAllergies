@@ -11,7 +11,7 @@ import OnboardingNavigator from './OnboardingNavigator';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const linking = {
-  prefixes: ['smartallergies://'],
+  prefixes: ['localallergies://'],
   config: {
     screens: {
       Auth: 'auth/*',

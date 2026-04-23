@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "SmartAllergies",
-    "slug": "smartallergies",
-    "scheme": "smartallergies",
+    "name": "Local Allergies",
+    "slug": "local-allergies",
+    "scheme": "localallergies",
     "platforms": [
       "ios",
       "android"
@@ -16,11 +16,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "bundleIdentifier": "com.yourcompany.smartallergies",
+      "bundleIdentifier": "com.yourcompany.localallergies",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.yourcompany.smartallergies",
+      "package": "com.yourcompany.localallergies",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -31,7 +31,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "SmartAllergies uses your location to fetch local pollen and weather data."
+          "locationWhenInUsePermission": "Local Allergies uses your location to fetch local pollen and weather data."
         }
       ],
       [

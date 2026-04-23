@@ -16,7 +16,7 @@ export default function OnboardingWelcomeScreen() {
         <View className="items-center mt-8">
           <Text style={{ fontSize: 72 }}>🌿</Text>
           <Text className="text-3xl font-bold text-gray-900 dark:text-white mt-6 text-center">
-            SmartAllergies
+            Local Allergies
           </Text>
           <Text className="text-base text-gray-500 dark:text-gray-400 mt-3 text-center leading-6">
             Your personal pollen tracker. Know your risk before you step outside.

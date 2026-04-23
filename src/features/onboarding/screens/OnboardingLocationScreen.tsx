@@ -47,7 +47,7 @@ export default function OnboardingLocationScreen() {
             Allow location access
           </Text>
           <Text className="text-base text-gray-500 dark:text-gray-400 mt-3 text-center leading-6">
-            SmartAllergies uses your location to fetch the pollen forecast for your exact area.
+            Local Allergies uses your location to fetch the pollen forecast for your exact area.
             Your location is never stored on our servers.
           </Text>
 

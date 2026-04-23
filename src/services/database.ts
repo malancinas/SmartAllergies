@@ -33,7 +33,7 @@ let _db: SQLite.SQLiteDatabase | null = null;
 export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (_db) return _db;
 
-  _db = await SQLite.openDatabaseAsync('smartallergies.db');
+  _db = await SQLite.openDatabaseAsync('localallergies.db');
 
   // Enable WAL mode for better concurrent read performance
   await _db.execAsync('PRAGMA journal_mode = WAL;');
