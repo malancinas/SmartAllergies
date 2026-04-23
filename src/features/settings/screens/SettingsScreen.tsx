@@ -26,6 +26,7 @@ export function SettingsScreen() {
     alertThreshold,
     alertHour,
     communityShareEnabled,
+    allergenProfile,
     setAllergyAlertEnabled,
     setAlertThreshold,
     setAlertHour,
@@ -69,6 +70,27 @@ export function SettingsScreen() {
             Export allergy report {!isPro ? '🔒' : ''}
           </Text>
           <Text className="text-gray-400">›</Text>
+        </Pressable>
+      </View>
+
+      {/* My Allergens */}
+      <View className="px-6 pt-6">
+        <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+          My Allergens
+        </Text>
+        <Pressable
+          onPress={() => navigation.navigate('AllergenProfile')}
+          className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+        >
+          <Text className="text-base text-gray-900 dark:text-white">Allergen profile</Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+              {allergenProfile.length === 0
+                ? 'None selected'
+                : allergenProfile.join(', ')}
+            </Text>
+            <Text className="text-gray-400">›</Text>
+          </View>
         </Pressable>
       </View>
 

@@ -41,6 +41,8 @@ export interface PollenForecastResponse {
   daily: DailyPollenForecast[];
   /** True if all values were zero — likely outside coverage area */
   limitedCoverage: boolean;
+  /** Present when data was served from a stale cache due to no connectivity */
+  staleSince?: string;
 }
 
 export interface WeatherPoint {

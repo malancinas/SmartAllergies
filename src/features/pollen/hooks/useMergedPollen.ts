@@ -12,6 +12,7 @@ interface UseMergedPollenResult {
   limitedCoverage: boolean;
   loading: boolean;
   error: Error | null;
+  staleSince: string | null;
 }
 
 export function useMergedPollen(
@@ -60,5 +61,7 @@ export function useMergedPollen(
 
   const error = (omQuery.error as Error | null);
 
-  return { today, forecast: mergedForecast, limitedCoverage, loading, error };
+  const staleSince = omQuery.data?.staleSince ?? null;
+
+  return { today, forecast: mergedForecast, limitedCoverage, loading, error, staleSince };
 }

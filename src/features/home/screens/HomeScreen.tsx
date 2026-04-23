@@ -11,15 +11,17 @@ import { DataQualitySheet } from '../components/DataQualitySheet';
 import { CommunityBanner } from '@/features/community/components/CommunityBanner';
 import { useCommunitySignal } from '@/features/community/hooks/useCommunitySignal';
 import { usePollenStore } from '@/features/pollen/store';
+import { useSettingsStore } from '@/stores/persistent/settingsStore';
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const { today: todayPollen, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading } =
+  const { today: todayPollen, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
     useCurrentPollen();
   const { today: riskToday, upcoming, weights, loading: forecastLoading } = useForecast();
   const [qualitySheetVisible, setQualitySheetVisible] = useState(false);
 
   const location = usePollenStore((s) => s.location);
+  const allergenProfile = useSettingsStore((s) => s.allergenProfile);
   const { aggregate, loading: communityLoading } = useCommunitySignal(
     location?.latitude ?? null,
     location?.longitude ?? null,
@@ -44,6 +46,15 @@ export default function HomeScreen() {
               })}
             </Text>
           </View>
+
+          {/* Stale data badge — shown when offline and serving cached data */}
+          {staleSince && (
+            <View className="bg-amber-50 dark:bg-amber-900/20 rounded-xl px-4 py-2 flex-row items-center gap-2">
+              <Text className="text-amber-600 dark:text-amber-400 text-xs">
+                📶 No connection — showing data from {formatAge(staleSince)}
+              </Text>
+            </View>
+          )}
 
           {/* Location permission denied */}
           {permissionDenied && (
@@ -75,6 +86,7 @@ export default function HomeScreen() {
             <PollenSummary
               today={todayPollen}
               limitedCoverage={limitedCoverage}
+              allergenProfile={allergenProfile}
               onQualityPress={() => setQualitySheetVisible(true)}
             />
           )}
@@ -107,6 +119,14 @@ export default function HomeScreen() {
       )}
     </Screen>
   );
+}
+
+function formatAge(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const hours = Math.floor(diffMs / (60 * 60 * 1000));
+  if (hours < 1) return 'less than an hour ago';
+  if (hours === 1) return '1 hour ago';
+  return `${hours} hours ago`;
 }
 
 function WeatherStat({ label, value }: { label: string; value: string }) {

@@ -6,7 +6,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'des
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  label?: string;
   onPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -50,6 +51,7 @@ const sizeClasses: Record<ButtonSize, { container: string; text: string }> = {
 
 export function Button({
   children,
+  label,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -78,7 +80,7 @@ export function Button({
         <>
           {leftIcon}
           <Text className={`font-semibold ${variantStyle.text} ${sizeStyle.text} ${leftIcon ? 'ml-2' : ''} ${rightIcon ? 'mr-2' : ''}`}>
-            {children}
+            {label ?? children}
           </Text>
           {rightIcon}
         </>

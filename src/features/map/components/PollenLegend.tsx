@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, type LayoutChangeEvent } from 'react-native';
 import { UPI_COLORS, UPI_LABELS, type UpiCategory } from '../types';
 
 const CATEGORIES: UpiCategory[] = ['none', 'very_low', 'low', 'moderate', 'high', 'very_high'];
 
-export function PollenLegend() {
+export function PollenLegend({ onLayout }: { onLayout?: (e: LayoutChangeEvent) => void }) {
   return (
     <View
+      onLayout={onLayout}
       style={{
         position: 'absolute',
         top: 16,

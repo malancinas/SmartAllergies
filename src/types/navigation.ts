@@ -1,6 +1,13 @@
 export type RootStackParamList = {
+  Onboarding: undefined;
   Auth: undefined;
   Main: undefined;
+};
+
+export type OnboardingStackParamList = {
+  OnboardingWelcome: undefined;
+  OnboardingLocation: undefined;
+  OnboardingAllergens: undefined;
 };
 
 export type AuthStackParamList = {
@@ -28,4 +35,5 @@ export type SettingsStackParamList = {
   Language: undefined;
   Subscription: undefined;
   Export: undefined;
+  AllergenProfile: undefined;
 };

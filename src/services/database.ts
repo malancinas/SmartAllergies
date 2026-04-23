@@ -164,3 +164,20 @@ export async function setPollenCache(key: string, data: unknown): Promise<void> 
     new Date().toISOString(),
   );
 }
+
+/** Returns the most recent cache entry whose key starts with `prefix`, ignoring TTL. */
+export async function getStalePollenCacheByPrefix<T>(
+  prefix: string,
+): Promise<{ data: T; fetchedAt: string } | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ data: string; fetched_at: string }>(
+    `SELECT data, fetched_at FROM pollen_cache WHERE cache_key LIKE ? ORDER BY fetched_at DESC LIMIT 1`,
+    `${prefix}%`,
+  );
+  if (!row) return null;
+  try {
+    return { data: JSON.parse(row.data) as T, fetchedAt: row.fetched_at };
+  } catch {
+    return null;
+  }
+}

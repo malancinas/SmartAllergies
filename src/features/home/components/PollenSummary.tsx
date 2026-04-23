@@ -12,12 +12,28 @@ const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string
   very_high: { bg: 'bg-error-200 dark:bg-error-900/60', text: 'text-error-800 dark:text-error-200', label: 'Very high' },
 };
 
-function PollenPill({ label, level }: { label: string; level: PollenLevel }) {
+function PollenPill({
+  label,
+  level,
+  active,
+}: {
+  label: string;
+  level: PollenLevel;
+  active: boolean;
+}) {
   const style = LEVEL_STYLE[level];
   return (
-    <View className={`flex-1 items-center py-3 rounded-xl ${style.bg}`}>
+    <View
+      className={`flex-1 items-center py-3 rounded-xl ${style.bg}`}
+      style={active ? { borderWidth: 2, borderColor: '#6366f1' } : { opacity: 0.45 }}
+    >
       <Text className={`text-xs font-medium ${style.text}`}>{label}</Text>
       <Text className={`text-sm font-bold mt-0.5 ${style.text}`}>{style.label}</Text>
+      {active && (
+        <Text style={{ fontSize: 9, marginTop: 2, color: '#6366f1', fontWeight: '600' }}>
+          YOUR ALLERGEN
+        </Text>
+      )}
     </View>
   );
 }
@@ -25,10 +41,19 @@ function PollenPill({ label, level }: { label: string; level: PollenLevel }) {
 interface PollenSummaryProps {
   today: MergedDailyPollenForecast;
   limitedCoverage: boolean;
+  allergenProfile?: string[];
   onQualityPress?: () => void;
 }
 
-export function PollenSummary({ today, limitedCoverage, onQualityPress }: PollenSummaryProps) {
+export function PollenSummary({
+  today,
+  limitedCoverage,
+  allergenProfile,
+  onQualityPress,
+}: PollenSummaryProps) {
+  const profile = allergenProfile ?? ['tree', 'grass', 'weed'];
+  const allSelected = profile.length === 0;
+
   return (
     <Card variant="outlined">
       <View className="flex-row items-center mb-3">
@@ -40,9 +65,9 @@ export function PollenSummary({ today, limitedCoverage, onQualityPress }: Pollen
         )}
       </View>
       <View className="flex-row gap-2">
-        <PollenPill label="Tree" level={today.tree.level} />
-        <PollenPill label="Grass" level={today.grass.level} />
-        <PollenPill label="Weed" level={today.weed.level} />
+        <PollenPill label="Tree" level={today.tree.level} active={allSelected || profile.includes('tree')} />
+        <PollenPill label="Grass" level={today.grass.level} active={allSelected || profile.includes('grass')} />
+        <PollenPill label="Weed" level={today.weed.level} active={allSelected || profile.includes('weed')} />
       </View>
       {limitedCoverage && (
         <Text className="text-xs text-neutral-400 mt-2 text-center">

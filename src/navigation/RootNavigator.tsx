@@ -3,13 +3,15 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/types/navigation';
 import { useAuthStore } from '@/stores/persistent/authStore';
+import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import AuthNavigator from './AuthNavigator';
 import TabNavigator from './TabNavigator';
+import OnboardingNavigator from './OnboardingNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const linking = {
-  prefixes: ['apptemplate://'],
+  prefixes: ['smartallergies://'],
   config: {
     screens: {
       Auth: 'auth/*',
@@ -20,11 +22,14 @@ const linking = {
 
 export default function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hasOnboarded = useSettingsStore((s) => s.hasOnboarded);
 
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {!hasOnboarded ? (
+          <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+        ) : isAuthenticated ? (
           <Stack.Screen name="Main" component={TabNavigator} />
         ) : (
           <Stack.Screen name="Auth" component={AuthNavigator} />

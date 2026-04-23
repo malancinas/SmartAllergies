@@ -1,5 +1,5 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, type LayoutChangeEvent } from 'react-native';
 import MapView, { UrlTile, type Region, type MapEvent } from 'react-native-maps';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
@@ -47,11 +47,17 @@ export default function MapScreen() {
   const defaultLayer = useMemo(() => highestLayer(today), [today]);
   const [selectedLayer, setSelectedLayer] = useState<LayerType>(defaultLayer);
 
+  const [legendBottom, setLegendBottom] = useState(0);
   const [tappedCoord, setTappedCoord] = useState<Coordinates | null>(null);
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
   const { gridData } = usePollenMapData(!isPro);
+
+  const handleLegendLayout = useCallback((e: LayoutChangeEvent) => {
+    const { y, height } = e.nativeEvent.layout;
+    setLegendBottom(y + height + 8);
+  }, []);
 
   // Animate to user location once it resolves (it loads async after mount)
   useEffect(() => {
@@ -123,7 +129,7 @@ export default function MapScreen() {
       </MapView>
 
       {/* Shared: colour legend */}
-      <PollenLegend />
+      <PollenLegend onLayout={handleLegendLayout} />
 
       {/* Free: Pro upgrade CTA (top-right, below the legend card) */}
       {!isPro && (
@@ -131,7 +137,7 @@ export default function MapScreen() {
           onPress={() => showPaywall('Live Hyperlocal Map')}
           style={{
             position: 'absolute',
-            top: 170,  // sits below the legend card (~154px tall)
+            top: legendBottom || 170,
             right: 12,
             flexDirection: 'row',
             alignItems: 'center',

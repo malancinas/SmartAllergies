@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SettingsStackParamList } from '@/types/navigation';
 import { SettingsScreen } from '@/features/settings/screens/SettingsScreen';
 import { LanguageScreen } from '@/features/settings/screens/LanguageScreen';
+import { AllergenProfileScreen } from '@/features/settings/screens/AllergenProfileScreen';
 import SubscriptionScreen from '@/features/subscription/screens/SubscriptionScreen';
 import ExportScreen from '@/features/export/screens/ExportScreen';
 
@@ -22,6 +23,11 @@ export default function SettingsNavigator() {
         name="Export"
         component={ExportScreen}
         options={{ title: 'Allergist Report' }}
+      />
+      <Stack.Screen
+        name="AllergenProfile"
+        component={AllergenProfileScreen}
+        options={{ title: 'My Allergens' }}
       />
     </Stack.Navigator>
   );

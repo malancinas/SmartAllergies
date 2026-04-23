@@ -12,6 +12,7 @@ interface UseCurrentPollenResult {
   loading: boolean;
   error: Error | null;
   permissionDenied: boolean;
+  staleSince: string | null;
 }
 
 export function useCurrentPollen(): UseCurrentPollenResult {
@@ -52,5 +53,6 @@ export function useCurrentPollen(): UseCurrentPollenResult {
     loading,
     error,
     permissionDenied,
+    staleSince: mergedPollen.staleSince,
   };
 }

@@ -14,6 +14,10 @@ interface SettingsState {
   alertHour: number;
   /** Opt-in to contributing anonymised symptom data to the community signal */
   communityShareEnabled: boolean;
+  /** Allergen types the user is sensitive to: 'tree' | 'grass' | 'weed' */
+  allergenProfile: string[];
+  /** Whether the user has completed the first-run onboarding flow */
+  hasOnboarded: boolean;
 }
 
 interface SettingsActions {
@@ -24,6 +28,8 @@ interface SettingsActions {
   setAlertThreshold: (threshold: AlertThreshold) => void;
   setAlertHour: (hour: number) => void;
   setCommunityShareEnabled: (enabled: boolean) => void;
+  setAllergenProfile: (profile: string[]) => void;
+  setHasOnboarded: (done: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState & SettingsActions>()(
@@ -36,6 +42,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       alertThreshold: 'medium',
       alertHour: 7,
       communityShareEnabled: false,
+      allergenProfile: ['tree', 'grass', 'weed'],
+      hasOnboarded: false,
 
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
@@ -44,6 +52,8 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       setAlertThreshold: (alertThreshold) => set({ alertThreshold }),
       setAlertHour: (alertHour) => set({ alertHour }),
       setCommunityShareEnabled: (communityShareEnabled) => set({ communityShareEnabled }),
+      setAllergenProfile: (allergenProfile) => set({ allergenProfile }),
+      setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
     }),
     {
       name: 'settings-storage',

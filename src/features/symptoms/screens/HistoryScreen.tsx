@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
 import { Card } from '@/components/ui';
 import { useSymptomHistory } from '../hooks/useSymptomHistory';
+import { shareSymptomSnapshot } from '../snapshotService';
 import type { SymptomLog, SymptomType } from '../types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -79,6 +80,16 @@ function TriggersCard({ logs }: { logs: SymptomLog[] }) {
 function DayCard({ date, logs }: { date: string; logs: SymptomLog[] }) {
   const maxSeverity = Math.max(...logs.map((l) => l.severity));
   const allSymptoms = Array.from(new Set(logs.flatMap((l) => l.symptoms)));
+  const [sharing, setSharing] = useState(false);
+
+  async function handleShare() {
+    setSharing(true);
+    try {
+      await shareSymptomSnapshot(date, logs);
+    } finally {
+      setSharing(false);
+    }
+  }
 
   return (
     <Card variant="outlined">
@@ -86,16 +97,21 @@ function DayCard({ date, logs }: { date: string; logs: SymptomLog[] }) {
         <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
           {formatDate(date)}
         </Text>
-        <View
-          className="w-8 h-8 rounded-full items-center justify-center"
-          style={{ backgroundColor: severityColor(maxSeverity) + '33' }}
-        >
-          <Text
-            className="text-sm font-bold"
-            style={{ color: severityColor(maxSeverity) }}
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity onPress={handleShare} disabled={sharing} className="p-1">
+            <Text style={{ fontSize: 16, opacity: sharing ? 0.4 : 1 }}>↗️</Text>
+          </TouchableOpacity>
+          <View
+            className="w-8 h-8 rounded-full items-center justify-center"
+            style={{ backgroundColor: severityColor(maxSeverity) + '33' }}
           >
-            {maxSeverity}
-          </Text>
+            <Text
+              className="text-sm font-bold"
+              style={{ color: severityColor(maxSeverity) }}
+            >
+              {maxSeverity}
+            </Text>
+          </View>
         </View>
       </View>
 

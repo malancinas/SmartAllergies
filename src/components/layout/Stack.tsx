@@ -11,6 +11,7 @@ export interface StackProps {
   align?: StackAlign;
   justify?: StackJustify;
   style?: ViewStyle;
+  className?: string;
   testID?: string;
 }
 
@@ -45,12 +46,13 @@ const gapMap: Record<StackSpacing, string> = {
   16: 'gap-16',
 };
 
-export function Stack({ children, spacing = 0, align, justify, style, testID }: StackProps) {
+export function Stack({ children, spacing = 0, align, justify, style, className, testID }: StackProps) {
   const classes = [
     'flex-col',
     gapMap[spacing],
     align ? alignMap[align] : '',
     justify ? justifyMap[justify] : '',
+    className ?? '',
   ]
     .filter(Boolean)
     .join(' ');

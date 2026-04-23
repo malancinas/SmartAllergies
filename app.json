@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "AppTemplate",
-    "slug": "app-template",
-    "scheme": "apptemplate",
+    "name": "SmartAllergies",
+    "slug": "smartallergies",
+    "scheme": "smartallergies",
     "platforms": [
       "ios",
       "android"
@@ -16,11 +16,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "bundleIdentifier": "com.apptemplate.app",
+      "bundleIdentifier": "com.yourcompany.smartallergies",
       "supportsTablet": true
     },
     "android": {
-      "package": "com.apptemplate.app",
+      "package": "com.yourcompany.smartallergies",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -39,6 +39,19 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#ffffff"
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "YOUR_ANDROID_MAPS_KEY"
+        }
+      ],
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID"
         }
       ]
     ]

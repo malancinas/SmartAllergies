@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getPollenCache, setPollenCache } from '@/services/database';
+import { getPollenCache, setPollenCache, getStalePollenCacheByPrefix } from '@/services/database';
 import type {
   PollenForecastResponse,
   WeatherForecastResponse,
@@ -50,7 +50,11 @@ async function fetchPollenForecast(
   lat: number,
   lon: number,
 ): Promise<PollenForecastResponse> {
-  const cacheKey = `pollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 13)}`;
+  const latStr = lat.toFixed(2);
+  const lonStr = lon.toFixed(2);
+  const cacheKey = `pollen_${latStr}_${lonStr}_${new Date().toISOString().slice(0, 13)}`;
+  const cachePrefix = `pollen_${latStr}_${lonStr}_`;
+
   const cached = await getPollenCache<PollenForecastResponse>(cacheKey);
   if (cached) return cached;
 
@@ -60,9 +64,16 @@ async function fetchPollenForecast(
     `&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen` +
     `&timezone=auto&forecast_days=5`;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Pollen API error: ${res.status}`);
-  const json = await res.json();
+  let json: any;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Pollen API error: ${res.status}`);
+    json = await res.json();
+  } catch (fetchErr) {
+    const stale = await getStalePollenCacheByPrefix<PollenForecastResponse>(cachePrefix);
+    if (stale) return { ...stale.data, staleSince: stale.fetchedAt };
+    throw fetchErr;
+  }
 
   const hourly: HourlyPollenPoint[] = (json.hourly.time as string[]).map(
     (time: string, i: number) => ({
