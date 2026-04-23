@@ -41,12 +41,6 @@
           "color": "#ffffff"
         }
       ],
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "YOUR_ANDROID_MAPS_KEY"
-        }
-      ],
       "expo-apple-authentication",
       [
         "@react-native-google-signin/google-signin",
