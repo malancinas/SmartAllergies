@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, type LayoutChangeEvent } from 'react-native';
-import MapView, { UrlTile, type Region, type MapEvent } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, type Region, type MapPressEvent } from 'react-native-maps';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
@@ -14,8 +14,6 @@ import { LocationInfoSheet } from '../components/LocationInfoSheet';
 import { UpgradeMapSheet } from '../components/UpgradeMapSheet';
 import type { LayerType } from '../types';
 import type { Coordinates } from '@/features/pollen/types';
-
-const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 const DEFAULT_REGION: Region = {
   latitude: 53.5,
@@ -69,9 +67,11 @@ export default function MapScreen() {
     );
   }, [location]);
 
-  const initialRegion: Region = DEFAULT_REGION;
+  const initialRegion: Region = location
+    ? { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 2.5, longitudeDelta: 2.5 }
+    : DEFAULT_REGION;
 
-  function handleMapPress(e: MapEvent) {
+  function handleMapPress(e: MapPressEvent) {
     const coord = e.nativeEvent.coordinate;
     if (isPro) {
       setTappedCoord({ latitude: coord.latitude, longitude: coord.longitude });
@@ -98,27 +98,17 @@ export default function MapScreen() {
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        // Free tier: blank base, OSM tiles on top. Pro: Google Maps / MapKit default.
-        mapType={isPro ? 'standard' : 'none'}
+        provider={PROVIDER_GOOGLE}
+        mapType="standard"
         initialRegion={initialRegion}
-        scrollEnabled={isPro}
-        zoomEnabled={isPro}
+        scrollEnabled={true}
+        zoomEnabled={true}
         rotateEnabled={false}
         pitchEnabled={false}
-        maxZoomLevel={isPro ? 8 : 7}
-        minZoomLevel={isPro ? 5 : 7}
         onPress={handleMapPress}
-        showsUserLocation={true}
+        showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        {!isPro && (
-          <UrlTile
-            urlTemplate={OSM_TILE_URL}
-            maximumZ={18}
-            shouldReplaceMapContent={true}
-          />
-        )}
-
         {!isPro && (
           <PollenPolygonLayer geojson={gridData[selectedLayer]} />
         )}
