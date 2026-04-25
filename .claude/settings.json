@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s --max-time 20 \"https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Counties_and_Unitary_Authorities_December_2023_UK_BUC/FeatureServer/0/query?outFields=CTYUA23NM&where=1%3D1&f=geojson\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s --max-time 30 -L \"https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_GBR_1.json.zip\" -o \"c:/Users/malan/AppData/Local/Temp/geodata/gbr_adm1.zip\")",
+      "Bash(curl -s --max-time 25 \"https://opendata.arcgis.com/api/v1/datasets/a4ef1e09e3354bb6a0ef9fce5a2c5c3d_0/downloads/data?format=geojson&spatialRefId=4326\")",
+      "Bash(curl -s --max-time 25 \"https://opendata.arcgis.com/datasets/01fd6b2d7600446d8af768005992f76a_4.geojson\")",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/martinjc/UK-GeoJSON/master/json/administrative/gb/topo_lad.json\" -o \"c:/Users/malan/AppData/Local/Temp/geodata/uk_topo_lad.json\")"
+    ]
+  }
+}

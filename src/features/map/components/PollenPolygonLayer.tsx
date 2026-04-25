@@ -20,9 +20,9 @@ export function PollenPolygonLayer({ geojson }: Props) {
           <Polygon
             key={i}
             coordinates={coordinates}
-            fillColor={`${feature.properties.color}8C`} // 55% opacity (0x8C ≈ 140/255)
-            strokeColor={`${feature.properties.color}40`}
-            strokeWidth={0}
+            fillColor={`${feature.properties.color}8C`}
+            strokeColor={`${feature.properties.color}8C`}
+            strokeWidth={1.5}
           />
         );
       })}

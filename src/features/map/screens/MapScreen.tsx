@@ -56,7 +56,7 @@ export default function MapScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
-  const { gridData } = usePollenMapData(true);
+  const { gridData } = usePollenMapData(true, currentRegion);
 
   const handleLegendLayout = useCallback((e: LayoutChangeEvent) => {
     const { y, height } = e.nativeEvent.layout;
