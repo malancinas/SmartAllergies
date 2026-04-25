@@ -39,8 +39,13 @@ export default function MapScreen() {
   const { today } = useCurrentPollen();
   const { isPro, showPaywall, paywallProps } = useProGate();
 
+  // DEV-only toggle to preview free vs pro map without a real subscription
+  const [devProOverride, setDevProOverride] = useState<boolean | null>(null);
+  const effectiveIsPro = __DEV__ && devProOverride !== null ? devProOverride : isPro;
+
   const mapRef = useRef<MapView>(null);
   const centeredRef = useRef(false);
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
 
   const defaultLayer = useMemo(() => highestLayer(today), [today]);
   const [selectedLayer, setSelectedLayer] = useState<LayerType>(defaultLayer);
@@ -50,7 +55,7 @@ export default function MapScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
-  const { gridData } = usePollenMapData(!isPro);
+  const { gridData } = usePollenMapData(true);
 
   const handleLegendLayout = useCallback((e: LayoutChangeEvent) => {
     const { y, height } = e.nativeEvent.layout;
@@ -73,7 +78,7 @@ export default function MapScreen() {
 
   function handleMapPress(e: MapPressEvent) {
     const coord = e.nativeEvent.coordinate;
-    if (isPro) {
+    if (effectiveIsPro) {
       setTappedCoord({ latitude: coord.latitude, longitude: coord.longitude });
       setShowLocationSheet(true);
     } else {
@@ -86,6 +91,24 @@ export default function MapScreen() {
     mapRef.current.animateToRegion(
       { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.5, longitudeDelta: 0.5 },
       500,
+    );
+  }
+
+  function handleZoomIn() {
+    if (!mapRef.current) return;
+    const r = currentRegion ?? initialRegion;
+    mapRef.current.animateToRegion(
+      { ...r, latitudeDelta: Math.max(r.latitudeDelta / 2, 0.005), longitudeDelta: Math.max(r.longitudeDelta / 2, 0.005) },
+      250,
+    );
+  }
+
+  function handleZoomOut() {
+    if (!mapRef.current) return;
+    const r = currentRegion ?? initialRegion;
+    mapRef.current.animateToRegion(
+      { ...r, latitudeDelta: Math.min(r.latitudeDelta * 2, 60), longitudeDelta: Math.min(r.longitudeDelta * 2, 60) },
+      250,
     );
   }
 
@@ -106,23 +129,19 @@ export default function MapScreen() {
         rotateEnabled={false}
         pitchEnabled={false}
         onPress={handleMapPress}
+        onRegionChangeComplete={(r) => setCurrentRegion(r)}
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        {!isPro && (
-          <PollenPolygonLayer geojson={gridData[selectedLayer]} />
-        )}
-
-        {isPro && (
-          <PollenTileLayer layerType={selectedLayer} />
-        )}
+        <PollenPolygonLayer geojson={!effectiveIsPro ? gridData[selectedLayer] : null} />
+        <PollenTileLayer layerType={selectedLayer} visible={effectiveIsPro} region={currentRegion ?? initialRegion} />
       </MapView>
 
       {/* Shared: colour legend */}
       <PollenLegend onLayout={handleLegendLayout} />
 
       {/* Free: Pro upgrade CTA (top-right, below the legend card) */}
-      {!isPro && (
+      {!effectiveIsPro && (
         <TouchableOpacity
           onPress={() => showPaywall('Live Hyperlocal Map')}
           style={{
@@ -149,13 +168,41 @@ export default function MapScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Shared: zoom buttons */}
+      <View style={{
+        position: 'absolute',
+        bottom: 230,
+        right: 16,
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+      }}>
+        <TouchableOpacity
+          onPress={handleZoomIn}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}
+        >
+          <Text style={{ fontSize: 22, color: '#374151', lineHeight: 26 }}>+</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleZoomOut}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 22, color: '#374151', lineHeight: 26 }}>−</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Pro: locate-me FAB */}
-      {isPro && (
+      {effectiveIsPro && (
         <TouchableOpacity
           onPress={handleLocateMe}
           style={{
             position: 'absolute',
-            bottom: 150,
+            bottom: 170,
             right: 16,
             width: 44,
             height: 44,
@@ -174,11 +221,32 @@ export default function MapScreen() {
         </TouchableOpacity>
       )}
 
+      {/* DEV: free/pro toggle — sits below the unlock CTA button */}
+      {__DEV__ && (
+        <TouchableOpacity
+          onPress={() => setDevProOverride(devProOverride === true ? false : devProOverride === false ? null : true)}
+          style={{
+            position: 'absolute',
+            top: (legendBottom || 170) + 44,
+            right: 12,
+            backgroundColor: effectiveIsPro ? '#6d28d9' : '#6b7280',
+            borderRadius: 12,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            elevation: 4,
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+            {devProOverride === null ? `${effectiveIsPro ? 'PRO' : 'FREE'} (real)` : effectiveIsPro ? 'PRO (dev)' : 'FREE (dev)'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Shared: layer selector */}
       <LayerSelector selected={selectedLayer} onSelect={setSelectedLayer} levels={levels} />
 
       {/* Free: locked map banner */}
-      {!isPro && (
+      {!effectiveIsPro && (
         <View
           style={{
             position: 'absolute',
