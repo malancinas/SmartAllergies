@@ -4,6 +4,9 @@ import { ENV } from '@/config/env';
 import { getTileCache, setTileCache } from '@/services/database';
 import { GOOGLE_LAYER_TYPE, type LayerType } from '../types';
 
+// Session-level cache: memory → SQLite → network. Cleared on app restart.
+const memoryTileCache = new Map<string, string>();
+
 interface TileCoord { x: number; y: number; z: number }
 
 interface Props {
@@ -63,7 +66,8 @@ async function fetchAsDataUri(url: string): Promise<string> {
 
 export function PollenTileLayer({ layerType, visible, region }: Props) {
   const apiKey = ENV.GOOGLE_POLLEN_API_KEY;
-  const [uris, setUris] = useState<Map<string, string>>(new Map());
+  // Increments whenever new tiles land, triggering a re-render to display them.
+  const [, setRenderTick] = useState(0);
   const cancelledRef = useRef(false);
 
   // Tile coordinates depend only on region, not layerType
@@ -74,37 +78,37 @@ export function PollenTileLayer({ layerType, visible, region }: Props) {
   }, [visible, apiKey, region?.latitude, region?.longitude, region?.latitudeDelta]);
 
   useEffect(() => {
-    if (!visible || !apiKey || tileCoords.length === 0) {
-      setUris(new Map());
-      return;
-    }
+    if (!visible || !apiKey || tileCoords.length === 0) return;
 
     cancelledRef.current = false;
     const type = GOOGLE_LAYER_TYPE[layerType];
     const today = new Date().toISOString().slice(0, 10);
 
     async function load() {
-      const result = new Map<string, string>();
+      let anyNew = false;
 
       await Promise.allSettled(
         tileCoords.map(async ({ x, y, z }) => {
-          const tileKey = `${z}-${x}-${y}`;
           const cacheKey = `pollen_tile_${today}_${type}_${z}_${x}_${y}`;
+
+          if (memoryTileCache.has(cacheKey)) return;
 
           const cached = await getTileCache(cacheKey);
           if (cached) {
-            result.set(tileKey, cached);
+            memoryTileCache.set(cacheKey, cached);
+            anyNew = true;
             return;
           }
 
           const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
           const dataUri = await fetchAsDataUri(url);
           await setTileCache(cacheKey, dataUri);
-          result.set(tileKey, dataUri);
+          memoryTileCache.set(cacheKey, dataUri);
+          anyNew = true;
         }),
       );
 
-      if (!cancelledRef.current) setUris(result);
+      if (!cancelledRef.current && anyNew) setRenderTick(t => t + 1);
     }
 
     load();
@@ -113,15 +117,19 @@ export function PollenTileLayer({ layerType, visible, region }: Props) {
 
   if (!visible || !apiKey || !region) return null;
 
+  const type = GOOGLE_LAYER_TYPE[layerType];
+  const today = new Date().toISOString().slice(0, 10);
+
   return (
     <>
       {tileCoords.map(({ x, y, z }) => {
-        const uri = uris.get(`${z}-${x}-${y}`);
+        const cacheKey = `pollen_tile_${today}_${type}_${z}_${x}_${y}`;
+        const uri = memoryTileCache.get(cacheKey);
         if (!uri) return null;
         const { latMin, latMax, lonMin, lonMax } = tileBounds(x, y, z);
         return (
           <Overlay
-            key={`${z}-${x}-${y}-${GOOGLE_LAYER_TYPE[layerType]}`}
+            key={`${z}-${x}-${y}-${type}`}
             bounds={[[latMin, lonMin], [latMax, lonMax]]}
             image={{ uri }}
             opacity={0.65}

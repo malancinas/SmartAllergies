@@ -45,6 +45,7 @@ export default function MapScreen() {
 
   const mapRef = useRef<MapView>(null);
   const centeredRef = useRef(false);
+  const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
 
   const defaultLayer = useMemo(() => highestLayer(today), [today]);
@@ -129,7 +130,10 @@ export default function MapScreen() {
         rotateEnabled={false}
         pitchEnabled={false}
         onPress={handleMapPress}
-        onRegionChangeComplete={(r) => setCurrentRegion(r)}
+        onRegionChangeComplete={(r) => {
+            if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
+            regionDebounceRef.current = setTimeout(() => setCurrentRegion(r), 500);
+          }}
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
