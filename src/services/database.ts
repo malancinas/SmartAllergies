@@ -165,6 +165,34 @@ export async function setPollenCache(key: string, data: unknown): Promise<void> 
   );
 }
 
+// Google Maps Platform ToS permits caching for performance; 24h matches the Pollen API's own
+// daily update cadence, so cached tiles are never stale by more than one data refresh cycle.
+const TILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function getTileCache(key: string): Promise<string | null> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ data: string; fetched_at: string }>(
+    `SELECT data, fetched_at FROM pollen_cache WHERE cache_key = ?`,
+    key,
+  );
+  if (!row) return null;
+  if (Date.now() - new Date(row.fetched_at).getTime() > TILE_CACHE_TTL_MS) {
+    await db.runAsync(`DELETE FROM pollen_cache WHERE cache_key = ?`, key);
+    return null;
+  }
+  return row.data;
+}
+
+export async function setTileCache(key: string, dataUri: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO pollen_cache (cache_key, data, fetched_at) VALUES (?, ?, ?)`,
+    key,
+    dataUri,
+    new Date().toISOString(),
+  );
+}
+
 /** Returns the most recent cache entry whose key starts with `prefix`, ignoring TTL. */
 export async function getStalePollenCacheByPrefix<T>(
   prefix: string,

@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Overlay, type Region } from 'react-native-maps';
 import { ENV } from '@/config/env';
+import { getTileCache, setTileCache } from '@/services/database';
 import { GOOGLE_LAYER_TYPE, type LayerType } from '../types';
+
+interface TileCoord { x: number; y: number; z: number }
 
 interface Props {
   layerType: LayerType;
@@ -16,7 +19,7 @@ function tileZoomForDelta(delta: number): number {
   return 9;
 }
 
-function tilesForRegion(region: Region, z: number): { x: number; y: number }[] {
+function tilesForRegion(region: Region, z: number): TileCoord[] {
   const n = Math.pow(2, z);
   const minLon = Math.max(region.longitude - region.longitudeDelta / 2, -180);
   const maxLon = Math.min(region.longitude + region.longitudeDelta / 2, 180);
@@ -29,15 +32,10 @@ function tilesForRegion(region: Region, z: number): { x: number; y: number }[] {
     return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n);
   };
 
-  const minX = lonToX(minLon);
-  const maxX = lonToX(maxLon);
-  const minY = latToY(maxLat); // Y-axis is inverted: north = smaller Y
-  const maxY = latToY(minLat);
-
-  const tiles: { x: number; y: number }[] = [];
-  for (let x = minX; x <= maxX; x++) {
-    for (let y = minY; y <= maxY; y++) {
-      tiles.push({ x, y });
+  const tiles: TileCoord[] = [];
+  for (let x = lonToX(minLon); x <= lonToX(maxLon); x++) {
+    for (let y = latToY(maxLat); y <= latToY(minLat); y++) {
+      tiles.push({ x, y, z });
     }
   }
   return tiles;
@@ -52,32 +50,78 @@ function tileBounds(x: number, y: number, z: number) {
   return { latMin, latMax, lonMin, lonMax };
 }
 
+async function fetchAsDataUri(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status}`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 8192) {
+    binary += String.fromCharCode(...(bytes.subarray(i, i + 8192) as unknown as number[]));
+  }
+  return `data:image/png;base64,${btoa(binary)}`;
+}
+
 export function PollenTileLayer({ layerType, visible, region }: Props) {
   const apiKey = ENV.GOOGLE_POLLEN_API_KEY;
+  const [uris, setUris] = useState<Map<string, string>>(new Map());
+  const cancelledRef = useRef(false);
 
-  if (__DEV__) {
-    console.log('[PollenTileLayer]', { visible, hasKey: !!apiKey, hasRegion: !!region, layerType });
-  }
+  // Tile coordinates depend only on region, not layerType
+  const tileCoords = useMemo<TileCoord[]>(() => {
+    if (!visible || !region || !apiKey) return [];
+    const z = tileZoomForDelta(region.latitudeDelta);
+    return tilesForRegion(region, z).slice(0, 25);
+  }, [visible, apiKey, region?.latitude, region?.longitude, region?.latitudeDelta]);
 
-  if (!apiKey || !visible || !region) return null;
+  useEffect(() => {
+    if (!visible || !apiKey || tileCoords.length === 0) {
+      setUris(new Map());
+      return;
+    }
 
-  const z = tileZoomForDelta(region.latitudeDelta);
-  const type = GOOGLE_LAYER_TYPE[layerType];
-  const tiles = tilesForRegion(region, z).slice(0, 25);
+    cancelledRef.current = false;
+    const type = GOOGLE_LAYER_TYPE[layerType];
+    const today = new Date().toISOString().slice(0, 10);
 
-  if (__DEV__) {
-    console.log(`[PollenTileLayer] rendering ${tiles.length} tiles at zoom ${z} type ${type}`);
-    console.log('[PollenTileLayer] sample URL:', `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${tiles[0]?.x}/${tiles[0]?.y}?key=${apiKey.slice(0, 8)}...`);
-  }
+    async function load() {
+      const result = new Map<string, string>();
+
+      await Promise.allSettled(
+        tileCoords.map(async ({ x, y, z }) => {
+          const tileKey = `${z}-${x}-${y}`;
+          const cacheKey = `pollen_tile_${today}_${type}_${z}_${x}_${y}`;
+
+          const cached = await getTileCache(cacheKey);
+          if (cached) {
+            result.set(tileKey, cached);
+            return;
+          }
+
+          const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
+          const dataUri = await fetchAsDataUri(url);
+          await setTileCache(cacheKey, dataUri);
+          result.set(tileKey, dataUri);
+        }),
+      );
+
+      if (!cancelledRef.current) setUris(result);
+    }
+
+    load();
+    return () => { cancelledRef.current = true; };
+  }, [tileCoords, layerType, visible, apiKey]);
+
+  if (!visible || !apiKey || !region) return null;
 
   return (
     <>
-      {tiles.map(({ x, y }) => {
+      {tileCoords.map(({ x, y, z }) => {
+        const uri = uris.get(`${z}-${x}-${y}`);
+        if (!uri) return null;
         const { latMin, latMax, lonMin, lonMax } = tileBounds(x, y, z);
-        const uri = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
         return (
           <Overlay
-            key={`${z}-${x}-${y}-${type}`}
+            key={`${z}-${x}-${y}-${GOOGLE_LAYER_TYPE[layerType]}`}
             bounds={[[latMin, lonMin], [latMax, lonMax]]}
             image={{ uri }}
             opacity={0.65}
