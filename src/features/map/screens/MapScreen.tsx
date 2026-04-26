@@ -49,17 +49,14 @@ export default function MapScreen() {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [adPlaying, setAdPlaying] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
-  const [forceFreeModeForQuota, setForceFreeModeForQuota] = useState(false);
   const [quotaBannerCollapsed, setQuotaBannerCollapsed] = useState(false);
+  const [mapViewMode, setMapViewMode] = useState<'pro' | 'free'>('pro');
 
-  // When quota is hit, default Pro user to free map so they can keep exploring
+  const effectiveMapIsPro = effectiveIsPro && mapViewMode === 'pro';
+
   function handleQuotaExceeded() {
     setQuotaExceeded(true);
-    setForceFreeModeForQuota(true);
   }
-
-  // Pro user sees Google tiles unless they've hit their quota and switched to free view
-  const effectiveMapIsPro = effectiveIsPro && !forceFreeModeForQuota;
 
   async function handleChangeLocationPress() {
     if (!effectiveIsPro) {
@@ -126,7 +123,6 @@ export default function MapScreen() {
     } else if (!effectiveIsPro) {
       setShowUpgradeSheet(true);
     }
-    // Pro user in free-quota-mode: taps do nothing (banner already visible)
   }
 
   function handleLocateMe() {
@@ -227,8 +223,8 @@ export default function MapScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Free: Pro upgrade CTA (top-right, below the legend card) */}
-      {!effectiveIsPro && !quotaExceeded && (
+      {/* Free: upgrade CTA / Pro: view mode toggle — top-right below legend */}
+      {!effectiveIsPro ? (
         <TouchableOpacity
           onPress={() => showPaywall('Live Hyperlocal Map')}
           style={{
@@ -251,6 +247,32 @@ export default function MapScreen() {
           <Text style={{ fontSize: 13, marginRight: 4 }}>🔒</Text>
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>
             Unlock live hyperlocal map
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          onPress={() => setMapViewMode(mapViewMode === 'pro' ? 'free' : 'pro')}
+          style={{
+            position: 'absolute',
+            top: legendBottom || 170,
+            right: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            backgroundColor: mapViewMode === 'pro' ? 'rgba(99,102,241,0.92)' : 'rgba(255,255,255,0.92)',
+            borderRadius: 20,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.15,
+            shadowRadius: 4,
+            elevation: 3,
+          }}
+        >
+          <Text style={{ fontSize: 12 }}>{mapViewMode === 'pro' ? '✨' : '🗺'}</Text>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: mapViewMode === 'pro' ? '#fff' : '#374151' }}>
+            {mapViewMode === 'pro' ? 'Pro view' : 'Free view'}
           </Text>
         </TouchableOpacity>
       )}
@@ -332,8 +354,8 @@ export default function MapScreen() {
       {/* Shared: layer selector */}
       <LayerSelector selected={selectedLayer} onSelect={setSelectedLayer} levels={levels} />
 
-      {/* Free: locked map banner */}
-      {!effectiveMapIsPro && !quotaExceeded && (
+      {/* Free view banner */}
+      {!effectiveMapIsPro && (
         <View
           style={{
             position: 'absolute',
@@ -345,101 +367,56 @@ export default function MapScreen() {
             paddingVertical: 6,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 12 }}>Regional forecast — updated daily</Text>
+          <Text style={{ color: '#fff', fontSize: 12 }}>
+            {effectiveIsPro ? 'Regional forecast view' : 'Regional forecast — updated daily'}
+          </Text>
         </View>
       )}
 
-      {/* Quota limit banner — collapsible pill when minimised */}
-      {quotaExceeded && quotaBannerCollapsed && (
-        <TouchableOpacity
-          onPress={() => setQuotaBannerCollapsed(false)}
-          style={{
-            position: 'absolute',
-            bottom: 140,
-            alignSelf: 'center',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: 'rgba(255,255,255,0.95)',
-            borderRadius: 20,
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.15,
-            shadowRadius: 4,
-            elevation: 4,
-          }}
-        >
-          <Text style={{ fontSize: 13 }}>📊</Text>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>Daily limit reached</Text>
-          <Text style={{ fontSize: 11, color: '#9ca3af' }}>▴</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Quota limit banner — expanded */}
-      {quotaExceeded && !quotaBannerCollapsed && (
+      {/* Quota callout — points at the Pro/Free toggle, dismissable */}
+      {quotaExceeded && !quotaBannerCollapsed && effectiveIsPro && (
         <View
           style={{
             position: 'absolute',
-            bottom: 140,
-            left: 12,
+            top: (legendBottom || 170) + 40,
             right: 12,
-            backgroundColor: 'rgba(255,255,255,0.97)',
-            borderRadius: 16,
-            padding: 14,
+            width: 220,
+            backgroundColor: '#1f2937',
+            borderRadius: 12,
+            padding: 12,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 6,
+            shadowOpacity: 0.25,
+            shadowRadius: 6,
+            elevation: 7,
           }}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151' }}>
-              Daily limit reached
+          {/* Arrow pointing up toward the toggle button */}
+          <View style={{
+            position: 'absolute',
+            top: -7,
+            right: 28,
+            width: 0,
+            height: 0,
+            borderLeftWidth: 7,
+            borderRightWidth: 7,
+            borderBottomWidth: 7,
+            borderLeftColor: 'transparent',
+            borderRightColor: 'transparent',
+            borderBottomColor: '#1f2937',
+          }} />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#fff', flex: 1, marginRight: 8 }}>
+              That's all for Pro today.
             </Text>
             <TouchableOpacity onPress={() => setQuotaBannerCollapsed(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontSize: 16, color: '#9ca3af', lineHeight: 18 }}>▾</Text>
+              <Text style={{ fontSize: 16, color: '#9ca3af', lineHeight: 18 }}>✕</Text>
             </TouchableOpacity>
           </View>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: effectiveIsPro ? 12 : 0, lineHeight: 17 }}>
-            You've used all 150 location lookups for today. Your quota resets at midnight — any locations you've already explored are still cached.
+          <Text style={{ fontSize: 12, color: '#d1d5db', lineHeight: 17 }}>
+            You can switch to Free view, or stay in Pro and keep using the pollen maps you've viewed today. Resets at midnight.
           </Text>
-
-          {/* Pro users can toggle between cached pro tiles and the free polygon map */}
-          {effectiveIsPro && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => setForceFreeModeForQuota(true)}
-                style={{
-                  flex: 1,
-                  backgroundColor: forceFreeModeForQuota ? '#6366f1' : '#f3f4f6',
-                  borderRadius: 10,
-                  paddingVertical: 9,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: forceFreeModeForQuota ? '#fff' : '#374151' }}>
-                  🗺 Explore free map
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setForceFreeModeForQuota(false)}
-                style={{
-                  flex: 1,
-                  backgroundColor: !forceFreeModeForQuota ? '#6366f1' : '#f3f4f6',
-                  borderRadius: 10,
-                  paddingVertical: 9,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: !forceFreeModeForQuota ? '#fff' : '#374151' }}>
-                  🔒 Cached locations
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       )}
 
