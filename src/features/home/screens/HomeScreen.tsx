@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
@@ -8,18 +8,24 @@ import { RiskBanner } from '../components/RiskBanner';
 import { PollenSummary } from '../components/PollenSummary';
 import { ForecastStrip } from '../components/ForecastStrip';
 import { DataQualitySheet } from '../components/DataQualitySheet';
+import { PeakHoursCard } from '../components/PeakHoursCard';
 import { CommunityBanner } from '@/features/community/components/CommunityBanner';
 import { useCommunitySignal } from '@/features/community/hooks/useCommunitySignal';
 import { usePollenStore } from '@/features/pollen/store';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
+import { useProGate } from '@/features/subscription/hooks/useProGate';
+import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { AddressSearch } from '../components/AddressSearch';
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const { today: todayPollen, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
+  const { today: todayPollen, todayHourly, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
     useCurrentPollen();
   const { today: riskToday, upcoming, weights, loading: forecastLoading } = useForecast();
   const [qualitySheetVisible, setQualitySheetVisible] = useState(false);
+  const { isPro, showPaywall, paywallProps } = useProGate();
+  const [devProOverride, setDevProOverride] = useState<boolean | null>(null);
+  const effectiveIsPro = __DEV__ && devProOverride !== null ? devProOverride : isPro;
 
   const location = usePollenStore((s) => s.location);
   const allergenProfile = useSettingsStore((s) => s.allergenProfile);
@@ -86,8 +92,21 @@ export default function HomeScreen() {
             />
           )}
 
-          {/* 5-day forecast strip */}
-          {upcoming.length > 0 && <ForecastStrip upcoming={upcoming} />}
+          {/* 5-day forecast strip — days after tomorrow are Pro-only */}
+          {upcoming.length > 0 && (
+            <ForecastStrip
+              upcoming={upcoming}
+              isPro={effectiveIsPro}
+              onUpgradePress={() => showPaywall('Extended forecast')}
+            />
+          )}
+
+          {/* Peak pollen hours — Pro feature using already-fetched hourly data */}
+          <PeakHoursCard
+            todayHourly={todayHourly}
+            isPro={effectiveIsPro}
+            onUpgradePress={() => showPaywall('Peak pollen hours')}
+          />
 
           {/* Weather context */}
           {todayWeather && (
@@ -112,6 +131,64 @@ export default function HomeScreen() {
           today={todayPollen}
         />
       )}
+
+      {/* Floating Pro unlock pill — mirrors the map screen button, free users only */}
+      {!effectiveIsPro && (
+        <View style={{ position: 'absolute', bottom: 16, left: 0, right: 0, alignItems: 'center' }} pointerEvents="box-none">
+          <TouchableOpacity
+            onPress={() => showPaywall('SmartAllergies Pro')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(255,255,255,0.92)',
+              borderRadius: 20,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 4,
+            }}
+          >
+            <Text style={{ fontSize: 13, marginRight: 6 }}>🔒</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>
+              Unlock Pro features
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* DEV: free/pro toggle */}
+      {__DEV__ && (
+        <TouchableOpacity
+          onPress={() =>
+            setDevProOverride(
+              devProOverride === true ? false : devProOverride === false ? null : true,
+            )
+          }
+          style={{
+            position: 'absolute',
+            bottom: 16,
+            right: 16,
+            backgroundColor: effectiveIsPro ? '#6d28d9' : '#6b7280',
+            borderRadius: 12,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            elevation: 4,
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+            {devProOverride === null
+              ? `${effectiveIsPro ? 'PRO' : 'FREE'} (real)`
+              : effectiveIsPro
+              ? 'PRO (dev)'
+              : 'FREE (dev)'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <PaywallSheet {...paywallProps} />
     </Screen>
   );
 }

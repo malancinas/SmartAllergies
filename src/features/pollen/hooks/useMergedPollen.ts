@@ -9,6 +9,7 @@ import type { MergedDailyPollenForecast } from '../types';
 interface UseMergedPollenResult {
   today: MergedDailyPollenForecast | null;
   forecast: MergedDailyPollenForecast[];
+  hourly: import('../types').HourlyPollenPoint[];
   limitedCoverage: boolean;
   loading: boolean;
   error: Error | null;
@@ -63,5 +64,5 @@ export function useMergedPollen(
 
   const staleSince = omQuery.data?.staleSince ?? null;
 
-  return { today, forecast: mergedForecast, limitedCoverage, loading, error, staleSince };
+  return { today, forecast: mergedForecast, hourly: omQuery.data?.hourly ?? [], limitedCoverage, loading, error, staleSince };
 }

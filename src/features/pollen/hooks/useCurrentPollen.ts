@@ -2,11 +2,12 @@ import { useMemo } from 'react';
 import { useLocation } from './useLocation';
 import { useWeatherForecast } from '../api';
 import { useMergedPollen } from './useMergedPollen';
-import type { MergedDailyPollenForecast, WeatherPoint } from '../types';
+import type { MergedDailyPollenForecast, WeatherPoint, HourlyPollenPoint } from '../types';
 
 interface UseCurrentPollenResult {
   today: MergedDailyPollenForecast | null;
   forecast: MergedDailyPollenForecast[];
+  todayHourly: HourlyPollenPoint[];
   todayWeather: WeatherPoint | null;
   limitedCoverage: boolean;
   loading: boolean;
@@ -30,6 +31,11 @@ export function useCurrentPollen(): UseCurrentPollenResult {
   const currentHour = new Date().toISOString().slice(0, 13);
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  const todayHourly = useMemo(
+    () => mergedPollen.hourly.filter((h) => h.time.startsWith(todayStr)),
+    [mergedPollen.hourly, todayStr],
+  );
+
   const todayWeather = useMemo(() => {
     if (!weatherQuery.data) return null;
     return (
@@ -48,6 +54,7 @@ export function useCurrentPollen(): UseCurrentPollenResult {
   return {
     today: mergedPollen.today,
     forecast: mergedPollen.forecast,
+    todayHourly,
     todayWeather,
     limitedCoverage: mergedPollen.limitedCoverage,
     loading,
