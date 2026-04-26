@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { LayerType, UpiCategory, PollenGridGeoJson, PollenGridFeature } from '../types';
 import { UPI_COLORS } from '../types';
 import type { Region } from 'react-native-maps';
+import { getPollenCache, setPollenCache, getStalePollenCacheByPrefix } from '@/services/database';
 
 // Precomputed admin region polygons with centroid + bbox metadata.
 // Regenerate with: node scripts/precompute-admin-regions.js
@@ -78,9 +79,15 @@ async function fetchPollenForCentroids(
         `&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen` +
         `&timezone=UTC&forecast_days=1`;
 
+      console.log('[PollenGrid] fetching', chunk.length, 'points →', url.slice(0, 120) + '…');
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`Open-Meteo error: ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.error('[PollenGrid] HTTP', res.status, body.slice(0, 200));
+        throw new Error(`Open-Meteo error: ${res.status}`);
+      }
       const json = await res.json();
+      console.log('[PollenGrid] response type:', Array.isArray(json) ? `array[${json.length}]` : typeof json);
       return (Array.isArray(json) ? json : [json]) as any[];
     }),
   );
@@ -169,6 +176,8 @@ export function useOpenMeteoPollenGrid(enabled: boolean, region: Region | null) 
     const bounds = region ? regionToBounds(region) : UK_BOUNDS;
     const visibleFeatures = getVisibleFeatures(bounds);
 
+    console.log('[PollenGrid] bounds', bounds, '→', visibleFeatures.length, 'features');
+
     if (visibleFeatures.length === 0) {
       setGridData(EMPTY);
       return;
@@ -179,26 +188,51 @@ export function useOpenMeteoPollenGrid(enabled: boolean, region: Region | null) 
       lon: f.properties.centroid[0],
     }));
 
+    // Round bounds to 1 dp so nearby pans/zooms share the same cache entry
+    const boundsKey = `${bounds.minLat.toFixed(1)}_${bounds.maxLat.toFixed(1)}_${bounds.minLon.toFixed(1)}_${bounds.maxLon.toFixed(1)}`;
+    const cacheKey = `open_meteo_grid_${todayStr}_${boundsKey}`;
+    const cachePrefix = `open_meteo_grid_${todayStr}_`;
+
     setLoading(true);
     setError(null);
 
-    fetchPollenForCentroids(points, todayStr)
-      .then(({ treeVals, grassVals, weedVals }) => {
+    async function load() {
+      const cached = await getPollenCache<GridData>(cacheKey);
+      if (controller.signal.aborted) return;
+      if (cached) {
+        console.log('[PollenGrid] cache hit', cacheKey);
+        setGridData(cached);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { treeVals, grassVals, weedVals } = await fetchPollenForCentroids(points, todayStr);
         if (controller.signal.aborted) return;
-        setGridData({
+        console.log('[PollenGrid] fetch OK — tree:', treeVals.slice(0, 3), 'grass:', grassVals.slice(0, 3), 'weed:', weedVals.slice(0, 3));
+        const newGrid: GridData = {
           tree: buildGeoJson(visibleFeatures, treeVals, classifyTree),
           grass: buildGeoJson(visibleFeatures, grassVals, classifyGrass),
           weed: buildGeoJson(visibleFeatures, weedVals, classifyWeed),
-        });
-      })
-      .catch((e) => {
+        };
+        await setPollenCache(cacheKey, newGrid);
+        if (!controller.signal.aborted) setGridData(newGrid);
+      } catch (e) {
         if (controller.signal.aborted) return;
-        setError(String(e));
-      })
-      .finally(() => {
+        console.error('[PollenGrid] fetch error', e);
+        const stale = await getStalePollenCacheByPrefix<GridData>(cachePrefix);
+        if (stale && !controller.signal.aborted) {
+          console.log('[PollenGrid] using stale cache from', stale.fetchedAt);
+          setGridData(stale.data);
+        } else {
+          setError(String(e));
+        }
+      } finally {
         if (!controller.signal.aborted) setLoading(false);
-      });
+      }
+    }
 
+    load();
     return () => controller.abort();
   }, [enabled, region]);
 

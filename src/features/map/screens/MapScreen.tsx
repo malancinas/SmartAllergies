@@ -73,7 +73,10 @@ export default function MapScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
-  const { gridData } = usePollenMapData(true, currentRegion);
+  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, currentRegion);
+  if (__DEV__) {
+    console.log('[MapScreen] isPro:', effectiveIsPro, '| layer:', selectedLayer, '| gridLoading:', gridLoading, '| gridError:', gridError, '| features:', gridData[selectedLayer]?.features?.length ?? 'null');
+  }
 
   const handleLegendLayout = useCallback((e: LayoutChangeEvent) => {
     const { y, height } = e.nativeEvent.layout;
