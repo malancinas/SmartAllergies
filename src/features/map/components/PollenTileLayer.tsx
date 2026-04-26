@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Overlay, type Region } from 'react-native-maps';
 import { ENV } from '@/config/env';
-import { getTileCache, setTileCache } from '@/services/database';
+import { getTileCache, setTileCache, getApiCallCount, incrementApiCallCount, DAILY_API_LIMIT } from '@/services/database';
+import { authStore } from '@/stores/persistent/authStore';
 import { GOOGLE_LAYER_TYPE, type LayerType } from '../types';
 
 // Session-level cache: memory → SQLite → network. Cleared on app restart.
@@ -13,13 +14,11 @@ interface Props {
   layerType: LayerType;
   visible: boolean;
   region: Region | null;
+  onQuotaExceeded?: () => void;
 }
 
-function tileZoomForDelta(delta: number): number {
-  if (delta > 6) return 6;
-  if (delta > 3) return 7;
-  if (delta > 1.5) return 8;
-  return 9;
+function tileZoomForDelta(_delta: number): number {
+  return 6;
 }
 
 function tilesForRegion(region: Region, z: number): TileCoord[] {
@@ -64,7 +63,7 @@ async function fetchAsDataUri(url: string): Promise<string> {
   return `data:image/png;base64,${btoa(binary)}`;
 }
 
-export function PollenTileLayer({ layerType, visible, region }: Props) {
+export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }: Props) {
   const apiKey = ENV.GOOGLE_POLLEN_API_KEY;
   // Increments whenever new tiles land, triggering a re-render to display them.
   const [, setRenderTick] = useState(0);
@@ -87,28 +86,65 @@ export function PollenTileLayer({ layerType, visible, region }: Props) {
     async function load() {
       let anyNew = false;
 
-      await Promise.allSettled(
+      // Check SQLite cache for all tiles in parallel, populate memory cache
+      const cacheResults = await Promise.all(
         tileCoords.map(async ({ x, y, z }) => {
           const cacheKey = `pollen_tile_${today}_${type}_${z}_${x}_${y}`;
-
-          if (memoryTileCache.has(cacheKey)) return;
-
+          if (memoryTileCache.has(cacheKey)) return { x, y, z, cacheKey, needsNetwork: false };
           const cached = await getTileCache(cacheKey);
           if (cached) {
             memoryTileCache.set(cacheKey, cached);
             anyNew = true;
-            return;
           }
-
-          const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
-          const dataUri = await fetchAsDataUri(url);
-          await setTileCache(cacheKey, dataUri);
-          memoryTileCache.set(cacheKey, dataUri);
-          anyNew = true;
+          return { x, y, z, cacheKey, needsNetwork: !cached };
         }),
       );
 
-      if (!cancelledRef.current && anyNew) setRenderTick(t => t + 1);
+      const toFetchAll = cacheResults.filter((r) => r.needsNetwork);
+
+      if (toFetchAll.length > 0) {
+        const userId = authStore.getState().user?.id ?? 'anonymous';
+        const currentCount = await getApiCallCount(userId);
+        const remaining = DAILY_API_LIMIT - currentCount;
+
+        if (remaining <= 0) {
+          if (!cancelledRef.current) onQuotaExceeded?.();
+          if (!cancelledRef.current && anyNew) setRenderTick((t) => t + 1);
+          return;
+        }
+
+        const toFetch = toFetchAll.slice(0, remaining);
+        // Partial batch means we'll exhaust quota after this load
+        if (toFetch.length < toFetchAll.length && !cancelledRef.current) {
+          onQuotaExceeded?.();
+        }
+
+        let fetchedCount = 0;
+        await Promise.allSettled(
+          toFetch.map(async ({ x, y, z, cacheKey }) => {
+            if (cancelledRef.current) return;
+            const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
+            try {
+              const dataUri = await fetchAsDataUri(url);
+              await setTileCache(cacheKey, dataUri);
+              memoryTileCache.set(cacheKey, dataUri);
+              anyNew = true;
+              fetchedCount++;
+            } catch {
+              // individual tile failure — skip silently
+            }
+          }),
+        );
+
+        if (fetchedCount > 0) {
+          const newCount = await incrementApiCallCount(userId, fetchedCount);
+          if (!cancelledRef.current && newCount >= DAILY_API_LIMIT) {
+            onQuotaExceeded?.();
+          }
+        }
+      }
+
+      if (!cancelledRef.current && anyNew) setRenderTick((t) => t + 1);
     }
 
     load();

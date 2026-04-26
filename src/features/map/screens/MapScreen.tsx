@@ -48,6 +48,18 @@ export default function MapScreen() {
 
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [adPlaying, setAdPlaying] = useState(false);
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [forceFreeModeForQuota, setForceFreeModeForQuota] = useState(false);
+  const [quotaBannerCollapsed, setQuotaBannerCollapsed] = useState(false);
+
+  // When quota is hit, default Pro user to free map so they can keep exploring
+  function handleQuotaExceeded() {
+    setQuotaExceeded(true);
+    setForceFreeModeForQuota(true);
+  }
+
+  // Pro user sees Google tiles unless they've hit their quota and switched to free view
+  const effectiveMapIsPro = effectiveIsPro && !forceFreeModeForQuota;
 
   async function handleChangeLocationPress() {
     if (!effectiveIsPro) {
@@ -108,12 +120,13 @@ export default function MapScreen() {
 
   function handleMapPress(e: MapPressEvent) {
     const coord = e.nativeEvent.coordinate;
-    if (effectiveIsPro) {
+    if (effectiveMapIsPro) {
       setTappedCoord({ latitude: coord.latitude, longitude: coord.longitude });
       setShowLocationSheet(true);
-    } else {
+    } else if (!effectiveIsPro) {
       setShowUpgradeSheet(true);
     }
+    // Pro user in free-quota-mode: taps do nothing (banner already visible)
   }
 
   function handleLocateMe() {
@@ -166,8 +179,13 @@ export default function MapScreen() {
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        <PollenPolygonLayer geojson={!effectiveIsPro ? gridData[selectedLayer] : null} />
-        <PollenTileLayer layerType={selectedLayer} visible={effectiveIsPro} region={currentRegion ?? initialRegion} />
+        <PollenPolygonLayer geojson={!effectiveMapIsPro ? gridData[selectedLayer] : null} />
+        <PollenTileLayer
+          layerType={selectedLayer}
+          visible={effectiveMapIsPro}
+          region={currentRegion ?? initialRegion}
+          onQuotaExceeded={handleQuotaExceeded}
+        />
       </MapView>
 
       {/* Shared: colour legend */}
@@ -210,7 +228,7 @@ export default function MapScreen() {
       </TouchableOpacity>
 
       {/* Free: Pro upgrade CTA (top-right, below the legend card) */}
-      {!effectiveIsPro && (
+      {!effectiveIsPro && !quotaExceeded && (
         <TouchableOpacity
           onPress={() => showPaywall('Live Hyperlocal Map')}
           style={{
@@ -266,7 +284,7 @@ export default function MapScreen() {
       </View>
 
       {/* Pro: locate-me FAB */}
-      {effectiveIsPro && (
+      {effectiveMapIsPro && (
         <TouchableOpacity
           onPress={handleLocateMe}
           style={{
@@ -315,7 +333,7 @@ export default function MapScreen() {
       <LayerSelector selected={selectedLayer} onSelect={setSelectedLayer} levels={levels} />
 
       {/* Free: locked map banner */}
-      {!effectiveIsPro && (
+      {!effectiveMapIsPro && !quotaExceeded && (
         <View
           style={{
             position: 'absolute',
@@ -331,12 +349,107 @@ export default function MapScreen() {
         </View>
       )}
 
+      {/* Quota limit banner — collapsible pill when minimised */}
+      {quotaExceeded && quotaBannerCollapsed && (
+        <TouchableOpacity
+          onPress={() => setQuotaBannerCollapsed(false)}
+          style={{
+            position: 'absolute',
+            bottom: 140,
+            alignSelf: 'center',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            borderRadius: 20,
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.15,
+            shadowRadius: 4,
+            elevation: 4,
+          }}
+        >
+          <Text style={{ fontSize: 13 }}>📊</Text>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>Daily limit reached</Text>
+          <Text style={{ fontSize: 11, color: '#9ca3af' }}>▴</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Quota limit banner — expanded */}
+      {quotaExceeded && !quotaBannerCollapsed && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 140,
+            left: 12,
+            right: 12,
+            backgroundColor: 'rgba(255,255,255,0.97)',
+            borderRadius: 16,
+            padding: 14,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 8,
+            elevation: 6,
+          }}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151' }}>
+              Daily limit reached
+            </Text>
+            <TouchableOpacity onPress={() => setQuotaBannerCollapsed(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 16, color: '#9ca3af', lineHeight: 18 }}>▾</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: effectiveIsPro ? 12 : 0, lineHeight: 17 }}>
+            You've used all 150 location lookups for today. Your quota resets at midnight — any locations you've already explored are still cached.
+          </Text>
+
+          {/* Pro users can toggle between cached pro tiles and the free polygon map */}
+          {effectiveIsPro && (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setForceFreeModeForQuota(true)}
+                style={{
+                  flex: 1,
+                  backgroundColor: forceFreeModeForQuota ? '#6366f1' : '#f3f4f6',
+                  borderRadius: 10,
+                  paddingVertical: 9,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: forceFreeModeForQuota ? '#fff' : '#374151' }}>
+                  🗺 Explore free map
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setForceFreeModeForQuota(false)}
+                style={{
+                  flex: 1,
+                  backgroundColor: !forceFreeModeForQuota ? '#6366f1' : '#f3f4f6',
+                  borderRadius: 10,
+                  paddingVertical: 9,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: !forceFreeModeForQuota ? '#fff' : '#374151' }}>
+                  🔒 Cached locations
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Pro: tap-to-explore sheet */}
       <LocationInfoSheet
         visible={showLocationSheet}
         onClose={() => setShowLocationSheet(false)}
         coordinate={tappedCoord}
         userLocation={location}
+        onQuotaExceeded={handleQuotaExceeded}
       />
 
       {/* Free: upgrade prompt on tap */}

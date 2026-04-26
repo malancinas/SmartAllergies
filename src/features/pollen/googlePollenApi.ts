@@ -1,6 +1,18 @@
-import { getPollenCache, setPollenCache } from '@/services/database';
+import { getPollenCache, setPollenCache, getApiCallCount, incrementApiCallCount, DAILY_API_LIMIT } from '@/services/database';
 import { ENV } from '@/config/env';
+import { authStore } from '@/stores/persistent/authStore';
 import type { DailyPollenForecast, PollenLevel, PollenTypeData } from './types';
+
+export class QuotaExceededError extends Error {
+  constructor() {
+    super("You've reached your daily limit of 150 location lookups. Your quota resets at midnight.");
+    this.name = 'QuotaExceededError';
+  }
+}
+
+function getUserId(): string {
+  return authStore.getState().user?.id ?? 'anonymous';
+}
 
 // Google's UPI index 0–5 maps to our PollenLevel
 function indexToLevel(index: number | null): PollenLevel {
@@ -39,6 +51,12 @@ export async function fetchGooglePollenForecast(
   const cacheKey = `gpollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 13)}`;
   const cached = await getPollenCache<DailyPollenForecast[]>(cacheKey);
   if (cached) return cached;
+
+  const userId = getUserId();
+  const currentCount = await getApiCallCount(userId);
+  if (currentCount >= DAILY_API_LIMIT) {
+    throw new QuotaExceededError();
+  }
 
   const url =
     `https://pollen.googleapis.com/v1/forecast:lookup` +
@@ -82,6 +100,7 @@ export async function fetchGooglePollenForecast(
     return { date, tree, grass, weed, overallLevel };
   });
 
+  await incrementApiCallCount(userId);
   await setPollenCache(cacheKey, daily);
   return daily;
 }

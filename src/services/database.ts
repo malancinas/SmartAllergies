@@ -24,6 +24,12 @@ const MIGRATIONS = [
     data TEXT NOT NULL,
     fetched_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS api_quota (
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    call_count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, date)
+  )`,
 ];
 
 // ─── Singleton ───────────────────────────────────────────────────────────────
@@ -191,6 +197,43 @@ export async function setTileCache(key: string, dataUri: string): Promise<void> 
     dataUri,
     new Date().toISOString(),
   );
+}
+
+// ─── API Quota ───────────────────────────────────────────────────────────────
+
+export const DAILY_API_LIMIT = 150;
+
+export async function getApiCallCount(userId: string): Promise<number> {
+  const db = await getDatabase();
+  const today = new Date().toISOString().slice(0, 10);
+  const row = await db.getFirstAsync<{ call_count: number }>(
+    `SELECT call_count FROM api_quota WHERE user_id = ? AND date = ?`,
+    userId,
+    today,
+  );
+  return row?.call_count ?? 0;
+}
+
+export async function incrementApiCallCount(userId: string, by = 1): Promise<number> {
+  const db = await getDatabase();
+  const today = new Date().toISOString().slice(0, 10);
+  await db.runAsync(
+    `INSERT OR IGNORE INTO api_quota (user_id, date, call_count) VALUES (?, ?, 0)`,
+    userId,
+    today,
+  );
+  await db.runAsync(
+    `UPDATE api_quota SET call_count = call_count + ? WHERE user_id = ? AND date = ?`,
+    by,
+    userId,
+    today,
+  );
+  const row = await db.getFirstAsync<{ call_count: number }>(
+    `SELECT call_count FROM api_quota WHERE user_id = ? AND date = ?`,
+    userId,
+    today,
+  );
+  return row?.call_count ?? by;
 }
 
 /** Returns the most recent cache entry whose key starts with `prefix`, ignoring TTL. */

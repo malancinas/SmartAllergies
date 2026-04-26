@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { fetchGooglePollenForecast } from '@/features/pollen/googlePollenApi';
+import { fetchGooglePollenForecast, QuotaExceededError } from '@/features/pollen/googlePollenApi';
 import type { Coordinates } from '@/features/pollen/types';
 import type { PollenLevel } from '@/features/pollen/types';
 
@@ -10,6 +10,7 @@ interface Props {
   onClose: () => void;
   coordinate: Coordinates | null;
   userLocation: Coordinates | null;
+  onQuotaExceeded?: () => void;
 }
 
 function levelEmoji(level: PollenLevel): string {
@@ -48,18 +49,20 @@ function distanceKm(a: Coordinates, b: Coordinates): number {
 
 interface LevelRow { label: string; level: PollenLevel }
 
-export function LocationInfoSheet({ visible, onClose, coordinate, userLocation }: Props) {
+export function LocationInfoSheet({ visible, onClose, coordinate, userLocation, onQuotaExceeded }: Props) {
   const [rows, setRows] = useState<LevelRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [quotaLimitReached, setQuotaLimitReached] = useState(false);
 
   useEffect(() => {
     if (!visible || !coordinate) return;
     let cancelled = false;
 
-    async function fetch() {
+    async function load() {
       setLoading(true);
       setFetchError(false);
+      setQuotaLimitReached(false);
       setRows(null);
       try {
         const today = new Date().toISOString().slice(0, 10);
@@ -72,14 +75,21 @@ export function LocationInfoSheet({ visible, onClose, coordinate, userLocation }
             { label: '🌾 Weeds', level: day.weed.level },
           ]);
         }
-      } catch {
-        if (!cancelled) setFetchError(true);
+      } catch (err) {
+        if (!cancelled) {
+          if (err instanceof QuotaExceededError) {
+            setQuotaLimitReached(true);
+            onQuotaExceeded?.();
+          } else {
+            setFetchError(true);
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    fetch();
+    load();
     return () => { cancelled = true; };
   }, [visible, coordinate]);
 
@@ -104,6 +114,18 @@ export function LocationInfoSheet({ visible, onClose, coordinate, userLocation }
           <Text className="text-sm text-neutral-500 text-center mt-4">
             Could not load pollen data for this location.
           </Text>
+        )}
+
+        {quotaLimitReached && (
+          <View style={{ alignItems: 'center', paddingTop: 16, paddingHorizontal: 8 }}>
+            <Text style={{ fontSize: 28, marginBottom: 10 }}>📊</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, textAlign: 'center' }}>
+              Daily limit reached
+            </Text>
+            <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', lineHeight: 20 }}>
+              You've used all 150 location lookups for today.{'\n'}Your quota resets at midnight — cached locations are still available.
+            </Text>
+          </View>
         )}
 
         {rows && (
