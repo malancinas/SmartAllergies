@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Card } from '@/components/ui';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { MergedDailyPollenForecast, PollenLevel, SpeciesData } from '@/features/pollen/types';
 
 const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string }> = {
-  none: { bg: 'bg-neutral-100 dark:bg-neutral-700', text: 'text-neutral-500', label: 'None' },
-  low: { bg: 'bg-success-100 dark:bg-success-900/40', text: 'text-success-700 dark:text-success-300', label: 'Low' },
-  medium: { bg: 'bg-warning-100 dark:bg-warning-900/40', text: 'text-warning-700 dark:text-warning-300', label: 'Medium' },
-  high: { bg: 'bg-error-100 dark:bg-error-900/40', text: 'text-error-700 dark:text-error-300', label: 'High' },
-  very_high: { bg: 'bg-error-200 dark:bg-error-900/60', text: 'text-error-800 dark:text-error-200', label: 'Very high' },
+  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',        text: 'text-neutral-500',                           label: 'None' },
+  low:      { bg: 'bg-success-100 dark:bg-success-900/40',     text: 'text-success-700 dark:text-success-300',     label: 'Low' },
+  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',     text: 'text-warning-700 dark:text-warning-300',     label: 'Medium' },
+  high:     { bg: 'bg-error-100 dark:bg-error-900/40',         text: 'text-error-700 dark:text-error-300',         label: 'High' },
+  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',         text: 'text-error-800 dark:text-error-200',         label: 'Very high' },
+};
+
+const LEVEL_DOT: Record<PollenLevel, string> = {
+  none: '#d1d5db',
+  low: '#22c55e',
+  medium: '#f59e0b',
+  high: '#ef4444',
+  very_high: '#b91c1c',
 };
 
 const CATEGORY_LABEL: Record<'tree' | 'grass' | 'weed', string> = {
@@ -17,6 +25,18 @@ const CATEGORY_LABEL: Record<'tree' | 'grass' | 'weed', string> = {
   grass: 'Grass',
   weed: 'Weed',
 };
+
+function formatGrains(value: number): string {
+  if (value === 0) return '0';
+  if (value < 10) return value.toFixed(1);
+  return Math.round(value).toString();
+}
+
+function dayLabel(dateStr: string, index: number): string {
+  if (index === 0) return 'Today';
+  // Midday avoids DST/timezone edge cases on date-only strings
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short' });
+}
 
 function PollenPill({
   label,
@@ -47,25 +67,53 @@ function PollenPill({
 function SpeciesRow({ species }: { species: SpeciesData }) {
   const style = LEVEL_STYLE[species.level];
   return (
-    <View className="flex-row items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-700">
+    <View className="flex-row items-center justify-between py-2.5 border-b border-neutral-100 dark:border-neutral-700">
       <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
         {species.name}
       </Text>
-      <View className={`px-3 py-1 rounded-full ${style.bg}`}>
-        <Text className={`text-xs font-semibold ${style.text}`}>{style.label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text style={{ fontSize: 12, color: '#9ca3af' }}>
+          {formatGrains(species.rawValue)} g/m³
+        </Text>
+        <View className={`px-2.5 py-0.5 rounded-full ${style.bg}`}>
+          <Text className={`text-xs font-semibold ${style.text}`}>{style.label}</Text>
+        </View>
       </View>
+    </View>
+  );
+}
+
+interface ForecastDayProps {
+  dateStr: string;
+  index: number;
+  rawValue: number;
+  level: PollenLevel;
+}
+
+function ForecastDay({ dateStr, index, rawValue, level }: ForecastDayProps) {
+  return (
+    <View style={{ alignItems: 'center', minWidth: 54, paddingHorizontal: 4 }}>
+      <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>
+        {dayLabel(dateStr, index)}
+      </Text>
+      <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 4 }}>
+        {formatGrains(rawValue)}
+      </Text>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEVEL_DOT[level] }} />
     </View>
   );
 }
 
 interface PollenSummaryProps {
   today: MergedDailyPollenForecast;
+  forecast: MergedDailyPollenForecast[];
   limitedCoverage: boolean;
   allergenProfile?: string[];
 }
 
 export function PollenSummary({
   today,
+  forecast,
   limitedCoverage,
   allergenProfile,
 }: PollenSummaryProps) {
@@ -78,6 +126,7 @@ export function PollenSummary({
     : [];
 
   const categoryLevel = openCategory ? today[openCategory].level : 'none';
+  const categoryRaw = openCategory ? today[openCategory].rawValue : 0;
 
   return (
     <>
@@ -108,10 +157,11 @@ export function PollenSummary({
       <BottomSheet
         visible={openCategory !== null}
         onClose={() => setOpenCategory(null)}
-        snapPoints={[0.45]}
+        snapPoints={[0.72]}
       >
         <View className="flex-1">
-          <View className="flex-row items-center justify-between mb-4">
+          {/* Header */}
+          <View className="flex-row items-center justify-between mb-3">
             <Text className="text-lg font-bold text-neutral-900 dark:text-white">
               {openCategory ? CATEGORY_LABEL[openCategory] : ''} Pollen
             </Text>
@@ -122,12 +172,49 @@ export function PollenSummary({
             </View>
           </View>
 
+          {/* Today's concentration */}
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 16 }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', color: '#111827' }}>
+              {formatGrains(categoryRaw)}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#9ca3af', fontWeight: '500' }}>grains/m³ today</Text>
+          </View>
+
+          {/* Species breakdown */}
           {categorySpecies.length > 0 ? (
-            categorySpecies.map((s) => <SpeciesRow key={s.name} species={s} />)
+            <>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, marginBottom: 2 }}>
+                SPECIES BREAKDOWN
+              </Text>
+              {categorySpecies.map((s) => <SpeciesRow key={s.name} species={s} />)}
+            </>
           ) : (
-            <Text className="text-sm text-neutral-400">
+            <Text className="text-sm text-neutral-400 mb-2">
               No species-level data available for this category.
             </Text>
+          )}
+
+          {/* 5-day forecast */}
+          {forecast.length > 0 && openCategory && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, marginBottom: 10 }}>
+                5-DAY FORECAST
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {forecast.map((day, i) => (
+                    <ForecastDay
+                      key={day.date}
+                      dateStr={day.date}
+                      index={i}
+                      rawValue={day[openCategory].rawValue}
+                      level={day[openCategory].level}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+              <Text style={{ fontSize: 10, color: '#d1d5db', marginTop: 8 }}>grains/m³ · Open-Meteo</Text>
+            </View>
           )}
         </View>
       </BottomSheet>

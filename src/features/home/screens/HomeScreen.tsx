@@ -19,7 +19,7 @@ import { ChangeLocationSheet } from '@/features/location/components/ChangeLocati
 
 export default function HomeScreen() {
   const { user } = useAuth();
-  const { today: todayPollen, todayHourly, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
+  const { today: todayPollen, forecast: pollenForecast, todayHourly, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
     useCurrentPollen();
   const { today: riskToday, upcoming, weights, loading: forecastLoading } = useForecast();
   const { isPro, showPaywall, paywallProps } = useProGate();
@@ -125,6 +125,7 @@ export default function HomeScreen() {
           {todayPollen && (
             <PollenSummary
               today={todayPollen}
+              forecast={pollenForecast}
               limitedCoverage={limitedCoverage}
               allergenProfile={allergenProfile}
             />
