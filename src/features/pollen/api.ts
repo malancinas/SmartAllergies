@@ -7,6 +7,7 @@ import type {
   HourlyPollenPoint,
   PollenLevel,
   PollenTypeData,
+  SpeciesData,
   WeatherPoint,
 } from './types';
 
@@ -89,26 +90,48 @@ async function fetchPollenForecast(
     }),
   );
 
-  // Aggregate to daily max
-  const byDate = new Map<string, { tree: number[]; grass: number[]; weed: number[] }>();
-  for (const h of hourly) {
-    const date = h.time.slice(0, 10);
-    if (!byDate.has(date)) byDate.set(date, { tree: [], grass: [], weed: [] });
+  // Aggregate to daily max, tracking individual species
+  type RawSpecies = {
+    alder: number[]; birch: number[]; olive: number[];
+    grass: number[]; mugwort: number[]; ragweed: number[];
+  };
+  const byDate = new Map<string, RawSpecies>();
+  for (let i = 0; i < (json.hourly.time as string[]).length; i++) {
+    const date = (json.hourly.time[i] as string).slice(0, 10);
+    if (!byDate.has(date)) byDate.set(date, { alder: [], birch: [], olive: [], grass: [], mugwort: [], ragweed: [] });
     const entry = byDate.get(date)!;
-    entry.tree.push(h.tree);
-    entry.grass.push(h.grass);
-    entry.weed.push(h.weed);
+    entry.alder.push(json.hourly.alder_pollen?.[i] ?? 0);
+    entry.birch.push(json.hourly.birch_pollen?.[i] ?? 0);
+    entry.olive.push(json.hourly.olive_pollen?.[i] ?? 0);
+    entry.grass.push(json.hourly.grass_pollen?.[i] ?? 0);
+    entry.mugwort.push(json.hourly.mugwort_pollen?.[i] ?? 0);
+    entry.ragweed.push(json.hourly.ragweed_pollen?.[i] ?? 0);
   }
 
   const daily: DailyPollenForecast[] = Array.from(byDate.entries()).map(
     ([date, vals]) => {
-      const treeMax = Math.max(...vals.tree);
+      const alderMax = Math.max(...vals.alder);
+      const birchMax = Math.max(...vals.birch);
+      const oliveMax = Math.max(...vals.olive);
       const grassMax = Math.max(...vals.grass);
-      const weedMax = Math.max(...vals.weed);
+      const mugwortMax = Math.max(...vals.mugwort);
+      const ragweedMax = Math.max(...vals.ragweed);
+
+      const treeMax = alderMax + birchMax + oliveMax;
+      const weedMax = mugwortMax + ragweedMax;
 
       const treeData: PollenTypeData = { level: classifyTree(treeMax), rawValue: treeMax };
       const grassData: PollenTypeData = { level: classifyGrass(grassMax), rawValue: grassMax };
       const weedData: PollenTypeData = { level: classifyWeed(weedMax), rawValue: weedMax };
+
+      const species: SpeciesData[] = [
+        { name: 'Birch', category: 'tree', level: classifyTree(birchMax), rawValue: birchMax },
+        { name: 'Alder', category: 'tree', level: classifyTree(alderMax), rawValue: alderMax },
+        { name: 'Olive', category: 'tree', level: classifyTree(oliveMax), rawValue: oliveMax },
+        { name: 'Grass', category: 'grass', level: classifyGrass(grassMax), rawValue: grassMax },
+        { name: 'Mugwort', category: 'weed', level: classifyWeed(mugwortMax), rawValue: mugwortMax },
+        { name: 'Ragweed', category: 'weed', level: classifyWeed(ragweedMax), rawValue: ragweedMax },
+      ];
 
       return {
         date,
@@ -116,6 +139,7 @@ async function fetchPollenForecast(
         grass: grassData,
         weed: weedData,
         overallLevel: maxLevel(treeData.level, grassData.level, weedData.level),
+        species,
       };
     },
   );

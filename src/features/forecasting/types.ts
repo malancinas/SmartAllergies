@@ -1,3 +1,5 @@
+import type { PollenLevel } from '@/features/pollen/types';
+
 export type RiskLevel = 'low' | 'medium' | 'high';
 
 export interface CorrelationWeights {
@@ -12,6 +14,7 @@ export interface DailyRiskScore {
   date: string; // YYYY-MM-DD
   score: number; // 0–1
   level: RiskLevel;
+  pollenLevels?: { tree: PollenLevel; grass: PollenLevel; weed: PollenLevel };
 }
 
 export interface AllergyForecast {

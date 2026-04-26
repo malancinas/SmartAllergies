@@ -31,7 +31,10 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
 
     return {
       today: todayForecast ? computeRiskScore(todayForecast, weights) : null,
-      upcoming: upcomingForecasts.map((d) => computeRiskScore(d, weights)),
+      upcoming: upcomingForecasts.map((d) => ({
+        ...computeRiskScore(d, weights),
+        pollenLevels: { tree: d.tree.level, grass: d.grass.level, weed: d.weed.level },
+      })),
       weights,
     };
   }, [forecast, logs]);

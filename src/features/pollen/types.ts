@@ -8,6 +8,11 @@ export interface PollenTypeData {
   rawValue: number;
 }
 
+export interface SpeciesData extends PollenTypeData {
+  name: string;
+  category: 'tree' | 'grass' | 'weed';
+}
+
 export interface DailyPollenForecast {
   date: string; // YYYY-MM-DD
   tree: PollenTypeData;
@@ -15,6 +20,8 @@ export interface DailyPollenForecast {
   weed: PollenTypeData;
   /** Overall worst level across all types */
   overallLevel: PollenLevel;
+  /** Individual species breakdown — only populated from Open-Meteo source */
+  species?: SpeciesData[];
 }
 
 export interface SourceMetadata {

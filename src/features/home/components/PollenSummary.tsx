@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Card } from '@/components/ui';
 import { DataQualityIndicator } from './DataQualityIndicator';
-import type { MergedDailyPollenForecast, PollenLevel } from '@/features/pollen/types';
+import type { MergedDailyPollenForecast, PollenLevel, SpeciesData } from '@/features/pollen/types';
 
 const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string }> = {
   none: { bg: 'bg-neutral-100 dark:bg-neutral-700', text: 'text-neutral-500', label: 'None' },
@@ -38,6 +38,21 @@ function PollenPill({
   );
 }
 
+function SpeciesPill({ species, active }: { species: SpeciesData; active: boolean }) {
+  const style = LEVEL_STYLE[species.level];
+  return (
+    <View
+      className={`items-center px-3 py-2 rounded-lg ${style.bg}`}
+      style={active ? { borderWidth: 1.5, borderColor: '#6366f1' } : { opacity: 0.5 }}
+    >
+      <Text className={`text-xs font-semibold ${style.text}`}>{species.name}</Text>
+      <Text style={{ fontSize: 10, marginTop: 1 }} className={style.text}>
+        {style.label}
+      </Text>
+    </View>
+  );
+}
+
 interface PollenSummaryProps {
   today: MergedDailyPollenForecast;
   limitedCoverage: boolean;
@@ -54,6 +69,8 @@ export function PollenSummary({
   const profile = allergenProfile ?? ['tree', 'grass', 'weed'];
   const allSelected = profile.length === 0;
 
+  const activeSpecies = (today.species ?? []).filter((s) => s.level !== 'none');
+
   return (
     <Card variant="outlined">
       <View className="flex-row items-center mb-3">
@@ -69,6 +86,24 @@ export function PollenSummary({
         <PollenPill label="Grass" level={today.grass.level} active={allSelected || profile.includes('grass')} />
         <PollenPill label="Weed" level={today.weed.level} active={allSelected || profile.includes('weed')} />
       </View>
+
+      {activeSpecies.length > 0 && (
+        <View className="mt-3">
+          <Text className="text-xs text-neutral-400 dark:text-neutral-500 mb-2">
+            Active allergens
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {activeSpecies.map((s) => (
+              <SpeciesPill
+                key={s.name}
+                species={s}
+                active={allSelected || profile.includes(s.category)}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
       {limitedCoverage && (
         <Text className="text-xs text-neutral-400 mt-2 text-center">
           Limited pollen data for your region

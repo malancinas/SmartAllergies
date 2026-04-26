@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import type { DailyRiskScore, RiskLevel } from '@/features/forecasting/types';
+import type { DailyRiskScore } from '@/features/forecasting/types';
+import type { PollenLevel } from '@/features/pollen/types';
 
-const DOT_COLOR: Record<RiskLevel, string> = {
+const POLLEN_DOT_COLOR: Record<PollenLevel, string> = {
+  none: '#d1d5db',
   low: '#22c55e',
   medium: '#f59e0b',
   high: '#ef4444',
+  very_high: '#b91c1c',
 };
 
 function formatDay(dateStr: string): string {
@@ -44,7 +47,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
               onPress={locked ? onUpgradePress : undefined}
               className="mx-1"
             >
-              <View className="items-center bg-white dark:bg-neutral-800 rounded-xl px-4 py-3 border border-neutral-100 dark:border-neutral-700 overflow-hidden">
+              <View className="items-center bg-white dark:bg-neutral-800 rounded-xl px-3 py-3 border border-neutral-100 dark:border-neutral-700 overflow-hidden">
                 <Text className={`text-xs ${locked ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-400'}`}>
                   {formatDay(day.date)}
                 </Text>
@@ -62,18 +65,23 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                     </View>
                   </>
                 ) : (
-                  <>
-                    <View
-                      className="w-3 h-3 rounded-full mt-2"
-                      style={{ backgroundColor: DOT_COLOR[day.level] }}
-                    />
-                    <Text
-                      className="text-xs font-semibold mt-1 capitalize"
-                      style={{ color: DOT_COLOR[day.level] }}
-                    >
-                      {day.level}
-                    </Text>
-                  </>
+                  <View className="mt-2 gap-1">
+                    {(['tree', 'grass', 'weed'] as const).map((type) => (
+                      <View key={type} className="flex-row items-center gap-1.5">
+                        <View
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: POLLEN_DOT_COLOR[day.pollenLevels?.[type] ?? 'none'],
+                          }}
+                        />
+                        <Text style={{ fontSize: 10, color: '#6b7280', fontWeight: '500' }}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 )}
               </View>
             </TouchableOpacity>
