@@ -7,7 +7,6 @@ import { useForecast } from '@/features/forecasting/hooks/useForecast';
 import { RiskBanner } from '../components/RiskBanner';
 import { PollenSummary } from '../components/PollenSummary';
 import { ForecastStrip } from '../components/ForecastStrip';
-import { DataQualitySheet } from '../components/DataQualitySheet';
 import { PeakHoursCard } from '../components/PeakHoursCard';
 import { CommunityBanner } from '@/features/community/components/CommunityBanner';
 import { useCommunitySignal } from '@/features/community/hooks/useCommunitySignal';
@@ -16,19 +15,35 @@ import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { AddressSearch } from '../components/AddressSearch';
+import { ChangeLocationSheet } from '@/features/location/components/ChangeLocationSheet';
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const { today: todayPollen, todayHourly, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
     useCurrentPollen();
   const { today: riskToday, upcoming, weights, loading: forecastLoading } = useForecast();
-  const [qualitySheetVisible, setQualitySheetVisible] = useState(false);
   const { isPro, showPaywall, paywallProps } = useProGate();
   const [devProOverride, setDevProOverride] = useState<boolean | null>(null);
   const effectiveIsPro = __DEV__ && devProOverride !== null ? devProOverride : isPro;
 
   const location = usePollenStore((s) => s.location);
+  const locationLabel = usePollenStore((s) => s.locationLabel);
   const allergenProfile = useSettingsStore((s) => s.allergenProfile);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [adPlaying, setAdPlaying] = useState(false);
+
+  async function handleChangeLocationPress() {
+    if (!effectiveIsPro) {
+      setAdPlaying(true);
+      // TODO: swap the line below for your real rewarded-ad call, e.g.:
+      //   await AdMob.showRewardedAd({ adUnitId: AD_UNIT_ID });
+      // The ad plays full-screen automatically — no user confirmation needed.
+      // The location picker opens as soon as it finishes.
+      await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+      setAdPlaying(false);
+    }
+    setShowLocationPicker(true);
+  }
   const { aggregate, loading: communityLoading } = useCommunitySignal(
     location?.latitude ?? null,
     location?.longitude ?? null,
@@ -41,17 +56,41 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Stack spacing={5} className="py-4">
           {/* Greeting */}
-          <View>
-            <Text className="text-2xl font-bold text-neutral-900 dark:text-white">
-              Hello, {user?.name ?? 'there'} 👋
-            </Text>
-            <Text className="text-sm text-neutral-500 mt-1">
-              {new Date().toLocaleDateString(undefined, {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
+          <View className="flex-row items-start justify-between">
+            <View className="flex-1">
+              <Text className="text-2xl font-bold text-neutral-900 dark:text-white">
+                Hello, {user?.name ?? 'there'} 👋
+              </Text>
+              <Text className="text-sm text-neutral-500 mt-1">
+                {new Date().toLocaleDateString(undefined, {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleChangeLocationPress}
+              activeOpacity={0.8}
+              disabled={adPlaying}
+              className="flex-row items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-full px-3 py-1.5 mt-1"
+            >
+              {adPlaying ? (
+                <ActivityIndicator size="small" color="#6366f1" style={{ marginHorizontal: 4 }} />
+              ) : (
+                <>
+                  <Text style={{ fontSize: 12 }}>📍</Text>
+                  <Text
+                    className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+                    numberOfLines={1}
+                    style={{ maxWidth: 100 }}
+                  >
+                    {locationLabel ?? 'My location'}
+                  </Text>
+                  <Text className="text-xs text-neutral-400">▾</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Stale data badge — shown when offline and serving cached data */}
@@ -88,7 +127,6 @@ export default function HomeScreen() {
               today={todayPollen}
               limitedCoverage={limitedCoverage}
               allergenProfile={allergenProfile}
-              onQualityPress={() => setQualitySheetVisible(true)}
             />
           )}
 
@@ -122,15 +160,6 @@ export default function HomeScreen() {
           )}
         </Stack>
       </ScrollView>
-
-      {/* Data quality sheet — rendered outside ScrollView so it overlays correctly */}
-      {todayPollen && (
-        <DataQualitySheet
-          visible={qualitySheetVisible}
-          onClose={() => setQualitySheetVisible(false)}
-          today={todayPollen}
-        />
-      )}
 
       {/* Floating Pro unlock pill — mirrors the map screen button, free users only */}
       {!effectiveIsPro && (
@@ -188,6 +217,10 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
+      <ChangeLocationSheet
+        visible={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+      />
       <PaywallSheet {...paywallProps} />
     </Screen>
   );

@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Card } from '@/components/ui';
-import { DataQualityIndicator } from './DataQualityIndicator';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { MergedDailyPollenForecast, PollenLevel, SpeciesData } from '@/features/pollen/types';
 
 const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string }> = {
@@ -12,43 +12,48 @@ const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string
   very_high: { bg: 'bg-error-200 dark:bg-error-900/60', text: 'text-error-800 dark:text-error-200', label: 'Very high' },
 };
 
+const CATEGORY_LABEL: Record<'tree' | 'grass' | 'weed', string> = {
+  tree: 'Tree',
+  grass: 'Grass',
+  weed: 'Weed',
+};
+
 function PollenPill({
   label,
   level,
   active,
+  onPress,
 }: {
   label: string;
   level: PollenLevel;
   active: boolean;
+  onPress: () => void;
 }) {
   const style = LEVEL_STYLE[level];
   return (
-    <View
-      className={`flex-1 items-center py-3 rounded-xl ${style.bg}`}
-      style={active ? { borderWidth: 2, borderColor: '#6366f1' } : { opacity: 0.45 }}
-    >
-      <Text className={`text-xs font-medium ${style.text}`}>{label}</Text>
-      <Text className={`text-sm font-bold mt-0.5 ${style.text}`}>{style.label}</Text>
-      {active && (
-        <Text style={{ fontSize: 9, marginTop: 2, color: '#6366f1', fontWeight: '600' }}>
-          YOUR ALLERGEN
-        </Text>
-      )}
-    </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={1} style={{ flex: 1 }}>
+      <View
+        className={`items-center py-3 rounded-xl ${style.bg}`}
+        style={active ? { borderWidth: 2, borderColor: '#6366f1' } : { opacity: 0.45 }}
+      >
+        <Text className={`text-xs font-medium ${style.text}`}>{label}</Text>
+        <Text className={`text-sm font-bold mt-0.5 ${style.text}`}>{style.label}</Text>
+        <Text style={{ fontSize: 9, marginTop: 3, color: '#a5b4fc' }}>tap for detail</Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
-function SpeciesPill({ species, active }: { species: SpeciesData; active: boolean }) {
+function SpeciesRow({ species }: { species: SpeciesData }) {
   const style = LEVEL_STYLE[species.level];
   return (
-    <View
-      className={`items-center px-3 py-2 rounded-lg ${style.bg}`}
-      style={active ? { borderWidth: 1.5, borderColor: '#6366f1' } : { opacity: 0.5 }}
-    >
-      <Text className={`text-xs font-semibold ${style.text}`}>{species.name}</Text>
-      <Text style={{ fontSize: 10, marginTop: 1 }} className={style.text}>
-        {style.label}
+    <View className="flex-row items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-700">
+      <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+        {species.name}
       </Text>
+      <View className={`px-3 py-1 rounded-full ${style.bg}`}>
+        <Text className={`text-xs font-semibold ${style.text}`}>{style.label}</Text>
+      </View>
     </View>
   );
 }
@@ -57,58 +62,75 @@ interface PollenSummaryProps {
   today: MergedDailyPollenForecast;
   limitedCoverage: boolean;
   allergenProfile?: string[];
-  onQualityPress?: () => void;
 }
 
 export function PollenSummary({
   today,
   limitedCoverage,
   allergenProfile,
-  onQualityPress,
 }: PollenSummaryProps) {
   const profile = allergenProfile ?? ['tree', 'grass', 'weed'];
   const allSelected = profile.length === 0;
+  const [openCategory, setOpenCategory] = useState<'tree' | 'grass' | 'weed' | null>(null);
 
-  const activeSpecies = (today.species ?? []).filter((s) => s.level !== 'none');
+  const categorySpecies = openCategory
+    ? (today.species ?? []).filter((s) => s.category === openCategory)
+    : [];
+
+  const categoryLevel = openCategory ? today[openCategory].level : 'none';
 
   return (
-    <Card variant="outlined">
-      <View className="flex-row items-center mb-3">
-        <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-          Today's pollen
-        </Text>
-        {onQualityPress && (
-          <DataQualityIndicator confidence={today.confidence} onPress={onQualityPress} />
-        )}
-      </View>
-      <View className="flex-row gap-2">
-        <PollenPill label="Tree" level={today.tree.level} active={allSelected || profile.includes('tree')} />
-        <PollenPill label="Grass" level={today.grass.level} active={allSelected || profile.includes('grass')} />
-        <PollenPill label="Weed" level={today.weed.level} active={allSelected || profile.includes('weed')} />
-      </View>
-
-      {activeSpecies.length > 0 && (
-        <View className="mt-3">
-          <Text className="text-xs text-neutral-400 dark:text-neutral-500 mb-2">
-            Active allergens
+    <>
+      <Card variant="outlined">
+        <View className="flex-row items-center mb-3">
+          <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+            Today's pollen
           </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {activeSpecies.map((s) => (
-              <SpeciesPill
-                key={s.name}
-                species={s}
-                active={allSelected || profile.includes(s.category)}
-              />
-            ))}
-          </View>
         </View>
-      )}
+        <View className="flex-row gap-2">
+          {(['tree', 'grass', 'weed'] as const).map((cat) => (
+            <PollenPill
+              key={cat}
+              label={CATEGORY_LABEL[cat]}
+              level={today[cat].level}
+              active={allSelected || profile.includes(cat)}
+              onPress={() => setOpenCategory(cat)}
+            />
+          ))}
+        </View>
+        {limitedCoverage && (
+          <Text className="text-xs text-neutral-400 mt-2 text-center">
+            Limited pollen data for your region
+          </Text>
+        )}
+      </Card>
 
-      {limitedCoverage && (
-        <Text className="text-xs text-neutral-400 mt-2 text-center">
-          Limited pollen data for your region
-        </Text>
-      )}
-    </Card>
+      <BottomSheet
+        visible={openCategory !== null}
+        onClose={() => setOpenCategory(null)}
+        snapPoints={[0.45]}
+      >
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-lg font-bold text-neutral-900 dark:text-white">
+              {openCategory ? CATEGORY_LABEL[openCategory] : ''} Pollen
+            </Text>
+            <View className={`px-3 py-1 rounded-full ${LEVEL_STYLE[categoryLevel].bg}`}>
+              <Text className={`text-sm font-semibold ${LEVEL_STYLE[categoryLevel].text}`}>
+                {LEVEL_STYLE[categoryLevel].label}
+              </Text>
+            </View>
+          </View>
+
+          {categorySpecies.length > 0 ? (
+            categorySpecies.map((s) => <SpeciesRow key={s.name} species={s} />)
+          ) : (
+            <Text className="text-sm text-neutral-400">
+              No species-level data available for this category.
+            </Text>
+          )}
+        </View>
+      </BottomSheet>
+    </>
   );
 }

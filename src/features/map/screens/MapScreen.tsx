@@ -1,10 +1,12 @@
 import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, type LayoutChangeEvent } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, type Region, type MapPressEvent } from 'react-native-maps';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
+import { usePollenStore } from '@/features/pollen/store';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
+import { ChangeLocationSheet } from '@/features/location/components/ChangeLocationSheet';
 import { usePollenMapData } from '../hooks/usePollenMapData';
 import { PollenLegend } from '../components/PollenLegend';
 import { LayerSelector } from '../components/LayerSelector';
@@ -38,10 +40,25 @@ export default function MapScreen() {
   const { location } = useLocation();
   const { today } = useCurrentPollen();
   const { isPro, showPaywall, paywallProps } = useProGate();
+  const locationLabel = usePollenStore((s) => s.locationLabel);
 
   // DEV-only toggle to preview free vs pro map without a real subscription
   const [devProOverride, setDevProOverride] = useState<boolean | null>(null);
   const effectiveIsPro = __DEV__ && devProOverride !== null ? devProOverride : isPro;
+
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [adPlaying, setAdPlaying] = useState(false);
+
+  async function handleChangeLocationPress() {
+    if (!effectiveIsPro) {
+      setAdPlaying(true);
+      // TODO: swap for your real rewarded-ad call, e.g.:
+      //   await AdMob.showRewardedAd({ adUnitId: AD_UNIT_ID });
+      await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+      setAdPlaying(false);
+    }
+    setShowLocationPicker(true);
+  }
 
   const mapRef = useRef<MapView>(null);
   const centeredRef = useRef(false);
@@ -63,18 +80,27 @@ export default function MapScreen() {
     setLegendBottom(y + height + 8);
   }, []);
 
-  // Animate to user location once it resolves (it loads async after mount)
+  // Animate to location on first resolve, or to country-level when custom location is set
   useEffect(() => {
-    if (!location || centeredRef.current || !mapRef.current) return;
-    centeredRef.current = true;
-    mapRef.current.animateToRegion(
-      { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 2.5, longitudeDelta: 2.5 },
-      800,
-    );
-  }, [location]);
+    if (!location || !mapRef.current) return;
+    if (locationLabel) {
+      // Custom location: show country-level view so the full region is visible
+      centeredRef.current = true;
+      mapRef.current.animateToRegion(
+        { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 10, longitudeDelta: 10 },
+        800,
+      );
+    } else if (!centeredRef.current) {
+      centeredRef.current = true;
+      mapRef.current.animateToRegion(
+        { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 1.8, longitudeDelta: 1.8 },
+        800,
+      );
+    }
+  }, [location, locationLabel]);
 
   const initialRegion: Region = location
-    ? { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 2.5, longitudeDelta: 2.5 }
+    ? { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 1.8, longitudeDelta: 1.8 }
     : DEFAULT_REGION;
 
   function handleMapPress(e: MapPressEvent) {
@@ -90,7 +116,7 @@ export default function MapScreen() {
   function handleLocateMe() {
     if (!location || !mapRef.current) return;
     mapRef.current.animateToRegion(
-      { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.5, longitudeDelta: 0.5 },
+      { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 1.8, longitudeDelta: 1.8 },
       500,
     );
   }
@@ -143,6 +169,42 @@ export default function MapScreen() {
 
       {/* Shared: colour legend */}
       <PollenLegend onLayout={handleLegendLayout} />
+
+      {/* Change location pill — top-left */}
+      <TouchableOpacity
+        onPress={handleChangeLocationPress}
+        activeOpacity={0.85}
+        disabled={adPlaying}
+        style={{
+          position: 'absolute',
+          top: 12,
+          left: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: 'rgba(255,255,255,0.92)',
+          borderRadius: 20,
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.15,
+          shadowRadius: 4,
+          elevation: 3,
+          gap: 5,
+        }}
+      >
+        {adPlaying ? (
+          <ActivityIndicator size="small" color="#6366f1" style={{ marginHorizontal: 6 }} />
+        ) : (
+          <>
+            <Text style={{ fontSize: 13 }}>📍</Text>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', maxWidth: 140 }} numberOfLines={1}>
+              {locationLabel ?? 'My location'}
+            </Text>
+            <Text style={{ fontSize: 11, color: '#9ca3af' }}>▾</Text>
+          </>
+        )}
+      </TouchableOpacity>
 
       {/* Free: Pro upgrade CTA (top-right, below the legend card) */}
       {!effectiveIsPro && (
@@ -282,6 +344,12 @@ export default function MapScreen() {
           setShowUpgradeSheet(false);
           showPaywall('Live Hyperlocal Map');
         }}
+      />
+
+      {/* Change location sheet */}
+      <ChangeLocationSheet
+        visible={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
       />
 
       {/* Paywall */}
