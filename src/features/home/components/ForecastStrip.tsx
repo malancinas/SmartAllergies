@@ -53,6 +53,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
   if (upcoming.length === 0) return null;
 
   const pl = selected?.pollenLevels;
+  const rv = selected?.rawValues;
 
   return (
     <>
@@ -150,17 +151,24 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
               return (
                 <View key={cat} className="py-3 border-b border-neutral-100 dark:border-neutral-700">
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                      <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </Text>
+                      {rv?.[cat] !== undefined && (
+                        <Text style={{ fontSize: 12, color: '#9ca3af' }}>
+                          {rv[cat] < 10 ? rv[cat].toFixed(1) : Math.round(rv[cat])} g/m³
+                        </Text>
+                      )}
+                    </View>
                     <View className={`px-3 py-0.5 rounded-full ${style.bg}`}>
                       <Text className={`text-xs font-semibold ${style.text}`}>{style.label}</Text>
                     </View>
                   </View>
                   {catSpecies.length > 0 && (
-                    <View className="flex-row flex-wrap gap-1 mt-1">
+                    <View className="mt-1">
                       {catSpecies.map((s) => (
-                        <SpeciesChip key={s.name} species={s} />
+                        <SpeciesRow key={s.name} species={s} />
                       ))}
                     </View>
                   )}
@@ -174,11 +182,21 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
   );
 }
 
-function SpeciesChip({ species }: { species: SpeciesData }) {
+function SpeciesRow({ species }: { species: SpeciesData }) {
   const style = LEVEL_STYLE[species.level];
+  const raw = species.rawValue;
+  const formatted = raw === 0 ? '0' : raw < 10 ? raw.toFixed(1) : Math.round(raw).toString();
   return (
-    <View className={`flex-row items-center gap-1 px-2 py-0.5 rounded-full ${style.bg}`}>
-      <Text className={`text-xs ${style.text}`}>{species.name}</Text>
+    <View className="flex-row items-center justify-between py-1.5 pl-2 border-l-2 border-neutral-100 dark:border-neutral-700 mb-1">
+      <Text className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+        {species.name}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={{ fontSize: 11, color: '#9ca3af' }}>{formatted} g/m³</Text>
+        <View className={`px-2 py-0.5 rounded-full ${style.bg}`}>
+          <Text className={`text-xs font-semibold ${style.text}`}>{style.label}</Text>
+        </View>
+      </View>
     </View>
   );
 }

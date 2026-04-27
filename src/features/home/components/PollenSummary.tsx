@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Card } from '@/components/ui';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { MergedDailyPollenForecast, PollenLevel, SpeciesData } from '@/features/pollen/types';
@@ -12,14 +12,6 @@ const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string
   very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',         text: 'text-error-800 dark:text-error-200',         label: 'Very high' },
 };
 
-const LEVEL_DOT: Record<PollenLevel, string> = {
-  none: '#d1d5db',
-  low: '#22c55e',
-  medium: '#f59e0b',
-  high: '#ef4444',
-  very_high: '#b91c1c',
-};
-
 const CATEGORY_LABEL: Record<'tree' | 'grass' | 'weed', string> = {
   tree: 'Tree',
   grass: 'Grass',
@@ -30,12 +22,6 @@ function formatGrains(value: number): string {
   if (value === 0) return '0';
   if (value < 10) return value.toFixed(1);
   return Math.round(value).toString();
-}
-
-function dayLabel(dateStr: string, index: number): string {
-  if (index === 0) return 'Today';
-  // Midday avoids DST/timezone edge cases on date-only strings
-  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short' });
 }
 
 function PollenPill({
@@ -83,37 +69,14 @@ function SpeciesRow({ species }: { species: SpeciesData }) {
   );
 }
 
-interface ForecastDayProps {
-  dateStr: string;
-  index: number;
-  rawValue: number;
-  level: PollenLevel;
-}
-
-function ForecastDay({ dateStr, index, rawValue, level }: ForecastDayProps) {
-  return (
-    <View style={{ alignItems: 'center', minWidth: 54, paddingHorizontal: 4 }}>
-      <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>
-        {dayLabel(dateStr, index)}
-      </Text>
-      <Text style={{ fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 4 }}>
-        {formatGrains(rawValue)}
-      </Text>
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEVEL_DOT[level] }} />
-    </View>
-  );
-}
-
 interface PollenSummaryProps {
   today: MergedDailyPollenForecast;
-  forecast: MergedDailyPollenForecast[];
   limitedCoverage: boolean;
   allergenProfile?: string[];
 }
 
 export function PollenSummary({
   today,
-  forecast,
   limitedCoverage,
   allergenProfile,
 }: PollenSummaryProps) {
@@ -192,29 +155,6 @@ export function PollenSummary({
             <Text className="text-sm text-neutral-400 mb-2">
               No species-level data available for this category.
             </Text>
-          )}
-
-          {/* 5-day forecast */}
-          {forecast.length > 0 && openCategory && (
-            <View style={{ marginTop: 20 }}>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, marginBottom: 10 }}>
-                5-DAY FORECAST
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', gap: 4 }}>
-                  {forecast.map((day, i) => (
-                    <ForecastDay
-                      key={day.date}
-                      dateStr={day.date}
-                      index={i}
-                      rawValue={day[openCategory].rawValue}
-                      level={day[openCategory].level}
-                    />
-                  ))}
-                </View>
-              </ScrollView>
-              <Text style={{ fontSize: 10, color: '#d1d5db', marginTop: 8 }}>grains/m³ · Open-Meteo</Text>
-            </View>
           )}
         </View>
       </BottomSheet>

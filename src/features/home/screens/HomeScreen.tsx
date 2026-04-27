@@ -125,7 +125,6 @@ export default function HomeScreen() {
           {todayPollen && (
             <PollenSummary
               today={todayPollen}
-              forecast={pollenForecast}
               limitedCoverage={limitedCoverage}
               allergenProfile={allergenProfile}
             />

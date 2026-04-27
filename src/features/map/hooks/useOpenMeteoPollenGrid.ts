@@ -38,6 +38,10 @@ export interface MapBounds {
 type GridData = Record<LayerType, PollenGridGeoJson | null>;
 const EMPTY: GridData = { grass: null, tree: null, weed: null };
 
+// Module-level cache survives component remounts and navigation; avoids SQLite
+// round-trips and loading flashes when the user pans back to a seen viewport.
+const memoryCache = new Map<string, GridData>();
+
 const CHUNK_SIZE = 100;
 
 // Default to a viewport large enough to cover the UK on first load
@@ -193,6 +197,13 @@ export function useOpenMeteoPollenGrid(enabled: boolean, region: Region | null) 
     const cacheKey = `open_meteo_grid_${todayStr}_${boundsKey}`;
     const cachePrefix = `open_meteo_grid_${todayStr}_`;
 
+    // Memory cache hit: instant, no loading flash, no SQLite round-trip
+    const memHit = memoryCache.get(cacheKey);
+    if (memHit) {
+      setGridData(memHit);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -200,7 +211,8 @@ export function useOpenMeteoPollenGrid(enabled: boolean, region: Region | null) 
       const cached = await getPollenCache<GridData>(cacheKey);
       if (controller.signal.aborted) return;
       if (cached) {
-        console.log('[PollenGrid] cache hit', cacheKey);
+        console.log('[PollenGrid] sqlite cache hit', cacheKey);
+        memoryCache.set(cacheKey, cached);
         setGridData(cached);
         setLoading(false);
         return;
@@ -215,6 +227,7 @@ export function useOpenMeteoPollenGrid(enabled: boolean, region: Region | null) 
           grass: buildGeoJson(visibleFeatures, grassVals, classifyGrass),
           weed: buildGeoJson(visibleFeatures, weedVals, classifyWeed),
         };
+        memoryCache.set(cacheKey, newGrid);
         await setPollenCache(cacheKey, newGrid);
         if (!controller.signal.aborted) setGridData(newGrid);
       } catch (e) {
@@ -223,6 +236,7 @@ export function useOpenMeteoPollenGrid(enabled: boolean, region: Region | null) 
         const stale = await getStalePollenCacheByPrefix<GridData>(cachePrefix);
         if (stale && !controller.signal.aborted) {
           console.log('[PollenGrid] using stale cache from', stale.fetchedAt);
+          memoryCache.set(cacheKey, stale.data);
           setGridData(stale.data);
         } else {
           setError(String(e));

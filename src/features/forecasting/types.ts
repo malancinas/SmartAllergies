@@ -15,6 +15,7 @@ export interface DailyRiskScore {
   score: number; // 0–1
   level: RiskLevel;
   pollenLevels?: { tree: PollenLevel; grass: PollenLevel; weed: PollenLevel };
+  rawValues?: { tree: number; grass: number; weed: number };
   species?: SpeciesData[];
 }
 
