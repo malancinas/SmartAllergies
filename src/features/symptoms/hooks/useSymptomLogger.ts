@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { insertSymptomLog } from '@/services/database';
+import { insertSymptomLog, insertLogEnvironment } from '@/services/database';
 import { logger } from '@/services/logger';
 import type { CreateSymptomLogInput, TimeSlotKey } from '../types';
 
@@ -43,8 +43,14 @@ export function useSymptomLogger() {
           medications: input.medications,
         });
 
-        // Invalidate history so HistoryScreen and forecasting engine re-read
+        if (input.environment) {
+          const date = loggedAt.slice(0, 10);
+          await insertLogEnvironment({ logId: id, date, ...input.environment });
+        }
+
+        // Invalidate history + allergy profile so both screens re-read
         await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
+        await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
         logger.debug('Symptom log saved', { id, loggedAt, severity: input.severity });
       } catch (err) {
         logger.error('Failed to save symptom log', { err });

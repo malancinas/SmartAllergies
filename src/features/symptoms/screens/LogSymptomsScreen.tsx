@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
 import { Button, Input } from '@/components/ui';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
+import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { SymptomGrid } from '../components/SymptomGrid';
 import { SeverityInput } from '../components/SeverityInput';
 import { useSymptomLogger } from '../hooks/useSymptomLogger';
@@ -26,6 +27,7 @@ export default function LogSymptomsScreen() {
   const { logSymptoms } = useSymptomLogger();
   const { submit: submitSignal } = useSubmitSignal();
   const { location } = useLocation();
+  const { today: todayPollen } = useCurrentPollen();
   const user = useAuthStore((s) => s.user);
   const tier = useSubscriptionStore((s) => s.tier);
 
@@ -65,6 +67,20 @@ export default function LogSymptomsScreen() {
         medications: medications.trim() || undefined,
         latitude: location?.latitude,
         longitude: location?.longitude,
+        environment: todayPollen
+          ? {
+              grassPollen: todayPollen.grass.rawValue,
+              treePollen: todayPollen.tree.rawValue,
+              weedPollen: todayPollen.weed.rawValue,
+              pm25: todayPollen.airQuality?.pm25.rawValue,
+              pm10: todayPollen.airQuality?.pm10.rawValue,
+              ozone: todayPollen.airQuality?.ozone.rawValue,
+              no2: todayPollen.airQuality?.no2.rawValue,
+              so2: todayPollen.airQuality?.so2.rawValue,
+              uvIndex: todayPollen.airQuality?.uvIndex.rawValue,
+              dust: todayPollen.airQuality?.dust.rawValue,
+            }
+          : undefined,
       });
 
       // Submit to community signal (guards inside — Pro + opted-in only)

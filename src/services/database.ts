@@ -30,6 +30,21 @@ const MIGRATIONS = [
     call_count INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, date)
   )`,
+  `CREATE TABLE IF NOT EXISTS log_environment (
+    log_id TEXT PRIMARY KEY,
+    date TEXT NOT NULL,
+    grass_pollen REAL,
+    tree_pollen REAL,
+    weed_pollen REAL,
+    pm25 REAL,
+    pm10 REAL,
+    ozone REAL,
+    no2 REAL,
+    so2 REAL,
+    uv_index REAL,
+    dust REAL,
+    FOREIGN KEY (log_id) REFERENCES symptom_logs(id) ON DELETE CASCADE
+  )`,
 ];
 
 // ─── Singleton ───────────────────────────────────────────────────────────────
@@ -234,6 +249,110 @@ export async function incrementApiCallCount(userId: string, by = 1): Promise<num
     today,
   );
   return row?.call_count ?? by;
+}
+
+// ─── Log Environment ─────────────────────────────────────────────────────────
+
+export interface LogEnvironmentInput {
+  logId: string;
+  date: string; // YYYY-MM-DD
+  grassPollen?: number;
+  treePollen?: number;
+  weedPollen?: number;
+  pm25?: number;
+  pm10?: number;
+  ozone?: number;
+  no2?: number;
+  so2?: number;
+  uvIndex?: number;
+  dust?: number;
+}
+
+export async function insertLogEnvironment(params: LogEnvironmentInput): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `INSERT OR REPLACE INTO log_environment
+      (log_id, date, grass_pollen, tree_pollen, weed_pollen, pm25, pm10, ozone, no2, so2, uv_index, dust)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    params.logId,
+    params.date,
+    params.grassPollen ?? null,
+    params.treePollen ?? null,
+    params.weedPollen ?? null,
+    params.pm25 ?? null,
+    params.pm10 ?? null,
+    params.ozone ?? null,
+    params.no2 ?? null,
+    params.so2 ?? null,
+    params.uvIndex ?? null,
+    params.dust ?? null,
+  );
+}
+
+export interface CorrelationDataRow {
+  date: string;
+  maxSeverity: number;
+  grassPollen: number | null;
+  treePollen: number | null;
+  weedPollen: number | null;
+  pm25: number | null;
+  pm10: number | null;
+  ozone: number | null;
+  no2: number | null;
+  so2: number | null;
+  uvIndex: number | null;
+  dust: number | null;
+}
+
+export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    date: string;
+    max_severity: number;
+    grass_pollen: number | null;
+    tree_pollen: number | null;
+    weed_pollen: number | null;
+    pm25: number | null;
+    pm10: number | null;
+    ozone: number | null;
+    no2: number | null;
+    so2: number | null;
+    uv_index: number | null;
+    dust: number | null;
+  }>(
+    `SELECT
+       DATE(sl.logged_at) AS date,
+       MAX(sl.severity) AS max_severity,
+       AVG(le.grass_pollen) AS grass_pollen,
+       AVG(le.tree_pollen) AS tree_pollen,
+       AVG(le.weed_pollen) AS weed_pollen,
+       AVG(le.pm25) AS pm25,
+       AVG(le.pm10) AS pm10,
+       AVG(le.ozone) AS ozone,
+       AVG(le.no2) AS no2,
+       AVG(le.so2) AS so2,
+       AVG(le.uv_index) AS uv_index,
+       AVG(le.dust) AS dust
+     FROM symptom_logs sl
+     JOIN log_environment le ON le.log_id = sl.id
+     GROUP BY DATE(sl.logged_at)
+     ORDER BY date ASC`,
+  );
+
+  return rows.map((r) => ({
+    date: r.date,
+    maxSeverity: r.max_severity,
+    grassPollen: r.grass_pollen,
+    treePollen: r.tree_pollen,
+    weedPollen: r.weed_pollen,
+    pm25: r.pm25,
+    pm10: r.pm10,
+    ozone: r.ozone,
+    no2: r.no2,
+    so2: r.so2,
+    uvIndex: r.uv_index,
+    dust: r.dust,
+  }));
 }
 
 /** Returns the most recent cache entry whose key starts with `prefix`, ignoring TTL. */

@@ -31,6 +31,19 @@ export interface SymptomLog {
   medications: string | null;
 }
 
+export interface EnvironmentSnapshot {
+  grassPollen?: number;
+  treePollen?: number;
+  weedPollen?: number;
+  pm25?: number;
+  pm10?: number;
+  ozone?: number;
+  no2?: number;
+  so2?: number;
+  uvIndex?: number;
+  dust?: number;
+}
+
 export interface CreateSymptomLogInput {
   symptoms: SymptomType[];
   severity: number;
@@ -39,4 +52,5 @@ export interface CreateSymptomLogInput {
   medications?: string;
   latitude?: number;
   longitude?: number;
+  environment?: EnvironmentSnapshot;
 }
