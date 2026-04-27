@@ -6,7 +6,6 @@ export const PRO_FEATURES = [
   'Hyperlocal multi-source pollen data',
   'Unlimited symptom logging',
   'Full symptom history',
-  'Community pollen signal (contribute)',
   'Allergist export (PDF)',
   'Personalised allergen profiles',
   'Push notifications with personal thresholds',

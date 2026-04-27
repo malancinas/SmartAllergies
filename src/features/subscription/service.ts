@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import { ENV } from '@/config/env';
 import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
+import { queryClient } from '@/lib/queryClient';
 import { PRO_ENTITLEMENT } from './types';
 import type { SubscriptionTier } from './types';
 
@@ -27,8 +28,13 @@ export async function loginRevenueCat(userId: string): Promise<void> {
   try {
     const { customerInfo } = await Purchases.logIn(userId);
     const tier = customerInfo.entitlements.active[PRO_ENTITLEMENT] ? 'pro' : 'free';
+    const prev = useSubscriptionStore.getState().tier;
     useSubscriptionStore.getState().setTier(tier);
     useSubscriptionStore.getState().setRcCustomerId(customerInfo.originalAppUserId);
+    if (prev !== tier) {
+      queryClient.invalidateQueries({ queryKey: ['pollen'] });
+      queryClient.invalidateQueries({ queryKey: ['weather'] });
+    }
   } catch {
     // Non-fatal — user stays on current tier
   }
@@ -38,7 +44,12 @@ export async function syncEntitlement(): Promise<SubscriptionTier> {
   try {
     const info = await Purchases.getCustomerInfo();
     const tier: SubscriptionTier = info.entitlements.active[PRO_ENTITLEMENT] ? 'pro' : 'free';
+    const prev = useSubscriptionStore.getState().tier;
     useSubscriptionStore.getState().setTier(tier);
+    if (prev !== tier) {
+      queryClient.invalidateQueries({ queryKey: ['pollen'] });
+      queryClient.invalidateQueries({ queryKey: ['weather'] });
+    }
     return tier;
   } catch {
     return useSubscriptionStore.getState().tier;

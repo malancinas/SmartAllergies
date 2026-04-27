@@ -68,7 +68,6 @@ export default function SubscriptionScreen() {
                 `Regional pollen index`,
                 `Symptom logging (up to ${FREE_LIMITS.MAX_SYMPTOM_LOGS} entries)`,
                 `${FREE_LIMITS.HISTORY_DAYS}-day history`,
-                `Community signal (read-only)`,
               ].map((f) => (
                 <View key={f} className="flex-row items-start mb-1.5">
                   <Text className="text-neutral-400 mr-2">–</Text>

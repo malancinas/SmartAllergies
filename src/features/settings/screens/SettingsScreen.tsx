@@ -25,12 +25,10 @@ export function SettingsScreen() {
     allergyAlertEnabled,
     alertThreshold,
     alertHour,
-    communityShareEnabled,
     allergenProfile,
     setAllergyAlertEnabled,
     setAlertThreshold,
     setAlertHour,
-    setCommunityShareEnabled,
   } = useSettingsStore();
   const { tier, isPro } = useSubscription();
 
@@ -92,24 +90,6 @@ export function SettingsScreen() {
             <Text className="text-gray-400">›</Text>
           </View>
         </Pressable>
-      </View>
-
-      {/* Community */}
-      <View className="px-6 pt-6">
-        <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-          Community
-        </Text>
-        <View className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800">
-          <View className="flex-1 mr-4">
-            <Text className="text-base text-gray-900 dark:text-white">
-              Share anonymised symptoms
-            </Text>
-            <Text className="text-xs text-gray-400 mt-0.5">
-              ±11km accuracy · never your identity
-            </Text>
-          </View>
-          <Switch value={communityShareEnabled} onValueChange={setCommunityShareEnabled} />
-        </View>
       </View>
 
       {/* Appearance */}

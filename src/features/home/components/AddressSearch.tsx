@@ -3,15 +3,24 @@ import { View, Text } from 'react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { usePollenStore } from '@/features/pollen/store';
+import { getPollenCache, setPollenCache } from '@/services/database';
+
+const GEOCODE_TTL_MS = 24 * 60 * 60 * 1000;
 
 async function geocodeAddress(query: string): Promise<{ latitude: number; longitude: number }> {
+  const cacheKey = `geocode_${query.toLowerCase().trim()}`;
+  const cached = await getPollenCache<{ latitude: number; longitude: number }>(cacheKey, GEOCODE_TTL_MS);
+  if (cached) return cached;
+
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Geocoding request failed (${res.status})`);
   const json = await res.json();
   if (!json.results?.length) throw new Error('not_found');
   const { latitude, longitude } = json.results[0];
-  return { latitude, longitude };
+  const result = { latitude, longitude };
+  await setPollenCache(cacheKey, result);
+  return result;
 }
 
 export function AddressSearch() {

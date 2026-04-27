@@ -12,8 +12,6 @@ interface SettingsState {
   alertThreshold: AlertThreshold;
   /** Hour of day (0–23) to send the morning allergy alert */
   alertHour: number;
-  /** Opt-in to contributing anonymised symptom data to the community signal */
-  communityShareEnabled: boolean;
   /** Allergen types the user is sensitive to: 'tree' | 'grass' | 'weed' */
   allergenProfile: string[];
   /** Whether the user has completed the first-run onboarding flow */
@@ -27,7 +25,6 @@ interface SettingsActions {
   setAllergyAlertEnabled: (enabled: boolean) => void;
   setAlertThreshold: (threshold: AlertThreshold) => void;
   setAlertHour: (hour: number) => void;
-  setCommunityShareEnabled: (enabled: boolean) => void;
   setAllergenProfile: (profile: string[]) => void;
   setHasOnboarded: (done: boolean) => void;
 }
@@ -41,7 +38,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       allergyAlertEnabled: true,
       alertThreshold: 'medium',
       alertHour: 7,
-      communityShareEnabled: false,
       allergenProfile: ['tree', 'grass', 'weed'],
       hasOnboarded: false,
 
@@ -51,7 +47,6 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       setAllergyAlertEnabled: (allergyAlertEnabled) => set({ allergyAlertEnabled }),
       setAlertThreshold: (alertThreshold) => set({ alertThreshold }),
       setAlertHour: (alertHour) => set({ alertHour }),
-      setCommunityShareEnabled: (communityShareEnabled) => set({ communityShareEnabled }),
       setAllergenProfile: (allergenProfile) => set({ allergenProfile }),
       setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
     }),

@@ -7,8 +7,6 @@ import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { SymptomGrid } from '../components/SymptomGrid';
 import { SeverityInput } from '../components/SeverityInput';
 import { useSymptomLogger } from '../hooks/useSymptomLogger';
-import { useSubmitSignal } from '@/features/community/hooks/useSubmitSignal';
-import { useAuthStore } from '@/stores/persistent/authStore';
 import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { FREE_LIMITS } from '@/features/subscription/types';
@@ -25,10 +23,8 @@ export default function LogSymptomsScreen() {
   const [paywallVisible, setPaywallVisible] = useState(false);
 
   const { logSymptoms } = useSymptomLogger();
-  const { submit: submitSignal } = useSubmitSignal();
   const { location } = useLocation();
   const { today: todayPollen } = useCurrentPollen();
-  const user = useAuthStore((s) => s.user);
   const tier = useSubscriptionStore((s) => s.tier);
 
   function toggleSymptom(symptom: SymptomType) {
@@ -82,16 +78,6 @@ export default function LogSymptomsScreen() {
             }
           : undefined,
       });
-
-      // Submit to community signal (guards inside — Pro + opted-in only)
-      if (user && location) {
-        submitSignal({
-          userId: user.id,
-          lat: location.latitude,
-          lon: location.longitude,
-          severity,
-        });
-      }
 
       // Reset form
       setSelectedSymptoms([]);

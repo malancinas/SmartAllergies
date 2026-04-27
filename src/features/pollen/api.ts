@@ -257,7 +257,11 @@ async function fetchWeatherForecast(
   lat: number,
   lon: number,
 ): Promise<WeatherForecastResponse> {
-  const cacheKey = `weather_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 13)}`;
+  const latStr = lat.toFixed(2);
+  const lonStr = lon.toFixed(2);
+  const cacheKey = `weather_${latStr}_${lonStr}_${new Date().toISOString().slice(0, 13)}`;
+  const cachePrefix = `weather_${latStr}_${lonStr}_`;
+
   const cached = await getPollenCache<WeatherForecastResponse>(cacheKey);
   if (cached) return cached;
 
@@ -267,9 +271,16 @@ async function fetchWeatherForecast(
     `&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation_probability,weather_code` +
     `&timezone=auto&forecast_days=5`;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
-  const json = await res.json();
+  let json: any;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
+    json = await res.json();
+  } catch (fetchErr) {
+    const stale = await getStalePollenCacheByPrefix<WeatherForecastResponse>(cachePrefix);
+    if (stale) return stale.data;
+    throw fetchErr;
+  }
 
   const hourly: WeatherPoint[] = (json.hourly.time as string[]).map(
     (time: string, i: number) => ({

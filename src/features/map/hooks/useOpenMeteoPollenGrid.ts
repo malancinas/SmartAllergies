@@ -359,7 +359,7 @@ export function useOpenMeteoPollenGrid(
     setError(null);
 
     async function load() {
-      const cached = await getPollenCache<GridData>(cacheKey);
+      const cached = await getPollenCache<GridData>(cacheKey, cacheBucketHours * 60 * 60 * 1000);
       if (controller.signal.aborted) return;
       if (cached) {
         console.log('[PollenGrid] sqlite cache hit', cacheKey);

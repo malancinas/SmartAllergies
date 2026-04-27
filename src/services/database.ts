@@ -154,7 +154,7 @@ export async function deleteSymptomLog(id: string): Promise<void> {
 
 // ─── Pollen Cache ────────────────────────────────────────────────────────────
 
-export async function getPollenCache<T>(key: string): Promise<T | null> {
+export async function getPollenCache<T>(key: string, ttlMs = 60 * 60 * 1000): Promise<T | null> {
   const db = await getDatabase();
   const row = await db.getFirstAsync<{ data: string; fetched_at: string }>(
     `SELECT data, fetched_at FROM pollen_cache WHERE cache_key = ?`,
@@ -162,9 +162,8 @@ export async function getPollenCache<T>(key: string): Promise<T | null> {
   );
   if (!row) return null;
 
-  // Expire entries older than 1 hour
   const fetchedAt = new Date(row.fetched_at).getTime();
-  if (Date.now() - fetchedAt > 60 * 60 * 1000) {
+  if (Date.now() - fetchedAt > ttlMs) {
     await db.runAsync(`DELETE FROM pollen_cache WHERE cache_key = ?`, key);
     return null;
   }

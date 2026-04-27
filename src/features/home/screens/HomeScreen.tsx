@@ -11,8 +11,6 @@ import { RiskBanner } from '../components/RiskBanner';
 import { PollenSummary } from '../components/PollenSummary';
 import { ForecastStrip } from '../components/ForecastStrip';
 import { PeakHoursCard } from '../components/PeakHoursCard';
-import { CommunityBanner } from '@/features/community/components/CommunityBanner';
-import { useCommunitySignal } from '@/features/community/hooks/useCommunitySignal';
 import { usePollenStore } from '@/features/pollen/store';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
@@ -50,11 +48,6 @@ export default function HomeScreen() {
     }
     setShowLocationPicker(true);
   }
-  const { aggregate, loading: communityLoading } = useCommunitySignal(
-    location?.latitude ?? null,
-    location?.longitude ?? null,
-  );
-
   const loading = pollenLoading || forecastLoading;
 
   return (
@@ -139,9 +132,6 @@ export default function HomeScreen() {
               onProfilePress={() => navigation.navigate('AllergyProfile')}
             />
           )}
-
-          {/* Community signal */}
-          <CommunityBanner aggregate={aggregate} loading={communityLoading} />
 
           {/* Today's pollen breakdown */}
           {todayPollen && (
