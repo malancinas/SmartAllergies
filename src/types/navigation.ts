@@ -19,11 +19,15 @@ export type AuthStackParamList = {
 export type TabParamList = {
   Home: undefined;
   History: undefined;
-  AllergyProfile: undefined;
   Map: undefined;
   Log: undefined;
   Notifications: undefined;
   Settings: undefined;
+};
+
+export type HomeStackParamList = {
+  HomeMain: undefined;
+  AllergyProfile: undefined;
 };
 
 export type ProfileStackParamList = {

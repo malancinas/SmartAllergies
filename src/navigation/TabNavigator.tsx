@@ -3,9 +3,8 @@ import { View, Text, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { TabParamList } from '@/types/navigation';
 import { colors } from '@/theme/tokens';
-import HomeScreen from '@/features/home/screens/HomeScreen';
+import HomeStackNavigator from './HomeStackNavigator';
 import HistoryScreen from '@/features/symptoms/screens/HistoryScreen';
-import AllergyProfileScreen from '@/features/insights/screens/AllergyProfileScreen';
 import LogSymptomsScreen from '@/features/symptoms/screens/LogSymptomsScreen';
 import { NotificationsScreen } from '@/features/notifications/screens/NotificationsScreen';
 import MapScreen from '@/features/map/screens/MapScreen';
@@ -26,9 +25,6 @@ function NotifIcon({ color }: { color: string }) {
 }
 function MapIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>🗺️</Text>;
-}
-function ProfileIcon({ color }: { color: string }) {
-  return <Text style={{ color, fontSize: 20 }}>🧬</Text>;
 }
 function SettingsIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>⚙️</Text>;
@@ -70,7 +66,7 @@ export default function TabNavigator() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeStackNavigator}
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color }) => <HomeIcon color={color} />,
@@ -82,14 +78,6 @@ export default function TabNavigator() {
         options={{
           tabBarLabel: 'History',
           tabBarIcon: ({ color }) => <HistoryIcon color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="AllergyProfile"
-        component={AllergyProfileScreen}
-        options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <ProfileIcon color={color} />,
         }}
       />
       <Tab.Screen

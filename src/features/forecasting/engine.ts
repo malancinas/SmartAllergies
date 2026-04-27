@@ -11,6 +11,7 @@
 
 import type { DailyPollenForecast, PollenLevel } from '@/features/pollen/types';
 import type { SymptomLog } from '@/features/symptoms/types';
+import type { CorrelationResult } from '@/features/insights/correlationEngine';
 import type { CorrelationWeights, DailyRiskScore, RiskLevel } from './types';
 
 const MIN_PAIRED_DAYS = 7;
@@ -30,6 +31,14 @@ const LEVEL_SCORES: Record<PollenLevel, number> = {
 export function classifyRisk(score: number): RiskLevel {
   if (score < 0.3) return 'low';
   if (score < 0.6) return 'medium';
+  return 'high';
+}
+
+// Maps the API's pre-computed worst-of-three pollen level directly to a risk
+// level. Used for unweighted users so a single elevated category isn't diluted.
+export function classifyRiskFromOverall(level: PollenLevel): RiskLevel {
+  if (level === 'none' || level === 'low') return 'low';
+  if (level === 'medium') return 'medium';
   return 'high';
 }
 
@@ -109,12 +118,40 @@ export function buildCorrelationWeights(
   };
 }
 
+// ─── Build weights from allergy profile correlations (Pro, accurate path) ────
+
+export function correlationsToWeights(correlations: CorrelationResult[]): CorrelationWeights {
+  const get = (key: string) =>
+    Math.max(0, correlations.find((r) => r.key === key)?.correlation ?? 0);
+
+  const rawGrass = get('grassPollen');
+  const rawTree = get('treePollen');
+  const rawWeed = get('weedPollen');
+
+  const total = rawGrass + rawTree + rawWeed;
+  if (total === 0) return { tree: 0.33, grass: 0.33, weed: 0.33, personalised: false };
+
+  return {
+    tree: rawTree / total,
+    grass: rawGrass / total,
+    weed: rawWeed / total,
+    personalised: true,
+  };
+}
+
 // ─── Compute risk score for a single forecast day ────────────────────────────
 
 export function computeRiskScore(
   forecast: DailyPollenForecast,
   weights: CorrelationWeights,
 ): DailyRiskScore {
+  if (!weights.personalised) {
+    // Generic path: use the API's worst-of-three level directly so a single
+    // elevated category (e.g. medium tree) isn't diluted by two low/none values.
+    const level = classifyRiskFromOverall(forecast.overallLevel);
+    return { date: forecast.date, score: LEVEL_SCORES[forecast.overallLevel], level };
+  }
+
   const score =
     LEVEL_SCORES[forecast.tree.level] * weights.tree +
     LEVEL_SCORES[forecast.grass.level] * weights.grass +

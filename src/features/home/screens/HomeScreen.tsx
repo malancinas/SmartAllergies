@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { HomeStackParamList } from '@/types/navigation';
 import { Screen, Stack } from '@/components/layout';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
@@ -14,10 +17,12 @@ import { usePollenStore } from '@/features/pollen/store';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
+import { useAllergyProfile } from '@/features/insights/hooks/useAllergyProfile';
 import { AddressSearch } from '../components/AddressSearch';
 import { ChangeLocationSheet } from '@/features/location/components/ChangeLocationSheet';
 
 export default function HomeScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const { user } = useAuth();
   const { today: todayPollen, forecast: pollenForecast, todayHourly, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
     useCurrentPollen();
@@ -25,6 +30,7 @@ export default function HomeScreen() {
   const { isPro, showPaywall, paywallProps } = useProGate();
   const [devProOverride, setDevProOverride] = useState<boolean | null>(null);
   const effectiveIsPro = __DEV__ && devProOverride !== null ? devProOverride : isPro;
+  const { data: profileData } = useAllergyProfile();
 
   const location = usePollenStore((s) => s.location);
   const locationLabel = usePollenStore((s) => s.locationLabel);
@@ -115,7 +121,23 @@ export default function HomeScreen() {
 
           {/* Risk banner */}
           {riskToday && (
-            <RiskBanner level={riskToday.level} personalised={weights.personalised} />
+            <RiskBanner
+              level={riskToday.level}
+              personalised={weights.personalised}
+              isPro={effectiveIsPro}
+              daysNeeded={
+                effectiveIsPro && !weights.personalised && profileData
+                  ? profileData.daysNeeded - profileData.daysWithData
+                  : undefined
+              }
+              topTrigger={
+                effectiveIsPro && weights.personalised && profileData?.correlations.length
+                  ? profileData.correlations[0]
+                  : undefined
+              }
+              onUpgradePress={() => showPaywall('Personalised risk score')}
+              onProfilePress={() => navigation.navigate('AllergyProfile')}
+            />
           )}
 
           {/* Community signal */}
