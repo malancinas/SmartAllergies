@@ -1,4 +1,4 @@
-import type { PollenLevel, SpeciesData } from '@/features/pollen/types';
+import type { PollenLevel, SpeciesData, AirQualityData } from '@/features/pollen/types';
 
 export type RiskLevel = 'low' | 'medium' | 'high';
 
@@ -17,6 +17,7 @@ export interface DailyRiskScore {
   pollenLevels?: { tree: PollenLevel; grass: PollenLevel; weed: PollenLevel };
   rawValues?: { tree: number; grass: number; weed: number };
   species?: SpeciesData[];
+  airQuality?: AirQualityData;
 }
 
 export interface AllergyForecast {

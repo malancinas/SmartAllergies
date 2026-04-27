@@ -9,6 +9,8 @@ import type {
   PollenTypeData,
   SpeciesData,
   WeatherPoint,
+  AirQualityData,
+  AirQualityMetric,
 } from './types';
 
 // ─── Thresholds (grains/m³) ──────────────────────────────────────────────────
@@ -39,6 +41,68 @@ function classifyWeed(value: number): PollenLevel {
 
 const LEVEL_ORDER: PollenLevel[] = ['none', 'low', 'medium', 'high', 'very_high'];
 
+// ─── Air Quality Classifiers ─────────────────────────────────────────────────
+
+function classifyPm25(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 12) return 'low';
+  if (v < 35) return 'medium';
+  if (v < 55) return 'high';
+  return 'very_high';
+}
+
+function classifyPm10(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 25) return 'low';
+  if (v < 50) return 'medium';
+  if (v < 90) return 'high';
+  return 'very_high';
+}
+
+function classifyOzone(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 60) return 'low';
+  if (v < 100) return 'medium';
+  if (v < 140) return 'high';
+  return 'very_high';
+}
+
+function classifyNo2(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 25) return 'low';
+  if (v < 50) return 'medium';
+  if (v < 100) return 'high';
+  return 'very_high';
+}
+
+function classifySo2(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 20) return 'low';
+  if (v < 50) return 'medium';
+  if (v < 100) return 'high';
+  return 'very_high';
+}
+
+function classifyUvIndex(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 3) return 'low';
+  if (v < 6) return 'medium';
+  if (v < 8) return 'high';
+  return 'very_high';
+}
+
+function classifyDust(v: number): PollenLevel {
+  if (v <= 0) return 'none';
+  if (v < 25) return 'low';
+  if (v < 50) return 'medium';
+  if (v < 90) return 'high';
+  return 'very_high';
+}
+
+function aqMetric(rawValue: number, level: PollenLevel, unit: string): AirQualityMetric {
+  return { rawValue, level, unit };
+}
+
 function maxLevel(...levels: PollenLevel[]): PollenLevel {
   return levels.reduce((best, l) =>
     LEVEL_ORDER.indexOf(l) > LEVEL_ORDER.indexOf(best) ? l : best,
@@ -53,8 +117,8 @@ async function fetchPollenForecast(
 ): Promise<PollenForecastResponse> {
   const latStr = lat.toFixed(2);
   const lonStr = lon.toFixed(2);
-  const cacheKey = `pollen_${latStr}_${lonStr}_${new Date().toISOString().slice(0, 13)}`;
-  const cachePrefix = `pollen_${latStr}_${lonStr}_`;
+  const cacheKey = `pollen_v2_${latStr}_${lonStr}_${new Date().toISOString().slice(0, 13)}`;
+  const cachePrefix = `pollen_v2_${latStr}_${lonStr}_`;
 
   const cached = await getPollenCache<PollenForecastResponse>(cacheKey);
   if (cached) return cached;
@@ -63,6 +127,7 @@ async function fetchPollenForecast(
     `https://air-quality-api.open-meteo.com/v1/air-quality` +
     `?latitude=${lat}&longitude=${lon}` +
     `&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen` +
+    `,pm10,pm2_5,ozone,nitrogen_dioxide,sulphur_dioxide,uv_index,dust` +
     `&timezone=auto&forecast_days=5`;
 
   let json: any;
@@ -90,15 +155,20 @@ async function fetchPollenForecast(
     }),
   );
 
-  // Aggregate to daily max, tracking individual species
+  // Aggregate to daily max, tracking individual species and air quality
   type RawSpecies = {
     alder: number[]; birch: number[]; olive: number[];
     grass: number[]; mugwort: number[]; ragweed: number[];
+    pm25: number[]; pm10: number[]; ozone: number[];
+    no2: number[]; so2: number[]; uvIndex: number[]; dust: number[];
   };
   const byDate = new Map<string, RawSpecies>();
   for (let i = 0; i < (json.hourly.time as string[]).length; i++) {
     const date = (json.hourly.time[i] as string).slice(0, 10);
-    if (!byDate.has(date)) byDate.set(date, { alder: [], birch: [], olive: [], grass: [], mugwort: [], ragweed: [] });
+    if (!byDate.has(date)) byDate.set(date, {
+      alder: [], birch: [], olive: [], grass: [], mugwort: [], ragweed: [],
+      pm25: [], pm10: [], ozone: [], no2: [], so2: [], uvIndex: [], dust: [],
+    });
     const entry = byDate.get(date)!;
     entry.alder.push(json.hourly.alder_pollen?.[i] ?? 0);
     entry.birch.push(json.hourly.birch_pollen?.[i] ?? 0);
@@ -106,6 +176,13 @@ async function fetchPollenForecast(
     entry.grass.push(json.hourly.grass_pollen?.[i] ?? 0);
     entry.mugwort.push(json.hourly.mugwort_pollen?.[i] ?? 0);
     entry.ragweed.push(json.hourly.ragweed_pollen?.[i] ?? 0);
+    entry.pm25.push(json.hourly.pm2_5?.[i] ?? 0);
+    entry.pm10.push(json.hourly.pm10?.[i] ?? 0);
+    entry.ozone.push(json.hourly.ozone?.[i] ?? 0);
+    entry.no2.push(json.hourly.nitrogen_dioxide?.[i] ?? 0);
+    entry.so2.push(json.hourly.sulphur_dioxide?.[i] ?? 0);
+    entry.uvIndex.push(json.hourly.uv_index?.[i] ?? 0);
+    entry.dust.push(json.hourly.dust?.[i] ?? 0);
   }
 
   const daily: DailyPollenForecast[] = Array.from(byDate.entries()).map(
@@ -133,6 +210,28 @@ async function fetchPollenForecast(
         { name: 'Ragweed', category: 'weed', level: classifyWeed(ragweedMax), rawValue: ragweedMax },
       ];
 
+      const pm25Max = Math.max(...vals.pm25);
+      const pm10Max = Math.max(...vals.pm10);
+      const ozoneMax = Math.max(...vals.ozone);
+      const no2Max = Math.max(...vals.no2);
+      const so2Max = Math.max(...vals.so2);
+      const uvMax = Math.max(...vals.uvIndex);
+      const dustMax = Math.max(...vals.dust);
+
+      const airQuality: AirQualityData = {
+        pm25: aqMetric(pm25Max, classifyPm25(pm25Max), 'µg/m³'),
+        pm10: aqMetric(pm10Max, classifyPm10(pm10Max), 'µg/m³'),
+        ozone: aqMetric(ozoneMax, classifyOzone(ozoneMax), 'µg/m³'),
+        no2: aqMetric(no2Max, classifyNo2(no2Max), 'µg/m³'),
+        so2: aqMetric(so2Max, classifySo2(so2Max), 'µg/m³'),
+        uvIndex: aqMetric(uvMax, classifyUvIndex(uvMax), ''),
+        dust: aqMetric(dustMax, classifyDust(dustMax), 'µg/m³'),
+        overallLevel: maxLevel(
+          classifyPm25(pm25Max), classifyPm10(pm10Max), classifyOzone(ozoneMax),
+          classifyNo2(no2Max), classifySo2(so2Max), classifyUvIndex(uvMax), classifyDust(dustMax),
+        ),
+      };
+
       return {
         date,
         tree: treeData,
@@ -140,6 +239,7 @@ async function fetchPollenForecast(
         weed: weedData,
         overallLevel: maxLevel(treeData.level, grassData.level, weedData.level),
         species,
+        airQuality,
       };
     },
   );

@@ -127,6 +127,8 @@ export default function HomeScreen() {
               today={todayPollen}
               limitedCoverage={limitedCoverage}
               allergenProfile={allergenProfile}
+              isPro={effectiveIsPro}
+              onUpgradePress={() => showPaywall('Air quality details')}
             />
           )}
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { DailyRiskScore, RiskLevel } from '@/features/forecasting/types';
-import type { PollenLevel, SpeciesData } from '@/features/pollen/types';
+import type { PollenLevel, SpeciesData, AirQualityData, AirQualityMetric } from '@/features/pollen/types';
 
 const POLLEN_DOT_COLOR: Record<PollenLevel, string> = {
   none: '#d1d5db',
@@ -25,6 +25,28 @@ const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string
   high: { bg: 'bg-error-100 dark:bg-error-900/40', text: 'text-error-700 dark:text-error-300', label: 'High' },
   very_high: { bg: 'bg-error-200 dark:bg-error-900/60', text: 'text-error-800 dark:text-error-200', label: 'Very high' },
 };
+
+const AQ_LEVEL_LABEL: Record<PollenLevel, string> = {
+  none: 'Good', low: 'Low', medium: 'Moderate', high: 'High', very_high: 'Very high',
+};
+
+const AQ_METRICS: { key: keyof Omit<AirQualityData, 'overallLevel'>; label: string }[] = [
+  { key: 'pm25',    label: 'PM2.5' },
+  { key: 'pm10',    label: 'PM10' },
+  { key: 'ozone',   label: 'Ozone' },
+  { key: 'no2',     label: 'NO₂' },
+  { key: 'so2',     label: 'SO₂' },
+  { key: 'uvIndex', label: 'UV Index' },
+  { key: 'dust',    label: 'Dust' },
+];
+
+function formatAqValue(metric: AirQualityMetric, key: string): string {
+  const v = metric.rawValue;
+  if (key === 'uvIndex') return v.toFixed(1);
+  if (v === 0) return '0';
+  if (v < 10) return v.toFixed(1);
+  return Math.round(v).toString();
+}
 
 function formatDay(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -106,6 +128,19 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                           </Text>
                         </View>
                       ))}
+                      {day.airQuality && (
+                        <View className="flex-row items-center gap-1.5">
+                          <View
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: POLLEN_DOT_COLOR[day.airQuality.overallLevel],
+                            }}
+                          />
+                          <Text style={{ fontSize: 10, color: '#6b7280', fontWeight: '500' }}>Air</Text>
+                        </View>
+                      )}
                     </View>
                   )}
                 </View>
@@ -118,7 +153,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
       <BottomSheet
         visible={selected !== null}
         onClose={() => setSelected(null)}
-        snapPoints={[0.55]}
+        snapPoints={[0.82]}
       >
         {selected && (
           <View className="flex-1">
@@ -140,7 +175,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
               </View>
             </View>
 
-            {/* Category rows */}
+            {/* Pollen rows */}
             <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
               Pollen levels
             </Text>
@@ -175,6 +210,61 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                 </View>
               );
             })}
+
+            {/* Air Quality rows */}
+            {selected.airQuality && (() => {
+              const aq = selected.airQuality!;
+              const aqStyle = LEVEL_STYLE[aq.overallLevel];
+              return (
+                <>
+                  <View className="flex-row items-center justify-between mt-4 mb-2">
+                    <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                      Air Quality
+                    </Text>
+                    <View className={`px-2.5 py-0.5 rounded-full ${aqStyle.bg}`}>
+                      <Text className={`text-xs font-semibold ${aqStyle.text}`}>
+                        {AQ_LEVEL_LABEL[aq.overallLevel]}
+                      </Text>
+                    </View>
+                  </View>
+                  {AQ_METRICS.map(({ key, label }) => {
+                    const metric = aq[key] as AirQualityMetric;
+                    const locked = !isPro && key !== 'pm25';
+                    const mStyle = LEVEL_STYLE[metric.level];
+                    const valueStr = formatAqValue(metric, key);
+                    const unitStr = metric.unit ? ` ${metric.unit}` : '';
+                    return (
+                      <View key={key} className="flex-row items-center justify-between py-2 border-b border-neutral-100 dark:border-neutral-700">
+                        <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{label}</Text>
+                        {locked ? (
+                          <View className="bg-violet-100 dark:bg-violet-900/40 px-2.5 py-0.5 rounded-full flex-row items-center gap-1">
+                            <Text style={{ fontSize: 11 }}>🔒</Text>
+                            <Text className="text-xs font-semibold text-violet-600 dark:text-violet-400">Pro</Text>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 12, color: '#9ca3af' }}>{valueStr}{unitStr}</Text>
+                            <View className={`px-2.5 py-0.5 rounded-full ${mStyle.bg}`}>
+                              <Text className={`text-xs font-semibold ${mStyle.text}`}>{AQ_LEVEL_LABEL[metric.level]}</Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                  {!isPro && (
+                    <TouchableOpacity onPress={onUpgradePress} activeOpacity={0.8} className="mt-3">
+                      <View className="bg-violet-50 dark:bg-violet-900/20 rounded-xl px-4 py-3 flex-row items-center justify-center gap-2">
+                        <Text style={{ fontSize: 13 }}>🔒</Text>
+                        <Text className="text-sm font-semibold text-violet-600 dark:text-violet-400">
+                          Upgrade to Pro to unlock all metrics
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </>
+              );
+            })()}
           </View>
         )}
       </BottomSheet>

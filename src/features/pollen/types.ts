@@ -22,6 +22,8 @@ export interface DailyPollenForecast {
   overallLevel: PollenLevel;
   /** Individual species breakdown — only populated from Open-Meteo source */
   species?: SpeciesData[];
+  /** Air quality metrics — only populated from Open-Meteo source */
+  airQuality?: AirQualityData;
 }
 
 export interface SourceMetadata {
@@ -68,4 +70,21 @@ export interface WeatherForecastResponse {
 export interface Coordinates {
   latitude: number;
   longitude: number;
+}
+
+export interface AirQualityMetric {
+  level: PollenLevel;
+  rawValue: number;
+  unit: string;
+}
+
+export interface AirQualityData {
+  pm25: AirQualityMetric;
+  pm10: AirQualityMetric;
+  ozone: AirQualityMetric;
+  no2: AirQualityMetric;
+  so2: AirQualityMetric;
+  uvIndex: AirQualityMetric;
+  dust: AirQualityMetric;
+  overallLevel: PollenLevel;
 }

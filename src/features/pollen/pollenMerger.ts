@@ -76,6 +76,8 @@ export function mergePollenSources(
         grass,
         weed,
         overallLevel,
+        species: om.species,
+        airQuality: om.airQuality,
         confidence,
         sourceMetadata: [omSource, googleSource],
       };
