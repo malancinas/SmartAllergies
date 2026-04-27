@@ -8,7 +8,9 @@
       "Bash(curl -s --max-time 25 \"https://opendata.arcgis.com/datasets/01fd6b2d7600446d8af768005992f76a_4.geojson\")",
       "Bash(curl -sL \"https://raw.githubusercontent.com/martinjc/UK-GeoJSON/master/json/administrative/gb/topo_lad.json\" -o \"c:/Users/malan/AppData/Local/Temp/geodata/uk_topo_lad.json\")",
       "Bash(netstat -ano)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")",
+      "Bash(grep -E \"^[^/]*\\\\.tsx?$|/\\(src|app\\)/\")",
+      "Bash(grep -E \"\\\\.tsx?$\")"
     ]
   }
 }
