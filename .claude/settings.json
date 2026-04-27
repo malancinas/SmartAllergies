@@ -7,7 +7,8 @@
       "Bash(curl -s --max-time 25 \"https://opendata.arcgis.com/api/v1/datasets/a4ef1e09e3354bb6a0ef9fce5a2c5c3d_0/downloads/data?format=geojson&spatialRefId=4326\")",
       "Bash(curl -s --max-time 25 \"https://opendata.arcgis.com/datasets/01fd6b2d7600446d8af768005992f76a_4.geojson\")",
       "Bash(curl -sL \"https://raw.githubusercontent.com/martinjc/UK-GeoJSON/master/json/administrative/gb/topo_lad.json\" -o \"c:/Users/malan/AppData/Local/Temp/geodata/uk_topo_lad.json\")",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")"
     ]
   }
 }

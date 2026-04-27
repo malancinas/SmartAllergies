@@ -3,7 +3,7 @@ import { Overlay, type Region } from 'react-native-maps';
 import { ENV } from '@/config/env';
 import { getTileCache, setTileCache, getApiCallCount, incrementApiCallCount, DAILY_API_LIMIT } from '@/services/database';
 import { authStore } from '@/stores/persistent/authStore';
-import { GOOGLE_LAYER_TYPE, type LayerType } from '../types';
+import { GOOGLE_LAYER_TYPE, type PollenLayerType } from '../types';
 
 // Session-level cache: memory → SQLite → network. Cleared on app restart.
 const memoryTileCache = new Map<string, string>();
@@ -11,7 +11,7 @@ const memoryTileCache = new Map<string, string>();
 interface TileCoord { x: number; y: number; z: number }
 
 interface Props {
-  layerType: LayerType;
+  layerType: PollenLayerType;
   visible: boolean;
   region: Region | null;
   onQuotaExceeded?: () => void;
@@ -64,6 +64,7 @@ async function fetchAsDataUri(url: string): Promise<string> {
 }
 
 export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }: Props) {
+  // layerType is narrowed to PollenLayerType — caller must not pass AQ layer types here
   const apiKey = ENV.GOOGLE_POLLEN_API_KEY;
   // Increments whenever new tiles land, triggering a re-render to display them.
   const [, setRenderTick] = useState(0);

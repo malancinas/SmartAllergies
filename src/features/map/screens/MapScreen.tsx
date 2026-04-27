@@ -14,7 +14,7 @@ import { PollenTileLayer } from '../components/PollenTileLayer';
 import { PollenPolygonLayer } from '../components/PollenPolygonLayer';
 import { LocationInfoSheet } from '../components/LocationInfoSheet';
 import { UpgradeMapSheet } from '../components/UpgradeMapSheet';
-import type { LayerType } from '../types';
+import { isAqLayer, pollenLevelToAqLevel, type LayerType, type PollenLayerType } from '../types';
 import type { Coordinates } from '@/features/pollen/types';
 
 const DEFAULT_REGION: Region = {
@@ -24,16 +24,16 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 8,
 };
 
-function highestLayer(today: ReturnType<typeof useCurrentPollen>['today']): LayerType {
+function highestPollenLayer(today: ReturnType<typeof useCurrentPollen>['today']): PollenLayerType {
   if (!today) return 'grass';
   const order = ['none', 'low', 'medium', 'high', 'very_high'];
   const rank = (l: string) => order.indexOf(l);
   const scores = {
-    tree: rank(today.tree.level),
+    tree:  rank(today.tree.level),
     grass: rank(today.grass.level),
-    weed: rank(today.weed.level),
+    weed:  rank(today.weed.level),
   };
-  return (Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0] as LayerType);
+  return (Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0] as PollenLayerType);
 }
 
 export default function MapScreen() {
@@ -53,6 +53,9 @@ export default function MapScreen() {
   const [mapViewMode, setMapViewMode] = useState<'pro' | 'free'>('pro');
 
   const effectiveMapIsPro = effectiveIsPro && mapViewMode === 'pro';
+
+  // Pro uses 3h cache buckets, Free uses 6h
+  const cacheBucketHours: 3 | 6 = effectiveIsPro ? 3 : 6;
 
   function handleQuotaExceeded() {
     setQuotaExceeded(true);
@@ -74,7 +77,7 @@ export default function MapScreen() {
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
 
-  const defaultLayer = useMemo(() => highestLayer(today), [today]);
+  const defaultLayer = useMemo(() => highestPollenLayer(today), [today]);
   const [selectedLayer, setSelectedLayer] = useState<LayerType>(defaultLayer);
 
   const [legendBottom, setLegendBottom] = useState(0);
@@ -82,7 +85,7 @@ export default function MapScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
-  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, currentRegion);
+  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, currentRegion, cacheBucketHours);
   if (__DEV__) {
     console.log('[MapScreen] isPro:', effectiveIsPro, '| layer:', selectedLayer, '| gridLoading:', gridLoading, '| gridError:', gridError, '| features:', gridData[selectedLayer]?.features?.length ?? 'null');
   }
@@ -96,7 +99,6 @@ export default function MapScreen() {
   useEffect(() => {
     if (!location || !mapRef.current) return;
     if (locationLabel) {
-      // Custom location: show country-level view so the full region is visible
       centeredRef.current = true;
       mapRef.current.animateToRegion(
         { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 10, longitudeDelta: 10 },
@@ -151,9 +153,14 @@ export default function MapScreen() {
     );
   }
 
-  const levels = today
-    ? { tree: today.tree.level, grass: today.grass.level, weed: today.weed.level }
+  const aqiLevel = today?.airQuality
+    ? pollenLevelToAqLevel(today.airQuality.overallLevel)
     : undefined;
+
+  // AQ layers always render as polygons — there is no Google Pollen tile equivalent.
+  // For pollen layers, Pro uses tile overlay; Free uses polygon overlay.
+  const showingAq = isAqLayer(selectedLayer);
+  const pollenLayerForTile: PollenLayerType = showingAq ? 'grass' : (selectedLayer as PollenLayerType);
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -175,17 +182,21 @@ export default function MapScreen() {
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        <PollenPolygonLayer geojson={!effectiveMapIsPro ? gridData[selectedLayer] : null} />
+        {/* Polygon layer: always shown for AQ, always shown for Free pollen, hidden for Pro pollen */}
+        <PollenPolygonLayer
+          geojson={(!effectiveMapIsPro || showingAq) ? gridData[selectedLayer] : null}
+        />
+        {/* Tile layer: only for Pro + pollen layers */}
         <PollenTileLayer
-          layerType={selectedLayer}
-          visible={effectiveMapIsPro}
+          layerType={pollenLayerForTile}
+          visible={effectiveMapIsPro && !showingAq}
           region={currentRegion ?? initialRegion}
           onQuotaExceeded={handleQuotaExceeded}
         />
       </MapView>
 
-      {/* Shared: colour legend */}
-      <PollenLegend onLayout={handleLegendLayout} />
+      {/* Shared: colour legend — switches between pollen and AQ scale */}
+      <PollenLegend layerType={selectedLayer} onLayout={handleLegendLayout} />
 
       {/* Change location pill — top-left */}
       <TouchableOpacity
@@ -352,7 +363,13 @@ export default function MapScreen() {
       )}
 
       {/* Shared: layer selector */}
-      <LayerSelector selected={selectedLayer} onSelect={setSelectedLayer} levels={levels} />
+      <LayerSelector
+        selected={selectedLayer}
+        onSelect={setSelectedLayer}
+        aqiLevel={aqiLevel}
+        isPro={effectiveIsPro}
+        onShowPaywall={() => showPaywall('Individual Pollutant Maps')}
+      />
 
       {/* Free view banner */}
       {!effectiveMapIsPro && (

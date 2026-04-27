@@ -1,10 +1,18 @@
 import React from 'react';
 import { View, Text, type LayoutChangeEvent } from 'react-native';
-import { UPI_COLORS, UPI_LABELS, type UpiCategory } from '../types';
+import { UPI_COLORS, UPI_LABELS, AQ_COLORS, AQ_LABELS, isAqLayer, type UpiCategory, type AqLevel, type LayerType } from '../types';
 
-const CATEGORIES: UpiCategory[] = ['none', 'very_low', 'low', 'moderate', 'high', 'very_high'];
+const POLLEN_CATEGORIES: UpiCategory[] = ['none', 'very_low', 'low', 'moderate', 'high', 'very_high'];
+const AQ_CATEGORIES: AqLevel[] = ['none', 'low', 'moderate', 'high', 'very_high'];
 
-export function PollenLegend({ onLayout }: { onLayout?: (e: LayoutChangeEvent) => void }) {
+interface Props {
+  layerType?: LayerType;
+  onLayout?: (e: LayoutChangeEvent) => void;
+}
+
+export function PollenLegend({ layerType, onLayout }: Props) {
+  const showAq = layerType !== undefined && isAqLayer(layerType);
+
   return (
     <View
       onLayout={onLayout}
@@ -25,22 +33,39 @@ export function PollenLegend({ onLayout }: { onLayout?: (e: LayoutChangeEvent) =
       }}
     >
       <Text style={{ fontSize: 11, fontWeight: '600', color: '#374151', marginBottom: 5 }}>
-        Pollen Index
+        {showAq ? 'Air Quality' : 'Pollen Index'}
       </Text>
-      {CATEGORIES.map((cat) => (
-        <View key={cat} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-          <View
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: 3,
-              backgroundColor: UPI_COLORS[cat],
-              marginRight: 6,
-            }}
-          />
-          <Text style={{ fontSize: 11, color: '#4B5563' }}>{UPI_LABELS[cat]}</Text>
-        </View>
-      ))}
+
+      {showAq
+        ? AQ_CATEGORIES.map((level) => (
+            <View key={level} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+              <View
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: 3,
+                  backgroundColor: AQ_COLORS[level],
+                  marginRight: 6,
+                }}
+              />
+              <Text style={{ fontSize: 11, color: '#4B5563' }}>{AQ_LABELS[level]}</Text>
+            </View>
+          ))
+        : POLLEN_CATEGORIES.map((cat) => (
+            <View key={cat} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+              <View
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: 3,
+                  backgroundColor: UPI_COLORS[cat],
+                  marginRight: 6,
+                }}
+              />
+              <Text style={{ fontSize: 11, color: '#4B5563' }}>{UPI_LABELS[cat]}</Text>
+            </View>
+          ))
+      }
     </View>
   );
 }
