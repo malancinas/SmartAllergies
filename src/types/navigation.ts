@@ -40,4 +40,5 @@ export type SettingsStackParamList = {
   Subscription: undefined;
   Export: undefined;
   AllergenProfile: undefined;
+  AllergyReport: undefined;
 };

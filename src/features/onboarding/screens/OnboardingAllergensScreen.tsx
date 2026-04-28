@@ -67,6 +67,15 @@ export default function OnboardingAllergensScreen() {
           )}
         </View>
 
+        <View className="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-2xl mb-4">
+          <Text className="text-sm font-semibold text-violet-700 dark:text-violet-300 mb-1">
+            🧬 With Pro
+          </Text>
+          <Text className="text-sm text-violet-600 dark:text-violet-400 leading-5">
+            SmartAllergies will learn exactly which allergens trigger your symptoms from your daily logs and keep your profile updated automatically. You can always override manually.
+          </Text>
+        </View>
+
         <Button label="Let's go" onPress={finish} />
       </View>
     </SafeAreaView>

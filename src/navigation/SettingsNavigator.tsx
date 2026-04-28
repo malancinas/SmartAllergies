@@ -6,6 +6,7 @@ import { LanguageScreen } from '@/features/settings/screens/LanguageScreen';
 import { AllergenProfileScreen } from '@/features/settings/screens/AllergenProfileScreen';
 import SubscriptionScreen from '@/features/subscription/screens/SubscriptionScreen';
 import ExportScreen from '@/features/export/screens/ExportScreen';
+import AllergyProfileScreen from '@/features/insights/screens/AllergyProfileScreen';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
@@ -28,6 +29,11 @@ export default function SettingsNavigator() {
         name="AllergenProfile"
         component={AllergenProfileScreen}
         options={{ title: 'My Allergens' }}
+      />
+      <Stack.Screen
+        name="AllergyReport"
+        component={AllergyProfileScreen}
+        options={{ title: 'My Allergy Report' }}
       />
     </Stack.Navigator>
   );

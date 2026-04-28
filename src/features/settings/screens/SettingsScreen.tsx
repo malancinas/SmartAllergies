@@ -9,7 +9,8 @@ import Constants from 'expo-constants';
 import { useSettings } from '../hooks/useSettings';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import type { AlertThreshold } from '@/stores/persistent/settingsStore';
-import { useSubscription } from '@/features/subscription/hooks/useSubscription';
+import { useProGate } from '@/features/subscription/hooks/useProGate';
+import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 
 const MORNING_HOURS = [5, 6, 7, 8, 9, 10];
 const EVENING_HOURS = [18, 19, 20, 21, 22];
@@ -84,7 +85,7 @@ export function SettingsScreen() {
     setEveningAlertHour,
     setAlertDays,
   } = useSettingsStore();
-  const { isPro } = useSubscription();
+  const { isPro, showPaywall, paywallProps } = useProGate();
 
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
@@ -149,6 +150,25 @@ export function SettingsScreen() {
             <Text className="text-sm text-gray-500 dark:text-gray-400 capitalize">
               {allergenProfile.length === 0 ? 'None selected' : allergenProfile.join(', ')}
             </Text>
+            <Text className="text-gray-400">›</Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={isPro ? () => navigation.navigate('AllergyReport') : () => showPaywall('Allergy Report')}
+          className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+          style={!isPro ? { opacity: 0.5 } : undefined}
+        >
+          <Text className={`text-base ${isPro ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>
+            My allergy report
+          </Text>
+          <View className="flex-row items-center gap-2">
+            {!isPro && (
+              <View className="bg-violet-100 dark:bg-violet-900/40 px-2 py-0.5 rounded-full flex-row items-center gap-1">
+                <Text style={{ fontSize: 10 }}>🔒</Text>
+                <Text className="text-xs font-semibold text-violet-600 dark:text-violet-400">Pro</Text>
+              </View>
+            )}
             <Text className="text-gray-400">›</Text>
           </View>
         </Pressable>
@@ -330,5 +350,6 @@ export function SettingsScreen() {
         </View>
       </View>
     </ScrollView>
+    <PaywallSheet {...paywallProps} />
   );
 }
