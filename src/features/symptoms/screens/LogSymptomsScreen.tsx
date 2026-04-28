@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Screen, Stack } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
@@ -22,6 +23,8 @@ export default function LogSymptomsScreen() {
   const [medications, setMedications] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
+
+  const navigation = useNavigation<any>();
 
   const { logSymptoms } = useSymptomLogger();
   const { location } = useLocation();
@@ -95,7 +98,7 @@ export default function LogSymptomsScreen() {
       setSelectedSymptoms([]);
       setSeverity(5);
       getMostRecentMedicationSelection().then(setMedications);
-      Alert.alert('Saved', 'Your symptoms have been logged.');
+      navigation.navigate('History');
     } catch {
       Alert.alert('Error', 'Could not save your log. Please try again.');
     } finally {

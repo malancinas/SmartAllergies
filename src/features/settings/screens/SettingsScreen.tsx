@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, Switch, Pressable, ScrollView, Linking } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Switch, Pressable, ScrollView, Linking, Alert } from 'react-native';
+import { seedTestLogs, clearTestLogs } from '@/dev/seedTestData';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -17,6 +18,7 @@ export function SettingsScreen() {
   const { allergenProfile } = useSettingsStore();
   const { isPro, showPaywall, paywallProps } = useProGate();
 
+  const [seeding, setSeeding] = useState(false);
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
 
@@ -171,6 +173,52 @@ export function SettingsScreen() {
           <Text className="text-base text-gray-900 dark:text-white">Terms of Service</Text>
         </Pressable>
       </View>
+
+      {/* Developer (dev builds only) */}
+      {__DEV__ && (
+        <View className="px-6 pt-6">
+          <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+            Developer
+          </Text>
+          <Pressable
+            onPress={async () => {
+              if (seeding) return;
+              setSeeding(true);
+              try {
+                await seedTestLogs();
+                Alert.alert('Done', '30 days of test logs added.');
+              } catch (e) {
+                Alert.alert('Error', String(e));
+              } finally {
+                setSeeding(false);
+              }
+            }}
+            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+          >
+            <Text className="text-base text-gray-900 dark:text-white">
+              {seeding ? 'Seeding…' : 'Seed 30 days of test logs'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              Alert.alert('Clear test logs?', 'This removes all seeded test entries.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Clear',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await clearTestLogs();
+                    Alert.alert('Done', 'Test logs cleared.');
+                  },
+                },
+              ])
+            }
+            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+          >
+            <Text className="text-base text-red-500">Clear test logs</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* About */}
       <View className="px-6 pt-6 pb-10">
