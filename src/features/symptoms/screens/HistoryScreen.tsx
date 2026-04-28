@@ -14,6 +14,7 @@ import type { HistoryStackParamList } from '@/types/navigation';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const SYMPTOM_LABEL: Record<SymptomType, string> = {
+  none: 'None',
   sneezing: 'Sneezing',
   itchy_eyes: 'Itchy eyes',
   runny_nose: 'Runny nose',
@@ -60,6 +61,7 @@ function computeTriggers(logs: SymptomLog[]): { symptom: SymptomType; count: num
   const counts: Partial<Record<SymptomType, number>> = {};
   for (const log of logs) {
     for (const s of log.symptoms) {
+      if (s === 'none') continue;
       counts[s] = (counts[s] ?? 0) + 1;
     }
   }

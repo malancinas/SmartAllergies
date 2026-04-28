@@ -227,6 +227,41 @@ export async function getSymptomLogById(id: string): Promise<SymptomLogRow | nul
   return { ...log, symptoms: symptomRows.map((r) => r.symptom) };
 }
 
+// Returns individual medication names seen across all logs, ordered by most recently used.
+// Handles comma-separated values stored when multiple meds were selected.
+export async function getPreviouslyUsedMedications(): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ medications: string }>(
+    `SELECT medications FROM symptom_logs
+     WHERE medications IS NOT NULL AND medications != ''
+     ORDER BY logged_at DESC`,
+  );
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const row of rows) {
+    for (const med of row.medications.split(',')) {
+      const trimmed = med.trim();
+      if (trimmed && !seen.has(trimmed)) {
+        seen.add(trimmed);
+        result.push(trimmed);
+      }
+    }
+  }
+  return result;
+}
+
+// Returns the full medication selection from the most recent log as an array.
+export async function getMostRecentMedicationSelection(): Promise<string[]> {
+  const db = await getDatabase();
+  const row = await db.getFirstAsync<{ medications: string }>(
+    `SELECT medications FROM symptom_logs
+     WHERE medications IS NOT NULL AND medications != ''
+     ORDER BY logged_at DESC LIMIT 1`,
+  );
+  if (!row) return [];
+  return row.medications.split(',').map((m) => m.trim()).filter(Boolean);
+}
+
 // ─── Pollen Cache ────────────────────────────────────────────────────────────
 
 export async function getPollenCache<T>(key: string, ttlMs = 60 * 60 * 1000): Promise<T | null> {

@@ -4,6 +4,7 @@ import type { SymptomType } from '../types';
 import { SYMPTOM_TYPES } from '../types';
 
 const SYMPTOM_META: Record<SymptomType, { emoji: string; label: string }> = {
+  none: { emoji: '✅', label: 'None' },
   sneezing: { emoji: '🤧', label: 'Sneezing' },
   itchy_eyes: { emoji: '👁️', label: 'Itchy eyes' },
   runny_nose: { emoji: '💧', label: 'Runny nose' },

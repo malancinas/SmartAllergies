@@ -7,6 +7,7 @@ import { Screen, Stack } from '@/components/layout';
 import { Button, Input } from '@/components/ui';
 import { SymptomGrid } from '../components/SymptomGrid';
 import { SeverityInput } from '../components/SeverityInput';
+import { MedicationPicker } from '../components/MedicationPicker';
 import { useSymptomEditor, timeSlotFromLoggedAt } from '../hooks/useSymptomEditor';
 import { getSymptomLogById } from '@/services/database';
 import { TIME_SLOTS } from '../types';
@@ -32,7 +33,7 @@ export default function EditSymptomLogScreen() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<SymptomType[]>([]);
   const [severity, setSeverity] = useState(5);
   const [timeSlot, setTimeSlot] = useState<TimeSlotKey>('morning');
-  const [medications, setMedications] = useState('');
+  const [medications, setMedications] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [initialised, setInitialised] = useState(false);
@@ -42,15 +43,21 @@ export default function EditSymptomLogScreen() {
     setSelectedSymptoms(log.symptoms as SymptomType[]);
     setSeverity(log.severity);
     setTimeSlot(timeSlotFromLoggedAt(log.logged_at));
-    setMedications(log.medications ?? '');
+    setMedications(log.medications ? log.medications.split(',').map((m) => m.trim()).filter(Boolean) : []);
     setNotes(log.notes ?? '');
     setInitialised(true);
   }
 
   function toggleSymptom(symptom: SymptomType) {
-    setSelectedSymptoms((prev) =>
-      prev.includes(symptom) ? prev.filter((s) => s !== symptom) : [...prev, symptom],
-    );
+    setSelectedSymptoms((prev) => {
+      if (symptom === 'none') {
+        return prev.includes('none') ? [] : ['none'];
+      }
+      const withoutNone = prev.filter((s) => s !== 'none');
+      return withoutNone.includes(symptom)
+        ? withoutNone.filter((s) => s !== symptom)
+        : [...withoutNone, symptom];
+    });
   }
 
   async function handleSave() {
@@ -69,7 +76,7 @@ export default function EditSymptomLogScreen() {
           severity,
           timeSlot,
           notes: notes.trim() || undefined,
-          medications: medications.trim() || undefined,
+          medications: medications.length > 0 ? medications.join(', ') : undefined,
         },
         log.logged_at,
       );
@@ -165,12 +172,7 @@ export default function EditSymptomLogScreen() {
             </View>
           </View>
 
-          <Input
-            label="Medications taken (optional)"
-            placeholder="e.g. loratadine 10mg"
-            value={medications}
-            onChangeText={setMedications}
-          />
+          <MedicationPicker value={medications} onChange={setMedications} />
 
           <Input
             label="Notes (optional)"

@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
-import { Button, Input } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { SymptomGrid } from '../components/SymptomGrid';
 import { SeverityInput } from '../components/SeverityInput';
+import { MedicationPicker } from '../components/MedicationPicker';
 import { useSymptomLogger } from '../hooks/useSymptomLogger';
 import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { FREE_LIMITS } from '@/features/subscription/types';
-import { getDatabase } from '@/services/database';
+import { getDatabase, getMostRecentMedicationSelection } from '@/services/database';
 import { TIME_SLOTS } from '../types';
 import type { SymptomType, TimeSlotKey } from '../types';
 
@@ -18,7 +19,7 @@ export default function LogSymptomsScreen() {
   const [selectedSymptoms, setSelectedSymptoms] = useState<SymptomType[]>([]);
   const [severity, setSeverity] = useState(5);
   const [timeSlot, setTimeSlot] = useState<TimeSlotKey>('morning');
-  const [medications, setMedications] = useState('');
+  const [medications, setMedications] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -27,10 +28,21 @@ export default function LogSymptomsScreen() {
   const { today: todayPollen } = useCurrentPollen();
   const tier = useSubscriptionStore((s) => s.tier);
 
+  // Pre-fill with the most recently used medication combination
+  useEffect(() => {
+    getMostRecentMedicationSelection().then(setMedications);
+  }, []);
+
   function toggleSymptom(symptom: SymptomType) {
-    setSelectedSymptoms((prev) =>
-      prev.includes(symptom) ? prev.filter((s) => s !== symptom) : [...prev, symptom],
-    );
+    setSelectedSymptoms((prev) => {
+      if (symptom === 'none') {
+        return prev.includes('none') ? [] : ['none'];
+      }
+      const withoutNone = prev.filter((s) => s !== 'none');
+      return withoutNone.includes(symptom)
+        ? withoutNone.filter((s) => s !== symptom)
+        : [...withoutNone, symptom];
+    });
   }
 
   async function checkLogLimit(): Promise<boolean> {
@@ -44,7 +56,7 @@ export default function LogSymptomsScreen() {
 
   async function handleSubmit() {
     if (selectedSymptoms.length === 0) {
-      Alert.alert('No symptoms selected', 'Please select at least one symptom before saving.');
+      Alert.alert('No symptoms selected', 'Select at least one symptom, or tap "None" if you have no symptoms today.');
       return;
     }
 
@@ -60,7 +72,7 @@ export default function LogSymptomsScreen() {
         symptoms: selectedSymptoms,
         severity,
         timeSlot,
-        medications: medications.trim() || undefined,
+        medications: medications.length > 0 ? medications.join(', ') : undefined,
         latitude: location?.latitude,
         longitude: location?.longitude,
         environment: todayPollen
@@ -82,7 +94,7 @@ export default function LogSymptomsScreen() {
       // Reset form
       setSelectedSymptoms([]);
       setSeverity(5);
-      setMedications('');
+      setMedications([]);
       Alert.alert('Saved', 'Your symptoms have been logged.');
     } catch {
       Alert.alert('Error', 'Could not save your log. Please try again.');
@@ -101,7 +113,7 @@ export default function LogSymptomsScreen() {
               Log symptoms
             </Text>
             <Text className="text-sm text-neutral-500 mt-1">
-              How are you feeling right now?
+              Record how you felt during any part of the day.
             </Text>
           </View>
 
@@ -153,12 +165,7 @@ export default function LogSymptomsScreen() {
           </View>
 
           {/* Medications */}
-          <Input
-            label="Medications taken (optional)"
-            placeholder="e.g. loratadine 10mg"
-            value={medications}
-            onChangeText={setMedications}
-          />
+          <MedicationPicker value={medications} onChange={setMedications} />
 
           {/* Location indicator */}
           {location && (

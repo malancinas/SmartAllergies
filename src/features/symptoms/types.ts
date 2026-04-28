@@ -1,4 +1,5 @@
 export const SYMPTOM_TYPES = [
+  'none',
   'sneezing',
   'itchy_eyes',
   'runny_nose',
