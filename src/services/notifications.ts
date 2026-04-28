@@ -2,10 +2,9 @@ import * as Notifications from 'expo-notifications';
 import { ENV } from '@/config/env';
 import { logger } from './logger';
 import type { RiskLevel } from '@/features/forecasting/types';
-import type { AlertThreshold } from '@/stores/persistent/settingsStore';
-
-const MORNING_PREFIX = 'morning-alert-';
-const EVENING_PREFIX = 'evening-alert-';
+import type { DailyRiskScore } from '@/features/forecasting/types';
+import type { PollenLevel } from '@/features/pollen/types';
+import type { AlertSchedule, AlertThreshold } from '@/stores/persistent/settingsStore';
 
 export async function requestPermission(): Promise<boolean> {
   const { status } = await Notifications.requestPermissionsAsync();
@@ -33,7 +32,26 @@ export async function cancelAll(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
-// ─── Allergy-specific notifications ─────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Hours >= 18 or < 5 are "night" — alert content uses tomorrow's forecast */
+function isNightHour(hour: number): boolean {
+  return hour >= 18 || hour < 5;
+}
+
+function meetsThreshold(level: RiskLevel, threshold: AlertThreshold): boolean {
+  return threshold === 'medium' ? level !== 'low' : level === 'high';
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function pollenLevelLabel(level: PollenLevel): string {
+  return level === 'very_high' ? 'very high' : level;
+}
+
+// ─── Message templates ───────────────────────────────────────────────────────
 
 const MORNING_COPY: Record<RiskLevel, { title: string; body: string }> = {
   low: {
@@ -41,118 +59,113 @@ const MORNING_COPY: Record<RiskLevel, { title: string; body: string }> = {
     body: "It's a good day to go outside. Pollen levels are low.",
   },
   medium: {
-    title: 'Medium pollen risk',
-    body: "Consider taking antihistamines before heading out today.",
+    title: 'Medium pollen risk today',
+    body: 'Consider taking antihistamines before heading out.',
   },
   high: {
-    title: '⚠️ High pollen risk',
-    body: "Pollen is high today. Stay indoors if possible and keep windows closed.",
+    title: '⚠️ High pollen risk today',
+    body: 'Pollen is high. Stay indoors if possible and keep windows closed.',
   },
 };
 
-const EVENING_COPY: Record<RiskLevel, { title: string; body: string }> = {
+const NIGHT_COPY: Record<RiskLevel, { title: string; body: string }> = {
   low: {
     title: 'Tomorrow looks clear',
-    body: "Pollen levels tomorrow are low. Good day to plan outdoor activities.",
+    body: "Pollen forecast for tomorrow is low. Good day to plan outdoor activities.",
   },
   medium: {
     title: 'Tomorrow: medium pollen',
-    body: "Pollen will be moderate tomorrow. Consider taking antihistamines in the morning.",
+    body: 'Moderate pollen expected tomorrow. Consider antihistamines in the morning.',
   },
   high: {
     title: '⚠️ High pollen tomorrow',
-    body: "Pollen will be high tomorrow. Prepare your medication and plan accordingly.",
+    body: 'High pollen expected tomorrow. Prepare your medication and plan accordingly.',
   },
 };
 
-export async function cancelAllergyAlerts(): Promise<void> {
-  for (let day = 0; day <= 6; day++) {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(`${MORNING_PREFIX}${day}`);
-    } catch {}
-    try {
-      await Notifications.cancelScheduledNotificationAsync(`${EVENING_PREFIX}${day}`);
-    } catch {}
-  }
+function buildThresholdContent(
+  level: RiskLevel,
+  isNight: boolean,
+): { title: string; body: string } {
+  return isNight ? NIGHT_COPY[level] : MORNING_COPY[level];
 }
 
-function meetsThreshold(level: RiskLevel, threshold: AlertThreshold): boolean {
-  const MEETS: Record<AlertThreshold, RiskLevel[]> = {
-    medium: ['medium', 'high'],
-    high: ['high'],
+function buildCustomContent(
+  allergens: string[],
+  pollenLevels: { tree: PollenLevel; grass: PollenLevel; weed: PollenLevel },
+  isNight: boolean,
+): { title: string; body: string } {
+  const when = isNight ? 'tomorrow' : 'today';
+  const targets = allergens.length > 0 ? allergens : ['tree', 'grass', 'weed'];
+  const parts = targets.map((a) => {
+    const level = pollenLevels[a as 'tree' | 'grass' | 'weed'];
+    return `${capitalize(a)}: ${pollenLevelLabel(level)}`;
+  });
+  return {
+    title: `Your allergen forecast (${when})`,
+    body: parts.join(' · '),
   };
-  return MEETS[threshold].includes(level);
 }
+
+// ─── Smart alert scheduling ──────────────────────────────────────────────────
 
 /**
- * Called after each forecast refresh. Cancels all existing allergy alerts then
- * reschedules morning and/or evening alerts on the selected days of the week.
- * Silently skips if alerts are disabled or no days are selected.
+ * Cancels all scheduled allergy alerts then reschedules based on the user's
+ * smart alert schedules. Each schedule fires at a fixed time on selected days.
+ *
+ * Night schedules (hour >= 18 or < 5) show tomorrow's predicted forecast.
+ * Morning/day schedules (5–17) show today's real-time pollen levels.
+ * Pro custom schedules show per-allergen breakdown instead of threshold logic.
  */
-export async function rescheduleIfNeeded(params: {
-  todayRiskLevel: RiskLevel;
-  tomorrowRiskLevel: RiskLevel | null;
-  threshold: AlertThreshold;
-  morningAlertEnabled: boolean;
-  morningAlertHour: number;
-  eveningAlertEnabled: boolean;
-  eveningAlertHour: number;
-  /** JS day convention: 0=Sun, 1=Mon, …, 6=Sat */
-  alertDays: number[];
+export async function rescheduleAlertSchedules(params: {
+  schedules: AlertSchedule[];
+  notificationsEnabled: boolean;
+  todayData: DailyRiskScore | null;
+  tomorrowData: DailyRiskScore | null;
+  isPro: boolean;
 }): Promise<void> {
-  await cancelAllergyAlerts();
+  await Notifications.cancelAllScheduledNotificationsAsync();
 
-  if (params.alertDays.length === 0) return;
-  if (!params.morningAlertEnabled && !params.eveningAlertEnabled) return;
+  if (!params.notificationsEnabled) return;
 
-  // Morning alert — uses today's risk level
-  if (
-    params.morningAlertEnabled &&
-    meetsThreshold(params.todayRiskLevel, params.threshold)
-  ) {
-    const copy = MORNING_COPY[params.todayRiskLevel];
-    for (const day of params.alertDays) {
+  const enabled = params.schedules.filter((s) => s.enabled && s.days.length > 0);
+  if (enabled.length === 0) return;
+
+  for (const schedule of enabled) {
+    const night = isNightHour(schedule.hour);
+    const data = night ? params.tomorrowData : params.todayData;
+
+    if (!data) continue;
+
+    let content: { title: string; body: string };
+
+    if (schedule.type === 'custom' && params.isPro) {
+      if (!data.pollenLevels) continue;
+      content = buildCustomContent(schedule.allergens, data.pollenLevels, night);
+    } else {
+      if (!meetsThreshold(data.level, schedule.threshold)) continue;
+      content = buildThresholdContent(data.level, night);
+    }
+
+    for (const day of schedule.days) {
       await Notifications.scheduleNotificationAsync({
-        identifier: `${MORNING_PREFIX}${day}`,
-        content: { title: copy.title, body: copy.body, data: { type: 'morning_alert' } },
+        identifier: `smart-alert-${schedule.id}-${day}`,
+        content: {
+          title: content.title,
+          body: content.body,
+          data: { type: 'smart_alert', scheduleId: schedule.id },
+        },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
           weekday: day + 1, // expo: 1=Sun … 7=Sat
-          hour: params.morningAlertHour,
-          minute: 0,
+          hour: schedule.hour,
+          minute: schedule.minute,
         },
       });
     }
-    logger.debug('Morning alerts scheduled', {
-      days: params.alertDays,
-      hour: params.morningAlertHour,
-      riskLevel: params.todayRiskLevel,
-    });
   }
 
-  // Evening alert — uses tomorrow's risk level
-  if (
-    params.eveningAlertEnabled &&
-    params.tomorrowRiskLevel &&
-    meetsThreshold(params.tomorrowRiskLevel, params.threshold)
-  ) {
-    const copy = EVENING_COPY[params.tomorrowRiskLevel];
-    for (const day of params.alertDays) {
-      await Notifications.scheduleNotificationAsync({
-        identifier: `${EVENING_PREFIX}${day}`,
-        content: { title: copy.title, body: copy.body, data: { type: 'evening_alert' } },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: day + 1,
-          hour: params.eveningAlertHour,
-          minute: 0,
-        },
-      });
-    }
-    logger.debug('Evening alerts scheduled', {
-      days: params.alertDays,
-      hour: params.eveningAlertHour,
-      riskLevel: params.tomorrowRiskLevel,
-    });
+  if (ENV.APP_ENV === 'development') {
+    logger.debug('Smart alerts rescheduled', { count: enabled.length });
   }
 }

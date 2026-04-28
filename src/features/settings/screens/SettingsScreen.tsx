@@ -8,97 +8,17 @@ type SettingsNavProp = NativeStackNavigationProp<SettingsStackParamList>;
 import Constants from 'expo-constants';
 import { useSettings } from '../hooks/useSettings';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
-import type { AlertThreshold } from '@/stores/persistent/settingsStore';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
-
-const MORNING_HOURS = [5, 6, 7, 8, 9, 10];
-const EVENING_HOURS = [18, 19, 20, 21, 22];
-
-// Days in display order Mon–Sun, value is JS day (0=Sun…6=Sat)
-const DAYS = [
-  { label: 'M', value: 1 },
-  { label: 'T', value: 2 },
-  { label: 'W', value: 3 },
-  { label: 'T', value: 4 },
-  { label: 'F', value: 5 },
-  { label: 'S', value: 6 },
-  { label: 'S', value: 0 },
-];
-
-function hourLabel(h: number): string {
-  if (h === 0) return '12am';
-  if (h === 12) return '12pm';
-  const suffix = h < 12 ? 'am' : 'pm';
-  return `${h > 12 ? h - 12 : h}${suffix}`;
-}
-
-function HourPicker({
-  hours,
-  selected,
-  onSelect,
-}: {
-  hours: number[];
-  selected: number;
-  onSelect: (h: number) => void;
-}) {
-  return (
-    <View className="flex-row flex-wrap gap-2 mt-2">
-      {hours.map((h) => (
-        <Pressable
-          key={h}
-          onPress={() => onSelect(h)}
-          className={`px-3 py-1.5 rounded-full border ${
-            selected === h
-              ? 'bg-primary-500 border-primary-500'
-              : 'border-gray-300 dark:border-gray-600'
-          }`}
-        >
-          <Text
-            className={`text-sm font-medium ${
-              selected === h ? 'text-white' : 'text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            {hourLabel(h)}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
   const { theme, setTheme, language, notificationsEnabled, toggleNotifications } = useSettings();
-  const {
-    alertThreshold,
-    morningAlertEnabled,
-    morningAlertHour,
-    eveningAlertEnabled,
-    eveningAlertHour,
-    alertDays,
-    allergenProfile,
-    setAlertThreshold,
-    setMorningAlertEnabled,
-    setMorningAlertHour,
-    setEveningAlertEnabled,
-    setEveningAlertHour,
-    setAlertDays,
-  } = useSettingsStore();
+  const { allergenProfile } = useSettingsStore();
   const { isPro, showPaywall, paywallProps } = useProGate();
 
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
-
-  function toggleDay(day: number) {
-    if (alertDays.includes(day)) {
-      setAlertDays(alertDays.filter((d) => d !== day));
-    } else {
-      setAlertDays([...alertDays, day]);
-    }
-  }
-
-  const anyAlertEnabled = morningAlertEnabled || eveningAlertEnabled;
 
   return (
     <>
@@ -219,106 +139,18 @@ export function SettingsScreen() {
         <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
           Allergy Alerts
         </Text>
-
-        {/* Alert threshold */}
-        <View className="py-3 border-b border-gray-100 dark:border-gray-800">
-          <Text className="text-base text-gray-900 dark:text-white mb-2">Alert when risk is</Text>
-          <View className="flex-row gap-2">
-            {(['medium', 'high'] as AlertThreshold[]).map((t) => (
-              <Pressable
-                key={t}
-                onPress={() => setAlertThreshold(t)}
-                className={`px-4 py-2 rounded-full border ${
-                  alertThreshold === t
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium capitalize ${
-                    alertThreshold === t ? 'text-white' : 'text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  {t}+
-                </Text>
-              </Pressable>
-            ))}
+        <Pressable
+          onPress={() => navigation.navigate('AlertSchedules')}
+          className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+        >
+          <View>
+            <Text className="text-base text-gray-900 dark:text-white">Smart Alerts</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Choose when and how to be notified
+            </Text>
           </View>
-        </View>
-
-        {/* Morning alert */}
-        <View className="py-3 border-b border-gray-100 dark:border-gray-800">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-base text-gray-900 dark:text-white">Morning alert</Text>
-              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Today's pollen forecast
-              </Text>
-            </View>
-            <Switch value={morningAlertEnabled} onValueChange={setMorningAlertEnabled} />
-          </View>
-          {morningAlertEnabled && (
-            <HourPicker
-              hours={MORNING_HOURS}
-              selected={morningAlertHour}
-              onSelect={setMorningAlertHour}
-            />
-          )}
-        </View>
-
-        {/* Evening alert */}
-        <View className="py-3 border-b border-gray-100 dark:border-gray-800">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-base text-gray-900 dark:text-white">Evening alert</Text>
-              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Tomorrow's forecast, night before
-              </Text>
-            </View>
-            <Switch value={eveningAlertEnabled} onValueChange={setEveningAlertEnabled} />
-          </View>
-          {eveningAlertEnabled && (
-            <HourPicker
-              hours={EVENING_HOURS}
-              selected={eveningAlertHour}
-              onSelect={setEveningAlertHour}
-            />
-          )}
-        </View>
-
-        {/* Day picker */}
-        {anyAlertEnabled && (
-          <View className="py-3 border-b border-gray-100 dark:border-gray-800">
-            <Text className="text-base text-gray-900 dark:text-white mb-2">Alert days</Text>
-            <View className="flex-row gap-2">
-              {DAYS.map((d) => {
-                const active = alertDays.includes(d.value);
-                return (
-                  <Pressable
-                    key={`${d.label}-${d.value}`}
-                    onPress={() => toggleDay(d.value)}
-                    className={`w-9 h-9 rounded-full border items-center justify-center ${
-                      active
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm font-medium ${
-                        active ? 'text-white' : 'text-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {d.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {alertDays.length === 0 && (
-              <Text className="text-xs text-red-500 mt-2">Select at least one day.</Text>
-            )}
-          </View>
-        )}
+          <Text className="text-gray-400">›</Text>
+        </Pressable>
       </View>
 
       {/* Privacy */}

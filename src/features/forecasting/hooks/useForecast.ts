@@ -4,7 +4,7 @@ import { useSymptomHistory } from '@/features/symptoms/hooks/useSymptomHistory';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
 import { useAllergyProfile } from '@/features/insights/hooks/useAllergyProfile';
-import { rescheduleIfNeeded } from '@/services/notifications';
+import { rescheduleAlertSchedules } from '@/services/notifications';
 import {
   allergenProfileToWeights,
   buildCorrelationWeights,
@@ -18,12 +18,8 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
   const { forecast, loading: pollenLoading, error: pollenError } = useCurrentPollen();
   const { data: logs, isLoading: logsLoading } = useSymptomHistory(60);
   const {
-    alertThreshold,
-    morningAlertEnabled,
-    morningAlertHour,
-    eveningAlertEnabled,
-    eveningAlertHour,
-    alertDays,
+    alertSchedules,
+    notificationsEnabled,
     allergenProfile,
     setAllergenProfile,
     setAllergenProfileLastAutoUpdated,
@@ -43,10 +39,8 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
     if (isPro && profileData?.ready) {
       weights = correlationsToWeights(profileData.correlations);
     } else if (isPro) {
-      // Pro but still building profile: proxy approach
       weights = buildCorrelationWeights(logs, forecast);
     } else {
-      // Free: weight by manually selected allergens
       weights = allergenProfileToWeights(allergenProfile);
     }
 
@@ -55,7 +49,16 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
     const upcomingForecasts = forecast.filter((d) => d.date > todayStr);
 
     return {
-      today: todayForecast ? computeRiskScore(todayForecast, weights) : null,
+      today: todayForecast
+        ? {
+            ...computeRiskScore(todayForecast, weights),
+            pollenLevels: {
+              tree: todayForecast.tree.level,
+              grass: todayForecast.grass.level,
+              weed: todayForecast.weed.level,
+            },
+          }
+        : null,
       upcoming: upcomingForecasts.map((d) => ({
         ...computeRiskScore(d, weights),
         pollenLevels: { tree: d.tree.level, grass: d.grass.level, weed: d.weed.level },
@@ -68,11 +71,12 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
   }, [forecast, logs, isPro, profileData, allergenProfile]);
 
   // Auto-write allergenProfile for Pro users once correlations are ready.
-  // Uses a ref to avoid re-running on every render when correlations haven't changed.
   const lastSyncedCorrelations = useRef<string | null>(null);
   useEffect(() => {
     if (!isPro || !profileData?.ready) return;
-    const correlationKey = profileData.correlations.map((c) => `${c.key}:${c.correlation.toFixed(3)}`).join(',');
+    const correlationKey = profileData.correlations
+      .map((c) => `${c.key}:${c.correlation.toFixed(3)}`)
+      .join(',');
     if (lastSyncedCorrelations.current === correlationKey) return;
     lastSyncedCorrelations.current = correlationKey;
 
@@ -83,19 +87,14 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
   }, [isPro, profileData?.ready, profileData?.correlations]);
 
   useEffect(() => {
-    if (result.today) {
-      rescheduleIfNeeded({
-        todayRiskLevel: result.today.level,
-        tomorrowRiskLevel: result.upcoming[0]?.level ?? null,
-        threshold: alertThreshold,
-        morningAlertEnabled,
-        morningAlertHour,
-        eveningAlertEnabled,
-        eveningAlertHour,
-        alertDays,
-      }).catch(() => {});
-    }
-  }, [result.today, result.upcoming, alertThreshold, morningAlertEnabled, morningAlertHour, eveningAlertEnabled, eveningAlertHour, alertDays]);
+    rescheduleAlertSchedules({
+      schedules: alertSchedules,
+      notificationsEnabled,
+      todayData: result.today,
+      tomorrowData: result.upcoming[0] ?? null,
+      isPro,
+    }).catch(() => {});
+  }, [result.today, result.upcoming, alertSchedules, notificationsEnabled, isPro]);
 
   return {
     ...result,

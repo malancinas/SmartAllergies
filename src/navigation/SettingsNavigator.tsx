@@ -4,6 +4,8 @@ import { SettingsStackParamList } from '@/types/navigation';
 import { SettingsScreen } from '@/features/settings/screens/SettingsScreen';
 import { LanguageScreen } from '@/features/settings/screens/LanguageScreen';
 import { AllergenProfileScreen } from '@/features/settings/screens/AllergenProfileScreen';
+import { AlertSchedulesScreen } from '@/features/settings/screens/AlertSchedulesScreen';
+import { AlertEditScreen } from '@/features/settings/screens/AlertEditScreen';
 import SubscriptionScreen from '@/features/subscription/screens/SubscriptionScreen';
 import ExportScreen from '@/features/export/screens/ExportScreen';
 import AllergyProfileScreen from '@/features/insights/screens/AllergyProfileScreen';
@@ -34,6 +36,16 @@ export default function SettingsNavigator() {
         name="AllergyReport"
         component={AllergyProfileScreen}
         options={{ title: 'My Allergy Report' }}
+      />
+      <Stack.Screen
+        name="AlertSchedules"
+        component={AlertSchedulesScreen}
+        options={{ title: 'Smart Alerts' }}
+      />
+      <Stack.Screen
+        name="AlertEdit"
+        component={AlertEditScreen}
+        options={{ title: 'New Alert' }}
       />
     </Stack.Navigator>
   );

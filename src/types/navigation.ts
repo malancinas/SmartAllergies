@@ -41,4 +41,6 @@ export type SettingsStackParamList = {
   Export: undefined;
   AllergenProfile: undefined;
   AllergyReport: undefined;
+  AlertSchedules: undefined;
+  AlertEdit: { scheduleId?: string };
 };
