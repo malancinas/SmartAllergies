@@ -101,6 +101,7 @@ export function SettingsScreen() {
   const anyAlertEnabled = morningAlertEnabled || eveningAlertEnabled;
 
   return (
+    <>
     <ScrollView className="flex-1 bg-white dark:bg-gray-900">
       {/* Plan */}
       <View className="px-6 pt-6">
@@ -351,5 +352,6 @@ export function SettingsScreen() {
       </View>
     </ScrollView>
     <PaywallSheet {...paywallProps} />
+    </>
   );
 }

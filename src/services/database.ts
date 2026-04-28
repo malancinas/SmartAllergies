@@ -49,30 +49,37 @@ const MIGRATIONS = [
 
 // ─── Singleton ───────────────────────────────────────────────────────────────
 
-let _db: SQLite.SQLiteDatabase | null = null;
+let _dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (_db) return _db;
+async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
+  const db = await SQLite.openDatabaseAsync('localallergies.db');
 
-  _db = await SQLite.openDatabaseAsync('localallergies.db');
-
-  // Enable WAL mode for better concurrent read performance
-  await _db.execAsync('PRAGMA journal_mode = WAL;');
-  await _db.execAsync('PRAGMA foreign_keys = ON;');
+  await db.execAsync('PRAGMA journal_mode = WAL;');
+  await db.execAsync('PRAGMA foreign_keys = ON;');
 
   for (const sql of MIGRATIONS) {
-    await _db.execAsync(sql);
+    await db.execAsync(sql);
   }
 
   // Additive migration: add medications column to existing databases
   try {
-    await _db.execAsync(`ALTER TABLE symptom_logs ADD COLUMN medications TEXT`);
+    await db.execAsync(`ALTER TABLE symptom_logs ADD COLUMN medications TEXT`);
   } catch {
-    // Column already exists on fresh installs (included in CREATE TABLE above) — safe to ignore
+    // Column already exists on fresh installs — safe to ignore
   }
 
   logger.debug('Database initialised');
-  return _db;
+  return db;
+}
+
+export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!_dbPromise) {
+    _dbPromise = initDatabase().catch((err) => {
+      _dbPromise = null;
+      throw err;
+    });
+  }
+  return _dbPromise;
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────

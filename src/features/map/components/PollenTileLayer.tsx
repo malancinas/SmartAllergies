@@ -86,6 +86,7 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
 
     async function load() {
       let anyNew = false;
+      console.log(`[TileLayer] load — layer=${type} tiles=${tileCoords.length}`);
 
       // Check SQLite cache for all tiles in parallel, populate memory cache
       const cacheResults = await Promise.all(
@@ -102,20 +103,22 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
       );
 
       const toFetchAll = cacheResults.filter((r) => r.needsNetwork);
+      console.log(`[TileLayer] cache: ${tileCoords.length - toFetchAll.length} hits, ${toFetchAll.length} need network`);
 
       if (toFetchAll.length > 0) {
         const userId = authStore.getState().user?.id ?? 'anonymous';
         const currentCount = await getApiCallCount(userId);
         const remaining = DAILY_API_LIMIT - currentCount;
+        console.log(`[TileLayer] quota: used=${currentCount} remaining=${remaining}`);
 
         if (remaining <= 0) {
+          console.warn('[TileLayer] daily quota reached — skipping network fetch');
           if (!cancelledRef.current) onQuotaExceeded?.();
           if (!cancelledRef.current && anyNew) setRenderTick((t) => t + 1);
           return;
         }
 
         const toFetch = toFetchAll.slice(0, remaining);
-        // Partial batch means we'll exhaust quota after this load
         if (toFetch.length < toFetchAll.length && !cancelledRef.current) {
           onQuotaExceeded?.();
         }
@@ -131,11 +134,12 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
               memoryTileCache.set(cacheKey, dataUri);
               anyNew = true;
               fetchedCount++;
-            } catch {
-              // individual tile failure — skip silently
+            } catch (err) {
+              console.error(`[TileLayer] ❌ tile fetch failed z=${z} x=${x} y=${y}`, err);
             }
           }),
         );
+        console.log(`[TileLayer] fetched ${fetchedCount}/${toFetch.length} tiles from network`);
 
         if (fetchedCount > 0) {
           const newCount = await incrementApiCallCount(userId, fetchedCount);
@@ -148,7 +152,7 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
       if (!cancelledRef.current && anyNew) setRenderTick((t) => t + 1);
     }
 
-    load();
+    load().catch((err) => console.error('[PollenTileLayer] load error', err));
     return () => { cancelledRef.current = true; };
   }, [tileCoords, layerType, visible, apiKey]);
 

@@ -17,7 +17,31 @@
       "Bash(python3 -c \"import json, sys; data = json.load\\(sys.stdin\\); print\\('Number of results:', len\\(data.get\\('results', []\\)\\)\\); first = data.get\\('results', [{}]\\)[0]; print\\('First result keys:', list\\(first.keys\\(\\)\\)\\); print\\('First result:', json.dumps\\(first, indent=2\\)\\)\")",
       "Bash(curl -s 'https://geocoding-api.open-meteo.com/v1/search?name=new%20york&count=6&language=en&format=json')",
       "Bash(python3 -c \"import json, sys; data = json.load\\(sys.stdin\\); results = data.get\\('results', []\\); print\\('Results count:', len\\(results\\)\\); [print\\(f'{i}: {r.get\\(\\\\\"name\\\\\"\\)}, {r.get\\(\\\\\"admin1\\\\\"\\)}, {r.get\\(\\\\\"country\\\\\"\\)}'\\) for i, r in enumerate\\(results\\)]\")",
-      "Bash(sqlite3 :memory: \"CREATE TABLE test \\(key TEXT PRIMARY KEY\\); INSERT INTO test VALUES \\('geocode_new york'\\); SELECT * FROM test WHERE key = 'geocode_new york';\")"
+      "Bash(sqlite3 :memory: \"CREATE TABLE test \\(key TEXT PRIMARY KEY\\); INSERT INTO test VALUES \\('geocode_new york'\\); SELECT * FROM test WHERE key = 'geocode_new york';\")",
+      "Bash(node -e \"const d = require\\('./src/features/map/data/admin_regions.json'\\); console.log\\('features count:', d.features.length\\); console.log\\('sample:', JSON.stringify\\(d.features[0]?.properties\\)\\)\")",
+      "Bash(curl -s \"https://air-quality-api.open-meteo.com/v1/air-quality?latitude=54.6726&longitude=-1.2787&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen,pm10,pm2_5,ozone,nitrogen_dioxide,sulphur_dioxide,dust&timezone=UTC&forecast_days=1\")",
+      "Bash(curl -s \"https://air-quality-api.open-meteo.com/v1/air-quality?latitude=54.6726,51.5,53.4&longitude=-1.2787,-0.12,-2.2&hourly=alder_pollen,birch_pollen,grass_pollen&timezone=UTC&forecast_days=1\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(type\\(d\\), 'keys:' if isinstance\\(d,dict\\) else 'len:', list\\(d.keys\\(\\)\\) if isinstance\\(d,dict\\) else len\\(d\\)\\)\")",
+      "Bash(curl -s \"https://air-quality-api.open-meteo.com/v1/air-quality?latitude=54.6726&longitude=-1.2787&hourly=alder_pollen,birch_pollen,grass_pollen&timezone=UTC&forecast_days=1\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); h=d['hourly']; print\\('grass_pollen:', h['grass_pollen'][:6]\\); print\\('birch_pollen:', h['birch_pollen'][:6]\\)\")",
+      "Bash(curl -s \"https://air-quality-api.open-meteo.com/v1/air-quality?latitude=54.6726&longitude=-1.2787&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&timezone=UTC&forecast_days=1\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"const d = require\\('./src/features/map/data/admin_regions.json'\\); const countries = [...new Set\\(d.features.map\\(f => f.properties.country_code\\)\\)]; console.log\\('Countries:', countries\\); console.log\\('Total features:', d.features.length\\);\")",
+      "Bash(node -e \"const d = require\\('./src/features/map/data/admin_regions.json'\\); const uk = d.features.filter\\(f => f.properties.country_code === 'GBR'\\); console.log\\('GBR features:', uk.length\\);\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); f=d['features'][0]; print\\('keys:', list\\(f['properties'].keys\\(\\)\\)\\); print\\('sample:', {k:f['properties'][k] for k in list\\(f['properties'].keys\\(\\)\\)[:5]}\\)\")",
+      "Bash(node -e \"const j = require\\('./src/features/map/data/admin_regions.json'\\); console.log\\('Total features:', j.features.length\\); const countryCodes = [...new Set\\(j.features.map\\(f => f.properties?.country_code\\)\\)]; console.log\\('Unique country_codes:', countryCodes\\); const gbr = j.features.filter\\(f => f.properties?.country_code === 'GBR'\\); console.log\\('GBR features:', gbr.length\\); if \\(gbr.length > 0\\) { console.log\\('First GBR bbox:', gbr[0].properties.bbox\\); console.log\\('Last GBR bbox:', gbr[gbr.length-1].properties.bbox\\); }\")",
+      "Bash(node -e \"const j = require\\('./src/features/map/data/admin_regions.json'\\); const gbr = j.features.filter\\(f => f.properties?.country_code === 'GBR'\\); const missing = gbr.filter\\(f => !f.properties?.country_code\\); console.log\\('GBR features with country_code:', gbr.length - missing.length\\); console.log\\('GBR features missing country_code:', missing.length\\); const allBboxes = gbr.map\\(f => f.properties.bbox\\).reduce\\(\\(acc, b\\) => { acc[0] = Math.min\\(acc[0], b[0]\\); acc[1] = Math.min\\(acc[1], b[1]\\); acc[2] = Math.max\\(acc[2], b[2]\\); acc[3] = Math.max\\(acc[3], b[3]\\); return acc; }, [Infinity, Infinity, -Infinity, -Infinity]\\); console.log\\('All GBR bbox bounds \\(combined\\):', allBboxes\\);\")",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies log --oneline -20)",
+      "Bash(node -e \"const colors = require\\('./src/features/map/types.ts'\\); console.log\\('UPI opacity in PollenPolygonLayer: fillColor and strokeColor use 8C \\(140/255 = 0.549 or 55% opacity\\)'\\); console.log\\('With 463 GBR polygons covering UK at 55% opacity with 1.5px strokes, cumulative visual effect could block base layer'\\); console.log\\('Testing: 0x8C hex = 140 decimal = 0.549 alpha \\(55% opaque\\)'\\); console.log\\('Stroking hundreds of overlapping polygons: strokes would layer/multiply visually'\\);\")",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies diff HEAD~5..HEAD -- app.config.js app.json)",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies show 279dc8b --stat)",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies log --all --oneline --grep=\"map\" -i)",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies show 0befd5f)",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies log --all --oneline --grep=\"google\" -i)",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies log --oneline --follow -10 -- app.config.js)",
+      "Bash(git -C /c/Users/malan/git/SmartAllergies show c7836b2:app.config.js)",
+      "Bash(node)",
+      "Bash(./gradlew signingReport)"
     ]
   }
 }

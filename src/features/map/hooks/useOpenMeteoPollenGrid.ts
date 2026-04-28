@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import type { LayerType, UpiCategory, PollenGridGeoJson, PollenGridFeature } from '../types';
 import { UPI_COLORS, AQ_COLORS, pollenLevelToAqLevel } from '../types';
-import type { Region } from 'react-native-maps';
 import { getPollenCache, setPollenCache, getStalePollenCacheByPrefix } from '@/services/database';
 import type { PollenLevel } from '@/features/pollen/types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const ADMIN_REGIONS = require('../data/admin_regions.json') as AdminRegionCollection;
+const ALL_ADMIN_REGIONS = require('../data/admin_regions.json') as AdminRegionCollection;
+const ADMIN_REGIONS: AdminRegionCollection = {
+  type: 'FeatureCollection',
+  features: ALL_ADMIN_REGIONS.features.filter((f) => f.properties.country_code === 'GBR'),
+};
 
 interface AdminRegionProperties {
   id: string;
@@ -47,15 +50,6 @@ const memoryCache = new Map<string, GridData>();
 const CHUNK_SIZE = 100;
 
 const UK_BOUNDS: MapBounds = { minLat: 49.5, maxLat: 61.0, minLon: -8.0, maxLon: 2.5 };
-
-function regionToBounds(region: Region): MapBounds {
-  return {
-    minLat: region.latitude - region.latitudeDelta / 2,
-    maxLat: region.latitude + region.latitudeDelta / 2,
-    minLon: region.longitude - region.longitudeDelta / 2,
-    maxLon: region.longitude + region.longitudeDelta / 2,
-  };
-}
 
 function bboxOverlaps(fb: [number, number, number, number], bounds: MapBounds): boolean {
   return !(fb[2] < bounds.minLon || fb[0] > bounds.maxLon || fb[3] < bounds.minLat || fb[1] > bounds.maxLat);
@@ -312,7 +306,6 @@ async function fetchPollenForCentroids(
 
 export function useOpenMeteoPollenGrid(
   enabled: boolean,
-  region: Region | null,
   cacheBucketHours: 3 | 6 = 6,
 ) {
   const [gridData, setGridData] = useState<GridData>(EMPTY);
@@ -330,10 +323,9 @@ export function useOpenMeteoPollenGrid(
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const bucket = Math.floor(now.getHours() / cacheBucketHours);
-    const bounds = region ? regionToBounds(region) : UK_BOUNDS;
-    const visibleFeatures = getVisibleFeatures(bounds);
+    const visibleFeatures = getVisibleFeatures(UK_BOUNDS);
 
-    console.log('[PollenGrid] bounds', bounds, '→', visibleFeatures.length, 'features, bucket', bucket);
+    console.log('[PollenGrid] uk-wide →', visibleFeatures.length, 'features, bucket', bucket);
 
     if (visibleFeatures.length === 0) {
       setGridData(EMPTY);
@@ -345,8 +337,7 @@ export function useOpenMeteoPollenGrid(
       lon: f.properties.centroid[0],
     }));
 
-    const boundsKey = `${bounds.minLat.toFixed(1)}_${bounds.maxLat.toFixed(1)}_${bounds.minLon.toFixed(1)}_${bounds.maxLon.toFixed(1)}`;
-    const cacheKey = `open_meteo_grid_v2_${todayStr}_b${bucket}_${boundsKey}`;
+    const cacheKey = `open_meteo_grid_v2_${todayStr}_b${bucket}_uk`;
     const cachePrefix = `open_meteo_grid_v2_${todayStr}_`;
 
     const memHit = memoryCache.get(cacheKey);
@@ -359,10 +350,15 @@ export function useOpenMeteoPollenGrid(
     setError(null);
 
     async function load() {
-      const cached = await getPollenCache<GridData>(cacheKey, cacheBucketHours * 60 * 60 * 1000);
+      let cached: GridData | null = null;
+      try {
+        cached = await getPollenCache<GridData>(cacheKey, cacheBucketHours * 60 * 60 * 1000);
+      } catch (err) {
+        console.error('[PollenGrid] DB read failed — falling through to network', err);
+      }
       if (controller.signal.aborted) return;
       if (cached) {
-        console.log('[PollenGrid] sqlite cache hit', cacheKey);
+        console.log('[PollenGrid] ✅ sqlite cache hit', cacheKey);
         memoryCache.set(cacheKey, cached);
         setGridData(cached);
         setLoading(false);
@@ -391,8 +387,12 @@ export function useOpenMeteoPollenGrid(
         };
 
         memoryCache.set(cacheKey, newGrid);
-        await setPollenCache(cacheKey, newGrid);
         if (!controller.signal.aborted) setGridData(newGrid);
+        try {
+          await setPollenCache(cacheKey, newGrid);
+        } catch {
+          // Cache write failure is non-fatal — data is already shown and in memory cache
+        }
       } catch (e) {
         if (controller.signal.aborted) return;
         console.error('[PollenGrid] fetch error', e);
@@ -411,7 +411,7 @@ export function useOpenMeteoPollenGrid(
 
     load();
     return () => controller.abort();
-  }, [enabled, region, cacheBucketHours]);
+  }, [enabled, cacheBucketHours]);
 
   return { gridData, loading, error };
 }

@@ -85,7 +85,7 @@ export default function MapScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
-  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, currentRegion, cacheBucketHours);
+  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, cacheBucketHours);
   if (__DEV__) {
     console.log('[MapScreen] isPro:', effectiveIsPro, '| layer:', selectedLayer, '| gridLoading:', gridLoading, '| gridError:', gridError, '| features:', gridData[selectedLayer]?.features?.length ?? 'null');
   }
@@ -175,10 +175,13 @@ export default function MapScreen() {
         rotateEnabled={false}
         pitchEnabled={false}
         onPress={handleMapPress}
+        onMapReady={() => console.log('[MapView] ✅ map ready — provider=GOOGLE')}
+        onMapError={(e) => console.error('[MapView] ❌ map error', e.nativeEvent)}
         onRegionChangeComplete={(r) => {
-            if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
-            regionDebounceRef.current = setTimeout(() => setCurrentRegion(r), 500);
-          }}
+          console.log('[MapView] region complete →', r.latitude.toFixed(4), r.longitude.toFixed(4), 'Δlat', r.latitudeDelta.toFixed(3));
+          if (regionDebounceRef.current) clearTimeout(regionDebounceRef.current);
+          regionDebounceRef.current = setTimeout(() => setCurrentRegion(r), 500);
+        }}
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
