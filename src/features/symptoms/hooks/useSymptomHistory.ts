@@ -7,6 +7,7 @@ import type { SymptomLog } from '../types';
 function rowToSymptomLog(row: {
   id: string;
   logged_at: string;
+  created_at: string;
   severity: number;
   latitude: number | null;
   longitude: number | null;
@@ -17,6 +18,7 @@ function rowToSymptomLog(row: {
   return {
     id: row.id,
     loggedAt: row.logged_at,
+    createdAt: row.created_at,
     severity: row.severity,
     symptoms: row.symptoms as SymptomLog['symptoms'],
     latitude: row.latitude,

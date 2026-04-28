@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { TabParamList } from '@/types/navigation';
 import { colors } from '@/theme/tokens';
 import HomeStackNavigator from './HomeStackNavigator';
-import HistoryScreen from '@/features/symptoms/screens/HistoryScreen';
+import HistoryNavigator from './HistoryNavigator';
 import LogSymptomsScreen from '@/features/symptoms/screens/LogSymptomsScreen';
 import MapScreen from '@/features/map/screens/MapScreen';
 import SettingsNavigator from './SettingsNavigator';
@@ -70,7 +70,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="History"
-        component={HistoryScreen}
+        component={HistoryNavigator}
         options={{
           tabBarLabel: 'History',
           tabBarIcon: ({ color }) => <HistoryIcon color={color} />,

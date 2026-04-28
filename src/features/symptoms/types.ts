@@ -22,7 +22,8 @@ export type TimeSlotKey = (typeof TIME_SLOTS)[number]['key'];
 
 export interface SymptomLog {
   id: string;
-  loggedAt: string; // ISO8601
+  loggedAt: string; // ISO8601 — user-reported time-of-day slot
+  createdAt: string; // ISO8601 — actual wall-clock insertion time, anchors the 48h edit window
   severity: number; // 1–10
   symptoms: SymptomType[];
   latitude: number | null;

@@ -24,6 +24,11 @@ export type TabParamList = {
   Settings: undefined;
 };
 
+export type HistoryStackParamList = {
+  HistoryMain: undefined;
+  EditLog: { logId: string };
+};
+
 export type HomeStackParamList = {
   HomeMain: undefined;
   AllergyProfile: undefined;

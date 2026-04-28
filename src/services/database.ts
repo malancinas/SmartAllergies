@@ -47,6 +47,8 @@ const MIGRATIONS = [
   )`,
 ];
 
+export const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 // ─── Singleton ───────────────────────────────────────────────────────────────
 
 let _dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -68,6 +70,15 @@ async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     // Column already exists on fresh installs — safe to ignore
   }
 
+  // Additive migration: add created_at for the 48-hour edit window
+  try {
+    await db.execAsync(`ALTER TABLE symptom_logs ADD COLUMN created_at TEXT`);
+    // Backfill existing rows so they are treated as already committed (outside the edit window)
+    await db.execAsync(`UPDATE symptom_logs SET created_at = logged_at WHERE created_at IS NULL`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
   logger.debug('Database initialised');
   return db;
 }
@@ -87,6 +98,7 @@ export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 export interface SymptomLogRow {
   id: string;
   logged_at: string;
+  created_at: string;
   severity: number;
   latitude: number | null;
   longitude: number | null;
@@ -110,8 +122,8 @@ export async function insertSymptomLog(params: {
   const db = await getDatabase();
 
   await db.runAsync(
-    `INSERT INTO symptom_logs (id, logged_at, severity, latitude, longitude, notes, medications)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO symptom_logs (id, logged_at, created_at, severity, latitude, longitude, notes, medications)
+     VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?)`,
     params.id,
     params.loggedAt,
     params.severity,
@@ -157,6 +169,62 @@ export async function getSymptomLogs(
 export async function deleteSymptomLog(id: string): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(`DELETE FROM symptom_logs WHERE id = ?`, id);
+}
+
+export async function updateSymptomLog(params: {
+  id: string;
+  loggedAt: string;
+  severity: number;
+  symptoms: string[];
+  notes?: string;
+  medications?: string;
+}): Promise<{ success: boolean; reason?: 'window_expired' | 'not_found' }> {
+  const db = await getDatabase();
+
+  const row = await db.getFirstAsync<{ created_at: string }>(
+    `SELECT created_at FROM symptom_logs WHERE id = ?`,
+    params.id,
+  );
+  if (!row) return { success: false, reason: 'not_found' };
+
+  if (Date.now() - new Date(row.created_at).getTime() > EDIT_WINDOW_MS) {
+    return { success: false, reason: 'window_expired' };
+  }
+
+  await db.runAsync(
+    `UPDATE symptom_logs SET logged_at = ?, severity = ?, notes = ?, medications = ? WHERE id = ?`,
+    params.loggedAt,
+    params.severity,
+    params.notes ?? null,
+    params.medications ?? null,
+    params.id,
+  );
+
+  await db.runAsync(`DELETE FROM log_symptoms WHERE log_id = ?`, params.id);
+  for (const symptom of params.symptoms) {
+    await db.runAsync(
+      `INSERT OR IGNORE INTO log_symptoms (log_id, symptom) VALUES (?, ?)`,
+      params.id,
+      symptom,
+    );
+  }
+
+  return { success: true };
+}
+
+export async function getSymptomLogById(id: string): Promise<SymptomLogRow | null> {
+  const db = await getDatabase();
+  const log = await db.getFirstAsync<Omit<SymptomLogRow, 'symptoms'>>(
+    `SELECT * FROM symptom_logs WHERE id = ?`,
+    id,
+  );
+  if (!log) return null;
+
+  const symptomRows = await db.getAllAsync<{ symptom: string }>(
+    `SELECT symptom FROM log_symptoms WHERE log_id = ?`,
+    id,
+  );
+  return { ...log, symptoms: symptomRows.map((r) => r.symptom) };
 }
 
 // ─── Pollen Cache ────────────────────────────────────────────────────────────
@@ -341,6 +409,7 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
        AVG(le.dust) AS dust
      FROM symptom_logs sl
      JOIN log_environment le ON le.log_id = sl.id
+     WHERE sl.created_at <= datetime('now', '-48 hours')
      GROUP BY DATE(sl.logged_at)
      ORDER BY date ASC`,
   );
