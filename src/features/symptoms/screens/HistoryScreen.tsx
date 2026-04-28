@@ -177,7 +177,8 @@ export default function HistoryScreen() {
   const { data: logs, isLoading } = useSymptomHistory(30);
 
   const grouped = useMemo(() => (logs ? groupByDate(logs) : new Map()), [logs]);
-  const hasEnoughData = (logs?.length ?? 0) >= 7;
+  const distinctDays = grouped.size;
+  const hasEnoughData = distinctDays >= 7;
 
   if (isLoading) {
     return (
@@ -216,8 +217,8 @@ export default function HistoryScreen() {
           ) : (
             <Card variant="filled">
               <Text className="text-sm text-neutral-500 text-center">
-                Log {7 - logs.length} more{' '}
-                {7 - logs.length === 1 ? 'entry' : 'entries'} to unlock your top triggers.
+                Log {7 - distinctDays} more{' '}
+                {7 - distinctDays === 1 ? 'day' : 'days'} to unlock your top triggers.
               </Text>
             </Card>
           )}

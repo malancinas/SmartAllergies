@@ -13,7 +13,7 @@ const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string
 };
 
 const AQ_LEVEL_LABEL: Record<PollenLevel, string> = {
-  none: 'Good', low: 'Low', medium: 'Moderate', high: 'High', very_high: 'Very high',
+  none: 'Good', low: 'Low', medium: 'Moderate', high: 'Poor', very_high: 'Very poor',
 };
 
 const CATEGORY_LABEL: Record<'tree' | 'grass' | 'weed', string> = {
@@ -51,11 +51,13 @@ function PollenPill({
   level,
   active,
   onPress,
+  levelLabel,
 }: {
   label: string;
   level: PollenLevel;
   active: boolean;
   onPress: () => void;
+  levelLabel?: string;
 }) {
   const style = LEVEL_STYLE[level];
   return (
@@ -65,7 +67,7 @@ function PollenPill({
         style={active ? { borderWidth: 2, borderColor: '#6366f1' } : { opacity: 0.45 }}
       >
         <Text className={`text-xs font-medium ${style.text}`}>{label}</Text>
-        <Text className={`text-sm font-bold mt-0.5 ${style.text}`}>{style.label}</Text>
+        <Text className={`text-sm font-bold mt-0.5 ${style.text}`}>{levelLabel ?? style.label}</Text>
         <Text style={{ fontSize: 9, marginTop: 3, color: '#a5b4fc' }}>tap for detail</Text>
       </View>
     </TouchableOpacity>
@@ -168,6 +170,7 @@ export function PollenSummary({
             <PollenPill
               label="Air Quality"
               level={aqLevel}
+              levelLabel={AQ_LEVEL_LABEL[aqLevel]}
               active
               onPress={() => setAqOpen(true)}
             />

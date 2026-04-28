@@ -91,10 +91,10 @@ export default function LogSymptomsScreen() {
           : undefined,
       });
 
-      // Reset form
+      // Reset form, then re-fetch most recent medication for the next log
       setSelectedSymptoms([]);
       setSeverity(5);
-      setMedications([]);
+      getMostRecentMedicationSelection().then(setMedications);
       Alert.alert('Saved', 'Your symptoms have been logged.');
     } catch {
       Alert.alert('Error', 'Could not save your log. Please try again.');
