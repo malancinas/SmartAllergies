@@ -10,7 +10,14 @@
       "Bash(netstat -ano)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|json\\)$\")",
       "Bash(grep -E \"^[^/]*\\\\.tsx?$|/\\(src|app\\)/\")",
-      "Bash(grep -E \"\\\\.tsx?$\")"
+      "Bash(grep -E \"\\\\.tsx?$\")",
+      "Bash(curl -s \"https://geocoding-api.open-meteo.com/v1/search?name=New%20York&count=6&language=en&format=json\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s 'https://geocoding-api.open-meteo.com/v1/search?name=New York&count=6&language=en&format=json')",
+      "Bash(python3 -c \"import json, sys; data = json.load\\(sys.stdin\\); print\\('Number of results:', len\\(data.get\\('results', []\\)\\)\\); first = data.get\\('results', [{}]\\)[0]; print\\('First result keys:', list\\(first.keys\\(\\)\\)\\); print\\('First result:', json.dumps\\(first, indent=2\\)\\)\")",
+      "Bash(curl -s 'https://geocoding-api.open-meteo.com/v1/search?name=new%20york&count=6&language=en&format=json')",
+      "Bash(python3 -c \"import json, sys; data = json.load\\(sys.stdin\\); results = data.get\\('results', []\\); print\\('Results count:', len\\(results\\)\\); [print\\(f'{i}: {r.get\\(\\\\\"name\\\\\"\\)}, {r.get\\(\\\\\"admin1\\\\\"\\)}, {r.get\\(\\\\\"country\\\\\"\\)}'\\) for i, r in enumerate\\(results\\)]\")",
+      "Bash(sqlite3 :memory: \"CREATE TABLE test \\(key TEXT PRIMARY KEY\\); INSERT INTO test VALUES \\('geocode_new york'\\); SELECT * FROM test WHERE key = 'geocode_new york';\")"
     ]
   }
 }

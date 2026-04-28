@@ -4,7 +4,8 @@ import { logger } from './logger';
 import type { RiskLevel } from '@/features/forecasting/types';
 import type { AlertThreshold } from '@/stores/persistent/settingsStore';
 
-const ALLERGY_ALERT_ID_KEY = 'allergy-alert';
+const MORNING_PREFIX = 'morning-alert-';
+const EVENING_PREFIX = 'evening-alert-';
 
 export async function requestPermission(): Promise<boolean> {
   const { status } = await Notifications.requestPermissionsAsync();
@@ -34,7 +35,7 @@ export async function cancelAll(): Promise<void> {
 
 // ─── Allergy-specific notifications ─────────────────────────────────────────
 
-const RISK_COPY: Record<RiskLevel, { title: string; body: string }> = {
+const MORNING_COPY: Record<RiskLevel, { title: string; body: string }> = {
   low: {
     title: 'Low pollen today',
     body: "It's a good day to go outside. Pollen levels are low.",
@@ -49,61 +50,109 @@ const RISK_COPY: Record<RiskLevel, { title: string; body: string }> = {
   },
 };
 
-/** Schedule (or reschedule) a daily allergy alert at the given hour. */
-export async function scheduleAllergyAlert(
-  riskLevel: RiskLevel,
-  hour: number,
-): Promise<void> {
-  // Cancel any previously scheduled allergy alert
-  await cancelAllergyAlerts();
-
-  const copy = RISK_COPY[riskLevel];
-
-  const id = await Notifications.scheduleNotificationAsync({
-    identifier: ALLERGY_ALERT_ID_KEY,
-    content: { title: copy.title, body: copy.body, data: { type: 'allergy_alert' } },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute: 0,
-    },
-  });
-
-  logger.debug('Allergy alert scheduled', { id, riskLevel, hour });
-}
+const EVENING_COPY: Record<RiskLevel, { title: string; body: string }> = {
+  low: {
+    title: 'Tomorrow looks clear',
+    body: "Pollen levels tomorrow are low. Good day to plan outdoor activities.",
+  },
+  medium: {
+    title: 'Tomorrow: medium pollen',
+    body: "Pollen will be moderate tomorrow. Consider taking antihistamines in the morning.",
+  },
+  high: {
+    title: '⚠️ High pollen tomorrow',
+    body: "Pollen will be high tomorrow. Prepare your medication and plan accordingly.",
+  },
+};
 
 export async function cancelAllergyAlerts(): Promise<void> {
-  try {
-    await Notifications.cancelScheduledNotificationAsync(ALLERGY_ALERT_ID_KEY);
-  } catch {
-    // Notification may not exist yet — ignore
+  for (let day = 0; day <= 6; day++) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(`${MORNING_PREFIX}${day}`);
+    } catch {}
+    try {
+      await Notifications.cancelScheduledNotificationAsync(`${EVENING_PREFIX}${day}`);
+    } catch {}
   }
 }
 
-/**
- * Called after each forecast refresh. Schedules an alert only if the user's
- * risk meets or exceeds their threshold. Silently skips if permission is not
- * granted or alerts are disabled.
- */
-export async function rescheduleIfNeeded(params: {
-  riskLevel: RiskLevel;
-  threshold: AlertThreshold;
-  alertEnabled: boolean;
-  hour: number;
-}): Promise<void> {
-  if (!params.alertEnabled) {
-    await cancelAllergyAlerts();
-    return;
-  }
-
-  const MEETS_THRESHOLD: Record<AlertThreshold, RiskLevel[]> = {
+function meetsThreshold(level: RiskLevel, threshold: AlertThreshold): boolean {
+  const MEETS: Record<AlertThreshold, RiskLevel[]> = {
     medium: ['medium', 'high'],
     high: ['high'],
   };
+  return MEETS[threshold].includes(level);
+}
 
-  if (MEETS_THRESHOLD[params.threshold].includes(params.riskLevel)) {
-    await scheduleAllergyAlert(params.riskLevel, params.hour);
-  } else {
-    await cancelAllergyAlerts();
+/**
+ * Called after each forecast refresh. Cancels all existing allergy alerts then
+ * reschedules morning and/or evening alerts on the selected days of the week.
+ * Silently skips if alerts are disabled or no days are selected.
+ */
+export async function rescheduleIfNeeded(params: {
+  todayRiskLevel: RiskLevel;
+  tomorrowRiskLevel: RiskLevel | null;
+  threshold: AlertThreshold;
+  morningAlertEnabled: boolean;
+  morningAlertHour: number;
+  eveningAlertEnabled: boolean;
+  eveningAlertHour: number;
+  /** JS day convention: 0=Sun, 1=Mon, …, 6=Sat */
+  alertDays: number[];
+}): Promise<void> {
+  await cancelAllergyAlerts();
+
+  if (params.alertDays.length === 0) return;
+  if (!params.morningAlertEnabled && !params.eveningAlertEnabled) return;
+
+  // Morning alert — uses today's risk level
+  if (
+    params.morningAlertEnabled &&
+    meetsThreshold(params.todayRiskLevel, params.threshold)
+  ) {
+    const copy = MORNING_COPY[params.todayRiskLevel];
+    for (const day of params.alertDays) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${MORNING_PREFIX}${day}`,
+        content: { title: copy.title, body: copy.body, data: { type: 'morning_alert' } },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: day + 1, // expo: 1=Sun … 7=Sat
+          hour: params.morningAlertHour,
+          minute: 0,
+        },
+      });
+    }
+    logger.debug('Morning alerts scheduled', {
+      days: params.alertDays,
+      hour: params.morningAlertHour,
+      riskLevel: params.todayRiskLevel,
+    });
+  }
+
+  // Evening alert — uses tomorrow's risk level
+  if (
+    params.eveningAlertEnabled &&
+    params.tomorrowRiskLevel &&
+    meetsThreshold(params.tomorrowRiskLevel, params.threshold)
+  ) {
+    const copy = EVENING_COPY[params.tomorrowRiskLevel];
+    for (const day of params.alertDays) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${EVENING_PREFIX}${day}`,
+        content: { title: copy.title, body: copy.body, data: { type: 'evening_alert' } },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: day + 1,
+          hour: params.eveningAlertHour,
+          minute: 0,
+        },
+      });
+    }
+    logger.debug('Evening alerts scheduled', {
+      days: params.alertDays,
+      hour: params.eveningAlertHour,
+      riskLevel: params.tomorrowRiskLevel,
+    });
   }
 }

@@ -21,7 +21,6 @@ export type TabParamList = {
   History: undefined;
   Map: undefined;
   Log: undefined;
-  Notifications: undefined;
   Settings: undefined;
 };
 

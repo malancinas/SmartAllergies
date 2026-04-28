@@ -6,7 +6,6 @@ import { colors } from '@/theme/tokens';
 import HomeStackNavigator from './HomeStackNavigator';
 import HistoryScreen from '@/features/symptoms/screens/HistoryScreen';
 import LogSymptomsScreen from '@/features/symptoms/screens/LogSymptomsScreen';
-import { NotificationsScreen } from '@/features/notifications/screens/NotificationsScreen';
 import MapScreen from '@/features/map/screens/MapScreen';
 import SettingsNavigator from './SettingsNavigator';
 
@@ -19,9 +18,6 @@ function HomeIcon({ color }: { color: string }) {
 }
 function HistoryIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>📋</Text>;
-}
-function NotifIcon({ color }: { color: string }) {
-  return <Text style={{ color, fontSize: 20 }}>🔔</Text>;
 }
 function MapIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>🗺️</Text>;
@@ -94,14 +90,6 @@ export default function TabNavigator() {
         options={{
           tabBarLabel: '',
           tabBarIcon: ({ focused }) => <LogTabIcon focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{
-          tabBarLabel: 'Alerts',
-          tabBarIcon: ({ color }) => <NotifIcon color={color} />,
         }}
       />
       <Tab.Screen

@@ -118,6 +118,46 @@ export function buildCorrelationWeights(
   };
 }
 
+// ─── Build weights from manual allergen profile (free users) ─────────────────
+
+/**
+ * Converts the user's manually selected allergens into scoring weights.
+ * Selected allergens share equal weight; unselected get 0.
+ * Falls back to generic equal weights when all or none are selected.
+ */
+export function allergenProfileToWeights(profile: string[]): CorrelationWeights {
+  const hasTree = profile.includes('tree');
+  const hasGrass = profile.includes('grass');
+  const hasWeed = profile.includes('weed');
+  const count = [hasTree, hasGrass, hasWeed].filter(Boolean).length;
+
+  if (count === 0 || count === 3) {
+    return { tree: 0.33, grass: 0.33, weed: 0.33, personalised: false };
+  }
+
+  const w = 1 / count;
+  return {
+    tree: hasTree ? w : 0,
+    grass: hasGrass ? w : 0,
+    weed: hasWeed ? w : 0,
+    personalised: true,
+  };
+}
+
+/**
+ * Converts computed correlation weights back into an allergen profile string[].
+ * Allergens with weight > 0.15 are included. Used to auto-populate the profile
+ * for Pro users once the correlation engine has enough data.
+ */
+export function weightsToAllergenProfile(weights: CorrelationWeights): string[] {
+  if (!weights.personalised) return ['tree', 'grass', 'weed'];
+  const profile: string[] = [];
+  if (weights.tree > 0.15) profile.push('tree');
+  if (weights.grass > 0.15) profile.push('grass');
+  if (weights.weed > 0.15) profile.push('weed');
+  return profile.length > 0 ? profile : ['tree', 'grass', 'weed'];
+}
+
 // ─── Build weights from allergy profile correlations (Pro, accurate path) ────
 
 export function correlationsToWeights(correlations: CorrelationResult[]): CorrelationWeights {
