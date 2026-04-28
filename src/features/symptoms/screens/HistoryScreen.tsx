@@ -1,34 +1,51 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen, Stack } from '@/components/layout';
 import { Card } from '@/components/ui';
 import { useSymptomHistory } from '../hooks/useSymptomHistory';
+import { isEditable, timeSlotFromLoggedAt } from '../hooks/useSymptomEditor';
 import { shareSymptomSnapshot } from '../snapshotService';
+import { TIME_SLOTS } from '../types';
 import type { SymptomLog, SymptomType } from '../types';
+import type { HistoryStackParamList } from '@/types/navigation';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const SYMPTOM_EMOJI: Record<SymptomType, string> = {
-  sneezing: '🤧',
-  itchy_eyes: '👁️',
-  runny_nose: '💧',
-  congestion: '😤',
-  skin_reaction: '🔴',
-  headache: '🤕',
+const SYMPTOM_LABEL: Record<SymptomType, string> = {
+  sneezing: 'Sneezing',
+  itchy_eyes: 'Itchy eyes',
+  runny_nose: 'Runny nose',
+  congestion: 'Congestion',
+  skin_reaction: 'Skin reaction',
+  headache: 'Headache',
 };
 
+const TIME_SLOT_LABEL: Record<string, string> = Object.fromEntries(
+  TIME_SLOTS.map((s) => [s.key, s.label]),
+);
+
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function severityLabel(s: number): string {
+  if (s <= 3) return 'Mild';
+  if (s <= 6) return 'Moderate';
+  return 'Severe';
 }
 
 function severityColor(s: number): string {
-  if (s <= 3) return '#22c55e'; // green
-  if (s <= 6) return '#f59e0b'; // amber
-  return '#ef4444'; // red
+  if (s <= 3) return '#22c55e';
+  if (s <= 6) return '#f59e0b';
+  return '#ef4444';
 }
 
-// Group logs by calendar date (YYYY-MM-DD)
 function groupByDate(logs: SymptomLog[]): Map<string, SymptomLog[]> {
   const map = new Map<string, SymptomLog[]>();
   for (const log of logs) {
@@ -39,7 +56,6 @@ function groupByDate(logs: SymptomLog[]): Map<string, SymptomLog[]> {
   return map;
 }
 
-// Count how often each symptom appeared and find the top triggers
 function computeTriggers(logs: SymptomLog[]): { symptom: SymptomType; count: number }[] {
   const counts: Partial<Record<SymptomType, number>> = {};
   for (const log of logs) {
@@ -66,20 +82,54 @@ function TriggersCard({ logs }: { logs: SymptomLog[] }) {
       </Text>
       {triggers.map(({ symptom, count }) => (
         <View key={symptom} className="flex-row items-center mb-2">
-          <Text className="text-xl mr-2">{SYMPTOM_EMOJI[symptom]}</Text>
-          <Text className="text-sm text-neutral-700 dark:text-neutral-300 flex-1 capitalize">
-            {symptom.replace('_', ' ')}
+          <Text className="text-sm text-neutral-700 dark:text-neutral-300 flex-1">
+            {SYMPTOM_LABEL[symptom]}
           </Text>
-          <Text className="text-sm text-neutral-400">{count}×</Text>
+          <Text className="text-sm text-neutral-400">{count} times</Text>
         </View>
       ))}
     </Card>
   );
 }
 
+type HistoryNavProp = NativeStackNavigationProp<HistoryStackParamList, 'HistoryMain'>;
+
+function LogRow({ log }: { log: SymptomLog }) {
+  const navigation = useNavigation<HistoryNavProp>();
+  const editable = isEditable(log);
+  const slotLabel = TIME_SLOT_LABEL[timeSlotFromLoggedAt(log.loggedAt)] ?? 'Unknown';
+  const symptomText = log.symptoms.map((s) => SYMPTOM_LABEL[s as SymptomType] ?? s).join(', ');
+
+  return (
+    <View className="pt-3 mt-3 border-t border-neutral-100 dark:border-neutral-700">
+      <View className="flex-row justify-between items-center mb-1">
+        <Text className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          {slotLabel}
+        </Text>
+        <View className="flex-row items-center gap-3">
+          <Text className="text-sm font-medium" style={{ color: severityColor(log.severity) }}>
+            {severityLabel(log.severity)} ({log.severity}/10)
+          </Text>
+          {editable && (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('EditLog', { logId: log.id })}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text className="text-sm font-medium text-primary-600">Edit</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+      <Text className="text-sm text-neutral-500 dark:text-neutral-400">{symptomText}</Text>
+      {log.notes ? (
+        <Text className="text-xs text-neutral-400 mt-1 italic">{log.notes}</Text>
+      ) : null}
+    </View>
+  );
+}
+
 function DayCard({ date, logs }: { date: string; logs: SymptomLog[] }) {
   const maxSeverity = Math.max(...logs.map((l) => l.severity));
-  const allSymptoms = Array.from(new Set(logs.flatMap((l) => l.symptoms)));
   const [sharing, setSharing] = useState(false);
 
   async function handleShare() {
@@ -93,39 +143,28 @@ function DayCard({ date, logs }: { date: string; logs: SymptomLog[] }) {
 
   return (
     <Card variant="outlined">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+      <View className="flex-row justify-between items-center">
+        <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex-1 mr-2">
           {formatDate(date)}
         </Text>
-        <View className="flex-row items-center gap-2">
-          <TouchableOpacity onPress={handleShare} disabled={sharing} className="p-1">
-            <Text style={{ fontSize: 16, opacity: sharing ? 0.4 : 1 }}>↗️</Text>
-          </TouchableOpacity>
-          <View
-            className="w-8 h-8 rounded-full items-center justify-center"
-            style={{ backgroundColor: severityColor(maxSeverity) + '33' }}
-          >
+        <View className="flex-row items-center gap-3">
+          <Text className="text-xs font-medium" style={{ color: severityColor(maxSeverity) }}>
+            Worst: {severityLabel(maxSeverity)}
+          </Text>
+          <TouchableOpacity onPress={handleShare} disabled={sharing}>
             <Text
-              className="text-sm font-bold"
-              style={{ color: severityColor(maxSeverity) }}
+              className="text-sm font-medium text-neutral-400"
+              style={{ opacity: sharing ? 0.4 : 1 }}
             >
-              {maxSeverity}
+              Share
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <View className="flex-row flex-wrap gap-1">
-        {allSymptoms.map((s) => (
-          <Text key={s} className="text-base">
-            {SYMPTOM_EMOJI[s as SymptomType] ?? '•'}
-          </Text>
-        ))}
-      </View>
-
-      {logs.length > 1 && (
-        <Text className="text-xs text-neutral-400 mt-2">{logs.length} entries</Text>
-      )}
+      {logs.map((log) => (
+        <LogRow key={log.id} log={log} />
+      ))}
     </Card>
   );
 }
@@ -175,7 +214,8 @@ export default function HistoryScreen() {
           ) : (
             <Card variant="filled">
               <Text className="text-sm text-neutral-500 text-center">
-                Log {7 - logs.length} more {7 - logs.length === 1 ? 'entry' : 'entries'} to unlock your personal trigger analysis.
+                Log {7 - logs.length} more{' '}
+                {7 - logs.length === 1 ? 'entry' : 'entries'} to unlock your top triggers.
               </Text>
             </Card>
           )}

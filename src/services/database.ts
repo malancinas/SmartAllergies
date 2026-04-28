@@ -409,7 +409,6 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
        AVG(le.dust) AS dust
      FROM symptom_logs sl
      JOIN log_environment le ON le.log_id = sl.id
-     WHERE sl.created_at <= datetime('now', '-48 hours')
      GROUP BY DATE(sl.logged_at)
      ORDER BY date ASC`,
   );
