@@ -6,7 +6,7 @@ export const MIN_DAYS_FOR_ADVANCED = 14;
 // ─── Internal types ───────────────────────────────────────────────────────────
 
 type PollenKey = 'grassPollen' | 'treePollen' | 'weedPollen';
-type AQKey = 'pm25' | 'pm10' | 'ozone' | 'no2' | 'so2' | 'uvIndex' | 'dust';
+type AQKey = 'pm25' | 'pm10' | 'ozone' | 'no2' | 'so2' | 'dust';
 
 const POLLEN_FACTORS: Array<{ key: PollenKey; label: string }> = [
   { key: 'grassPollen', label: 'Grass pollen' },
@@ -20,7 +20,6 @@ const AQ_FACTORS: Array<{ key: AQKey; label: string }> = [
   { key: 'ozone', label: 'Ozone' },
   { key: 'no2', label: 'Nitrogen dioxide' },
   { key: 'so2', label: 'Sulphur dioxide' },
-  { key: 'uvIndex', label: 'UV index' },
   { key: 'dust', label: 'Dust' },
 ];
 
@@ -355,7 +354,8 @@ export function computeAdvancedProfile(rows: CorrelationDataRow[]): AdvancedAlle
   let insightSentence = '';
   if (primaryTrigger) {
     if (topAggravator && topAggravator.aggravatorMagnitude > 0) {
-      insightSentence = `Your main trigger is ${primaryTrigger.label.toLowerCase()}. On days when ${topAggravator.label} is also elevated, your symptoms are typically ${topAggravator.aggravatorMagnitude} point${topAggravator.aggravatorMagnitude === 1 ? '' : 's'} worse.`;
+      const worsePct = Math.round(topAggravator.aggravatorMagnitude * 10);
+      insightSentence = `Your main trigger is ${primaryTrigger.label.toLowerCase()}. On days when ${topAggravator.label} is also elevated, your symptoms are typically ${worsePct}% worse.`;
     } else if (topAggravator) {
       insightSentence = `Your main trigger is ${primaryTrigger.label.toLowerCase()}. Elevated ${topAggravator.label} tends to amplify your reaction.`;
     } else {

@@ -13,7 +13,6 @@ const FACTORS: Array<{ key: FactorKey; label: string; category: 'pollen' | 'air_
   { key: 'ozone', label: 'Ozone', category: 'air_quality' },
   { key: 'no2', label: 'Nitrogen dioxide', category: 'air_quality' },
   { key: 'so2', label: 'Sulphur dioxide', category: 'air_quality' },
-  { key: 'uvIndex', label: 'UV index', category: 'air_quality' },
   { key: 'dust', label: 'Dust', category: 'air_quality' },
 ];
 
