@@ -24,16 +24,35 @@ function formatAutoUpdatedDate(isoDate: string): string {
   return `${diffDays} days ago`;
 }
 
+const TRIGGER_KEY_MAP: Record<string, string> = {
+  grassPollen: 'grass',
+  treePollen: 'tree',
+  weedPollen: 'weed',
+};
+
 export function AllergenProfileScreen() {
   const navigation = useNavigation<Nav>();
   const {
     allergenProfile,
     allergenProfileLastAutoUpdated,
+    allergenSource,
     setAllergenProfile,
     setAllergenProfileLastAutoUpdated,
+    setAllergenSource,
   } = useSettingsStore();
   const { isPro } = useSubscription();
   const { data: profileData } = useAllergyProfile();
+
+  // Allergens the ML model has identified as positively correlated with symptoms
+  const modelAllergens: string[] = profileData?.advancedProfile
+    ? profileData.advancedProfile.triggers
+        .filter((t) => t.partialBeta > 0)
+        .map((t) => TRIGGER_KEY_MAP[t.key])
+        .filter(Boolean)
+    : [];
+
+  const useModel = isPro && allergenSource === 'model';
+  const displayProfile = useModel && modelAllergens.length > 0 ? modelAllergens : allergenProfile;
 
   function toggle(key: string) {
     if (allergenProfile.includes(key)) {
@@ -50,7 +69,7 @@ export function AllergenProfileScreen() {
     setAllergenProfileLastAutoUpdated(new Date().toISOString().slice(0, 10));
   }
 
-  const canReset = isPro && profileData?.ready;
+  const canReset = isPro && profileData?.ready && allergenSource === 'manual';
 
   return (
     <ScrollView className="flex-1 bg-white dark:bg-gray-900">
@@ -59,8 +78,29 @@ export function AllergenProfileScreen() {
           Select which allergens affect you. Your home dashboard and risk score emphasise these types.
         </Text>
 
-        {/* Pro auto-update badge */}
-        {isPro && allergenProfileLastAutoUpdated && (
+        {/* Pro: model vs manual toggle */}
+        {isPro && (
+          <View className="mt-4 flex-row items-center justify-between py-3 px-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl">
+            <View className="flex-1 mr-3">
+              <Text className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                Use analysed triggers
+              </Text>
+              <Text className="text-xs text-violet-500 dark:text-violet-400 mt-0.5">
+                {profileData?.advancedReady
+                  ? 'Based on your symptom history'
+                  : 'Available after 14+ days of logs'}
+              </Text>
+            </View>
+            <Switch
+              value={allergenSource === 'model'}
+              onValueChange={(v) => setAllergenSource(v ? 'model' : 'manual')}
+              disabled={!profileData?.advancedReady}
+            />
+          </View>
+        )}
+
+        {/* Manual mode: auto-update badge + reset */}
+        {isPro && !useModel && allergenProfileLastAutoUpdated && (
           <View className="mt-3 flex-row items-center justify-between">
             <Text className="text-xs text-violet-500 dark:text-violet-400">
               🧬 Auto-updated {formatAutoUpdatedDate(allergenProfileLastAutoUpdated)}
@@ -81,20 +121,22 @@ export function AllergenProfileScreen() {
           <View
             key={key}
             className="flex-row items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800"
+            style={useModel ? { opacity: 0.6 } : undefined}
           >
             <View className="flex-1 mr-4">
               <Text className="text-base text-gray-900 dark:text-white font-medium">{label}</Text>
               <Text className="text-xs text-gray-400 mt-0.5">{description}</Text>
             </View>
             <Switch
-              value={allergenProfile.includes(key)}
-              onValueChange={() => toggle(key)}
+              value={displayProfile.includes(key)}
+              onValueChange={useModel ? undefined : () => toggle(key)}
+              disabled={useModel}
             />
           </View>
         ))}
       </View>
 
-      {allergenProfile.length === 0 && (
+      {!useModel && allergenProfile.length === 0 && (
         <View className="mx-6 mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
           <Text className="text-sm text-amber-700 dark:text-amber-400">
             Enable at least one allergen type so the app can personalise your risk score.

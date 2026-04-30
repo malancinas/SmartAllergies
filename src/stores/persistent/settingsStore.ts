@@ -28,6 +28,8 @@ interface SettingsState {
   allergenProfile: string[];
   /** ISO date (YYYY-MM-DD) of the last time Pro auto-updated the allergen profile, or null if never */
   allergenProfileLastAutoUpdated: string | null;
+  /** Pro: whether to derive active allergens from the ML model ('model') or the manual toggles ('manual') */
+  allergenSource: 'model' | 'manual';
   /** Whether the user has completed the first-run onboarding flow */
   hasOnboarded: boolean;
 }
@@ -42,6 +44,7 @@ interface SettingsActions {
   removeAlertSchedule: (id: string) => void;
   setAllergenProfile: (profile: string[]) => void;
   setAllergenProfileLastAutoUpdated: (date: string | null) => void;
+  setAllergenSource: (source: 'model' | 'manual') => void;
   setHasOnboarded: (done: boolean) => void;
 }
 
@@ -67,6 +70,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       alertSchedules: DEFAULT_SCHEDULES,
       allergenProfile: ['tree', 'grass', 'weed'],
       allergenProfileLastAutoUpdated: null,
+      allergenSource: 'manual',
       hasOnboarded: false,
 
       setTheme: (theme) => set({ theme }),
@@ -86,6 +90,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       setAllergenProfile: (allergenProfile) => set({ allergenProfile }),
       setAllergenProfileLastAutoUpdated: (allergenProfileLastAutoUpdated) =>
         set({ allergenProfileLastAutoUpdated }),
+      setAllergenSource: (allergenSource) => set({ allergenSource }),
       setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
     }),
     {

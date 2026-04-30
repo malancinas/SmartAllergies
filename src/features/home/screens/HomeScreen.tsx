@@ -33,19 +33,33 @@ export default function HomeScreen() {
   const location = usePollenStore((s) => s.location);
   const locationLabel = usePollenStore((s) => s.locationLabel);
   const allergenProfile = useSettingsStore((s) => s.allergenProfile);
+  const allergenSource = useSettingsStore((s) => s.allergenSource);
+
+  const TRIGGER_KEY_MAP: Record<string, string> = { grassPollen: 'grass', treePollen: 'tree', weedPollen: 'weed' };
+
+  // When the user has opted into model-derived allergens, pull the active list from the ML output.
+  const activeAllergens = useMemo(() => {
+    if (effectiveIsPro && allergenSource === 'model' && profileData?.advancedProfile) {
+      const modelList = profileData.advancedProfile.triggers
+        .filter((t) => t.partialBeta > 0)
+        .map((t) => TRIGGER_KEY_MAP[t.key])
+        .filter(Boolean);
+      if (modelList.length > 0) return modelList;
+    }
+    return allergenProfile;
+  }, [effectiveIsPro, allergenSource, profileData?.advancedProfile, allergenProfile]);
 
   // Normalise ML trigger betas into per-allergen weights for the peak hours card.
   // Only active when Pro + the advanced model has converged (≥14 days of logs).
   const triggerWeights = useMemo(() => {
     if (!effectiveIsPro || !profileData?.advancedProfile) return undefined;
-    const keyMap: Record<string, string> = { grassPollen: 'grass', treePollen: 'tree', weedPollen: 'weed' };
     const relevant = profileData.advancedProfile.triggers
-      .filter((t) => t.partialBeta > 0 && allergenProfile.includes(keyMap[t.key]))
-      .map((t) => ({ allergen: keyMap[t.key], beta: t.partialBeta }));
+      .filter((t) => t.partialBeta > 0 && activeAllergens.includes(TRIGGER_KEY_MAP[t.key]))
+      .map((t) => ({ allergen: TRIGGER_KEY_MAP[t.key], beta: t.partialBeta }));
     if (relevant.length === 0) return undefined;
     const total = relevant.reduce((sum, t) => sum + t.beta, 0);
     return Object.fromEntries(relevant.map((t) => [t.allergen, t.beta / total]));
-  }, [effectiveIsPro, profileData?.advancedProfile, allergenProfile]);
+  }, [effectiveIsPro, profileData?.advancedProfile, activeAllergens]);
 
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [adPlaying, setAdPlaying] = useState(false);
@@ -133,7 +147,7 @@ export default function HomeScreen() {
               personalised={weights.personalised}
               isPro={effectiveIsPro}
               daysNeeded={
-                effectiveIsPro && !weights.personalised && profileData
+                effectiveIsPro && allergenSource === 'model' && !weights.personalised && profileData
                   ? profileData.daysNeeded - profileData.daysWithData
                   : undefined
               }
@@ -160,7 +174,7 @@ export default function HomeScreen() {
             <PollenSummary
               today={todayPollen}
               limitedCoverage={limitedCoverage}
-              allergenProfile={allergenProfile}
+              allergenProfile={activeAllergens}
               isPro={effectiveIsPro}
               onUpgradePress={() => showPaywall('Air quality details')}
             />
@@ -180,7 +194,7 @@ export default function HomeScreen() {
             todayHourly={todayHourly}
             isPro={effectiveIsPro}
             onUpgradePress={() => showPaywall('Peak pollen hours')}
-            activeAllergens={allergenProfile}
+            activeAllergens={activeAllergens}
             triggerWeights={triggerWeights}
           />
 
