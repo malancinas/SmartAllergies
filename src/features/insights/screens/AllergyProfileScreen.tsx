@@ -226,9 +226,7 @@ function TriggerCard({ profile }: { profile: AdvancedAllergyProfile }) {
   const maxBeta = Math.max(...sorted.map((t) => Math.abs(t.partialBeta)), 0.01);
   const bucket = getConfidenceBucket(profile.rSquared);
 
-  const secondaryTriggers = sorted.filter(
-    (t) => !t.isPrimary && t.partialBeta > 0 && t.partialBeta / maxBeta >= 0.35
-  );
+  const secondaryTriggers = sorted.filter((t) => t.isSecondary);
   const hasSecondaryTrigger = secondaryTriggers.length > 0;
 
   const triggerNote = hasSecondaryTrigger

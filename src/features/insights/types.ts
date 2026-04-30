@@ -13,6 +13,7 @@ export interface TriggerResult {
   partialBeta: number;
   pearsonR: number;
   isPrimary: boolean;
+  isSecondary: boolean;
 }
 
 export interface AggravatorResult {

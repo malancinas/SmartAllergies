@@ -301,12 +301,14 @@ export function computeAdvancedProfile(rows: CorrelationDataRow[]): AdvancedAlle
     (a, b) => Math.abs(b.beta) - Math.abs(a.beta),
   );
 
+  const maxBeta = Math.abs(triggerData[0]?.beta ?? 0.01);
   const triggers: TriggerResult[] = triggerData.map((t, idx) => ({
     key: t.key,
     label: t.label,
     partialBeta: t.beta,
     pearsonR: t.pearsonR,
     isPrimary: idx === 0 && Math.abs(t.beta) > 0.05,
+    isSecondary: idx > 0 && t.beta > 0 && Math.abs(t.beta) / maxBeta >= 0.35,
   }));
 
   const primaryTrigger = triggers.find((t) => t.isPrimary) ?? null;
