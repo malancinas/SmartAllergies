@@ -10,6 +10,7 @@ import {
   buildCorrelationWeights,
   computeRiskScore,
   correlationsToWeights,
+  advancedProfileToWeights,
   weightsToAllergenProfile,
 } from '../engine';
 import type { AllergyForecast, CorrelationWeights } from '../types';
@@ -36,7 +37,9 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
 
     let weights: CorrelationWeights;
 
-    if (isPro && profileData?.ready) {
+    if (isPro && profileData?.advancedReady && profileData.advancedProfile) {
+      weights = advancedProfileToWeights(profileData.advancedProfile);
+    } else if (isPro && profileData?.ready) {
       weights = correlationsToWeights(profileData.correlations);
     } else if (isPro) {
       weights = buildCorrelationWeights(logs, forecast);
@@ -73,28 +76,52 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
   // Auto-write allergenProfile for Pro users once correlations are ready.
   const lastSyncedCorrelations = useRef<string | null>(null);
   useEffect(() => {
-    if (!isPro || !profileData?.ready) return;
-    const correlationKey = profileData.correlations
+    if (!isPro) return;
+    let learnedWeights: CorrelationWeights | null = null;
+
+    if (profileData?.advancedReady && profileData.advancedProfile) {
+      learnedWeights = advancedProfileToWeights(profileData.advancedProfile);
+    } else if (profileData?.ready) {
+      learnedWeights = correlationsToWeights(profileData.correlations);
+    }
+
+    if (!learnedWeights) return;
+
+    const correlationKey = profileData?.correlations
       .map((c) => `${c.key}:${c.correlation.toFixed(3)}`)
-      .join(',');
+      .join(',') ?? '';
     if (lastSyncedCorrelations.current === correlationKey) return;
     lastSyncedCorrelations.current = correlationKey;
 
-    const learnedWeights = correlationsToWeights(profileData.correlations);
     const learnedProfile = weightsToAllergenProfile(learnedWeights);
     setAllergenProfile(learnedProfile);
     setAllergenProfileLastAutoUpdated(new Date().toISOString().slice(0, 10));
-  }, [isPro, profileData?.ready, profileData?.correlations]);
+  }, [isPro, profileData?.advancedReady, profileData?.ready, profileData?.correlations, profileData?.advancedProfile]);
 
   useEffect(() => {
+    // Build the profile summary for personalised notifications
+    const allergyProfileSummary = profileData?.ready
+      ? {
+          phase: profileData.phase,
+          primaryTrigger:
+            profileData.advancedProfile?.primaryTrigger?.label ??
+            profileData.correlations[0]?.label,
+          topAggravator:
+            profileData.advancedProfile?.topAggravator?.isSignificant
+              ? profileData.advancedProfile.topAggravator.label
+              : undefined,
+        }
+      : undefined;
+
     rescheduleAlertSchedules({
       schedules: alertSchedules,
       notificationsEnabled,
       todayData: result.today,
       tomorrowData: result.upcoming[0] ?? null,
       isPro,
+      allergyProfile: allergyProfileSummary,
     }).catch(() => {});
-  }, [result.today, result.upcoming, alertSchedules, notificationsEnabled, isPro]);
+  }, [result.today, result.upcoming, alertSchedules, notificationsEnabled, isPro, profileData]);
 
   return {
     ...result,

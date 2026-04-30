@@ -11,6 +11,8 @@ import { useSettings } from '../hooks/useSettings';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
+import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
@@ -18,6 +20,8 @@ export function SettingsScreen() {
   const { allergenProfile } = useSettingsStore();
   const { isPro, showPaywall, paywallProps } = useProGate();
 
+  const { tier, setTier } = useSubscriptionStore();
+  const queryClient = useQueryClient();
   const [seeding, setSeeding] = useState(false);
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
@@ -186,6 +190,8 @@ export function SettingsScreen() {
               setSeeding(true);
               try {
                 await seedTestLogs();
+                await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
+                await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
                 Alert.alert('Done', '30 days of test logs added.');
               } catch (e) {
                 Alert.alert('Error', String(e));
@@ -208,6 +214,8 @@ export function SettingsScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     await clearTestLogs();
+                    await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
+                    await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
                     Alert.alert('Done', 'Test logs cleared.');
                   },
                 },
@@ -216,6 +224,18 @@ export function SettingsScreen() {
             className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
           >
             <Text className="text-base text-red-500">Clear test logs</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              const next = tier === 'pro' ? 'free' : 'pro';
+              setTier(next);
+              Alert.alert('Dev', `Subscription tier set to ${next}.`);
+            }}
+            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+          >
+            <Text className="text-base text-gray-900 dark:text-white">
+              Toggle pro (currently: {tier})
+            </Text>
           </Pressable>
         </View>
       )}

@@ -411,6 +411,8 @@ export interface CorrelationDataRow {
   so2: number | null;
   uvIndex: number | null;
   dust: number | null;
+  /** True if any log that day recorded medication */
+  medicated: boolean;
 }
 
 export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
@@ -428,6 +430,7 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
     so2: number | null;
     uv_index: number | null;
     dust: number | null;
+    medicated: number; // 1 if any log that day had medication, else 0
   }>(
     `SELECT
        DATE(sl.logged_at) AS date,
@@ -441,7 +444,8 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
        AVG(le.no2) AS no2,
        AVG(le.so2) AS so2,
        AVG(le.uv_index) AS uv_index,
-       AVG(le.dust) AS dust
+       AVG(le.dust) AS dust,
+       MAX(CASE WHEN sl.medications IS NOT NULL AND sl.medications != '' THEN 1 ELSE 0 END) AS medicated
      FROM symptom_logs sl
      JOIN log_environment le ON le.log_id = sl.id
      GROUP BY DATE(sl.logged_at)
@@ -461,6 +465,7 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
     so2: r.so2,
     uvIndex: r.uv_index,
     dust: r.dust,
+    medicated: r.medicated === 1,
   }));
 }
 

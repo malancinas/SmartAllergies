@@ -107,6 +107,59 @@ function buildCustomContent(
   };
 }
 
+function buildPersonalisedContent(
+  level: RiskLevel,
+  isNight: boolean,
+  primaryTrigger: string,
+  topAggravator?: string,
+): { title: string; body: string } {
+  const when = isNight ? 'tomorrow' : 'today';
+  const Tomorrow = isNight ? 'Tomorrow' : 'Today';
+
+  if (level === 'low') {
+    return {
+      title: `Low risk for you ${when}`,
+      body: `Your main trigger (${primaryTrigger.toLowerCase()}) is low ${when}. A good day to go outside.`,
+    };
+  }
+
+  if (level === 'medium') {
+    if (topAggravator && !isNight) {
+      return {
+        title: `Moderate risk for you today`,
+        body: `${primaryTrigger} is at moderate levels. ${topAggravator} is also elevated today, which can amplify your reaction.`,
+      };
+    }
+    return {
+      title: `Moderate risk for you ${when}`,
+      body: `${primaryTrigger} is at moderate levels ${when} — your main trigger. You may want to take precautions.`,
+    };
+  }
+
+  // high
+  if (topAggravator) {
+    return isNight
+      ? {
+          title: `⚠️ Tomorrow could be a bad day for you`,
+          body: `${primaryTrigger} will be high — and ${topAggravator} is also elevated, which tends to make your symptoms worse. Consider preparing tonight.`,
+        }
+      : {
+          title: `⚠️ Tough allergy conditions for you today`,
+          body: `${primaryTrigger} is elevated. ${topAggravator} is also high today, which can amplify your reaction — take your medication early.`,
+        };
+  }
+
+  return isNight
+    ? {
+        title: `⚠️ ${Tomorrow} looks tough for you`,
+        body: `${primaryTrigger} will be high tomorrow. Prepare your medication tonight.`,
+      }
+    : {
+        title: `⚠️ High risk for you today`,
+        body: `${primaryTrigger} is elevated — your main trigger. Consider taking antihistamines before going out.`,
+      };
+}
+
 // ─── Smart alert scheduling ──────────────────────────────────────────────────
 
 /**
@@ -116,6 +169,7 @@ function buildCustomContent(
  * Night schedules (hour >= 18 or < 5) show tomorrow's predicted forecast.
  * Morning/day schedules (5–17) show today's real-time pollen levels.
  * Pro custom schedules show per-allergen breakdown instead of threshold logic.
+ * Pro users with an allergy profile get personalised copy naming their trigger.
  */
 export async function rescheduleAlertSchedules(params: {
   schedules: AlertSchedule[];
@@ -123,6 +177,11 @@ export async function rescheduleAlertSchedules(params: {
   todayData: DailyRiskScore | null;
   tomorrowData: DailyRiskScore | null;
   isPro: boolean;
+  allergyProfile?: {
+    phase: 1 | 2;
+    primaryTrigger?: string;
+    topAggravator?: string;
+  };
 }): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -142,6 +201,14 @@ export async function rescheduleAlertSchedules(params: {
     if (schedule.type === 'custom' && params.isPro) {
       if (!data.pollenLevels) continue;
       content = buildCustomContent(schedule.allergens, data.pollenLevels, night);
+    } else if (params.isPro && params.allergyProfile?.primaryTrigger) {
+      if (!meetsThreshold(data.level, schedule.threshold)) continue;
+      content = buildPersonalisedContent(
+        data.level,
+        night,
+        params.allergyProfile.primaryTrigger,
+        params.allergyProfile.topAggravator,
+      );
     } else {
       if (!meetsThreshold(data.level, schedule.threshold)) continue;
       content = buildThresholdContent(data.level, night);

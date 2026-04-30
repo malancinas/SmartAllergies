@@ -41,7 +41,10 @@
       "Bash(git -C /c/Users/malan/git/SmartAllergies log --oneline --follow -10 -- app.config.js)",
       "Bash(git -C /c/Users/malan/git/SmartAllergies show c7836b2:app.config.js)",
       "Bash(node)",
-      "Bash(./gradlew signingReport)"
+      "Bash(./gradlew signingReport)",
+      "Bash(grep -r \"CorrelationDataRow\" c:\\\\\\\\Users\\\\\\\\malan\\\\\\\\git\\\\\\\\SmartAllergies\\\\\\\\src --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(grep -E \"\\(tensorflow|onnx|ml|tflite\\)\" c:\\\\\\\\Users\\\\\\\\malan\\\\\\\\git\\\\\\\\SmartAllergies\\\\\\\\package.json)",
+      "PowerShell(Select-String -Path \"c:\\\\Users\\\\malan\\\\git\\\\SmartAllergies\\\\package.json\" -Pattern \"\\(tensorflow|onnx|ml|tflite\\)\" -Simple)"
     ]
   }
 }

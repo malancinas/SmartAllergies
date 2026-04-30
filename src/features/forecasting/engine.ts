@@ -11,7 +11,7 @@
 
 import type { DailyPollenForecast, PollenLevel } from '@/features/pollen/types';
 import type { SymptomLog } from '@/features/symptoms/types';
-import type { CorrelationResult } from '@/features/insights/correlationEngine';
+import type { CorrelationResult, AdvancedAllergyProfile } from '@/features/insights/types';
 import type { CorrelationWeights, DailyRiskScore, RiskLevel } from './types';
 
 const MIN_PAIRED_DAYS = 7;
@@ -163,6 +163,27 @@ export function weightsToAllergenProfile(weights: CorrelationWeights): string[] 
 export function correlationsToWeights(correlations: CorrelationResult[]): CorrelationWeights {
   const get = (key: string) =>
     Math.max(0, correlations.find((r) => r.key === key)?.correlation ?? 0);
+
+  const rawGrass = get('grassPollen');
+  const rawTree = get('treePollen');
+  const rawWeed = get('weedPollen');
+
+  const total = rawGrass + rawTree + rawWeed;
+  if (total === 0) return { tree: 0.33, grass: 0.33, weed: 0.33, personalised: false };
+
+  return {
+    tree: rawTree / total,
+    grass: rawGrass / total,
+    weed: rawWeed / total,
+    personalised: true,
+  };
+}
+
+export function advancedProfileToWeights(profile: AdvancedAllergyProfile): CorrelationWeights {
+  const get = (key: string) => {
+    const t = profile.triggers.find((r) => r.key === key);
+    return Math.max(0, t?.partialBeta ?? 0);
+  };
 
   const rawGrass = get('grassPollen');
   const rawTree = get('treePollen');

@@ -18,37 +18,45 @@ const DAYS: Array<{
   treePollen?: number;
   weedPollen?: number;
   pm25?: number;
+  pm10?: number;
+  ozone?: number;
+  no2?: number;
+  so2?: number;
+  uvIndex?: number;
 }> = [
-  { daysAgo: 30, severity: 3, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 12, treePollen: 8 },
-  { daysAgo: 29, severity: 4, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 8, grassPollen: 15, treePollen: 10 },
-  { daysAgo: 28, severity: 3, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 14, grassPollen: 14, treePollen: 9 },
-  { daysAgo: 27, severity: 5, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 10, medications: 'Cetirizine', grassPollen: 20, treePollen: 14 },
-  { daysAgo: 26, severity: 4, symptoms: ['itchy_eyes', 'congestion'], timeSlot: 'midday', hour: 12, medications: 'Cetirizine', grassPollen: 22, treePollen: 15 },
-  { daysAgo: 25, severity: 6, symptoms: ['sneezing', 'runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine', grassPollen: 28, treePollen: 18, pm25: 12 },
-  { daysAgo: 24, severity: 7, symptoms: ['sneezing', 'congestion', 'headache'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 35, treePollen: 22, pm25: 14 },
-  { daysAgo: 23, severity: 5, symptoms: ['runny_nose', 'congestion'], timeSlot: 'afternoon', hour: 15, medications: 'Flonase', grassPollen: 30, treePollen: 19 },
-  { daysAgo: 22, severity: 8, symptoms: ['sneezing', 'itchy_eyes', 'runny_nose', 'congestion'], timeSlot: 'morning', hour: 7, medications: 'Cetirizine, Flonase', grassPollen: 42, treePollen: 28, pm25: 18 },
-  { daysAgo: 21, severity: 7, symptoms: ['sneezing', 'itchy_eyes', 'headache'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine, Flonase', grassPollen: 40, treePollen: 26, pm25: 16 },
-  { daysAgo: 20, severity: 8, symptoms: ['sneezing', 'runny_nose', 'itchy_eyes', 'skin_reaction'], timeSlot: 'midday', hour: 12, medications: 'Cetirizine, Flonase, Piriton', grassPollen: 45, treePollen: 30, pm25: 20 },
-  { daysAgo: 19, severity: 9, symptoms: ['sneezing', 'congestion', 'headache', 'itchy_eyes'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 50, treePollen: 33, pm25: 22 },
-  { daysAgo: 18, severity: 9, symptoms: ['sneezing', 'itchy_eyes', 'runny_nose', 'congestion', 'headache'], timeSlot: 'early_morning', hour: 6, medications: 'Cetirizine, Flonase', grassPollen: 52, treePollen: 35, pm25: 24 },
-  { daysAgo: 17, severity: 8, symptoms: ['sneezing', 'runny_nose', 'congestion'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine, Flonase', grassPollen: 48, treePollen: 31, pm25: 20 },
-  { daysAgo: 16, severity: 7, symptoms: ['itchy_eyes', 'runny_nose', 'sneezing'], timeSlot: 'afternoon', hour: 14, medications: 'Cetirizine', grassPollen: 44, treePollen: 28, pm25: 17 },
-  { daysAgo: 15, severity: 6, symptoms: ['sneezing', 'congestion'], timeSlot: 'morning', hour: 10, medications: 'Cetirizine', grassPollen: 38, treePollen: 24, pm25: 14 },
-  { daysAgo: 14, severity: 6, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine', grassPollen: 35, treePollen: 22 },
-  { daysAgo: 13, severity: 5, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'midday', hour: 13, medications: 'Cetirizine', grassPollen: 30, treePollen: 18 },
-  { daysAgo: 12, severity: 7, symptoms: ['sneezing', 'itchy_eyes', 'headache'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 38, treePollen: 25, pm25: 16 },
-  { daysAgo: 11, severity: 6, symptoms: ['congestion', 'sneezing'], timeSlot: 'evening', hour: 19, medications: 'Cetirizine', grassPollen: 32, treePollen: 21 },
-  { daysAgo: 10, severity: 5, symptoms: ['runny_nose', 'congestion'], timeSlot: 'afternoon', hour: 15, grassPollen: 28, treePollen: 18 },
-  { daysAgo: 9, severity: 4, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 9, grassPollen: 24, treePollen: 15 },
-  { daysAgo: 8, severity: 5, symptoms: ['runny_nose', 'sneezing'], timeSlot: 'morning', hour: 10, medications: 'Cetirizine', grassPollen: 26, treePollen: 16 },
-  { daysAgo: 7, severity: 4, symptoms: ['itchy_eyes'], timeSlot: 'midday', hour: 12, grassPollen: 20, treePollen: 13 },
-  { daysAgo: 6, severity: 3, symptoms: ['sneezing'], timeSlot: 'morning', hour: 8, grassPollen: 18, treePollen: 11 },
-  { daysAgo: 5, severity: 3, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 14, grassPollen: 16, treePollen: 10 },
-  { daysAgo: 4, severity: 4, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 9, grassPollen: 19, treePollen: 12 },
-  { daysAgo: 3, severity: 3, symptoms: ['congestion'], timeSlot: 'evening', hour: 20, grassPollen: 15, treePollen: 9 },
-  { daysAgo: 2, severity: 2, symptoms: ['sneezing'], timeSlot: 'morning', hour: 10, grassPollen: 12, treePollen: 7 },
-  { daysAgo: 1, severity: 3, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 9, grassPollen: 14, treePollen: 8 },
+  // Pollen rises steadily then peaks, tracking severity closely.
+  // Air quality stays at a realistic urban background with a couple of independent pollution spikes
+  // that do NOT coincide with high-severity days — this keeps its correlation lower than pollen.
+  { daysAgo: 30, severity: 3, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 12, treePollen: 8, weedPollen: 3, pm25: 18, pm10: 32, ozone: 68, no2: 35, so2: 6, uvIndex: 3 },
+  { daysAgo: 29, severity: 4, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 8, grassPollen: 15, treePollen: 10, weedPollen: 3, pm25: 9, pm10: 16, ozone: 60, no2: 22, so2: 4, uvIndex: 3 },
+  { daysAgo: 28, severity: 3, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 14, grassPollen: 14, treePollen: 9, weedPollen: 3, pm25: 22, pm10: 40, ozone: 62, no2: 38, so2: 7, uvIndex: 4 },
+  { daysAgo: 27, severity: 5, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 10, medications: 'Cetirizine', grassPollen: 20, treePollen: 14, weedPollen: 4, pm25: 10, pm10: 18, ozone: 61, no2: 24, so2: 4, uvIndex: 4 },
+  { daysAgo: 26, severity: 4, symptoms: ['itchy_eyes', 'congestion'], timeSlot: 'midday', hour: 12, medications: 'Cetirizine', grassPollen: 22, treePollen: 15, weedPollen: 4, pm25: 8, pm10: 15, ozone: 59, no2: 21, so2: 4, uvIndex: 5 },
+  { daysAgo: 25, severity: 6, symptoms: ['sneezing', 'runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine', grassPollen: 28, treePollen: 18, weedPollen: 5, pm25: 11, pm10: 20, ozone: 63, no2: 25, so2: 5, uvIndex: 5 },
+  { daysAgo: 24, severity: 7, symptoms: ['sneezing', 'congestion', 'headache'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 35, treePollen: 22, weedPollen: 5, pm25: 9, pm10: 16, ozone: 60, no2: 22, so2: 4, uvIndex: 5 },
+  { daysAgo: 23, severity: 5, symptoms: ['runny_nose', 'congestion'], timeSlot: 'afternoon', hour: 15, medications: 'Flonase', grassPollen: 30, treePollen: 19, weedPollen: 4, pm25: 19, pm10: 34, ozone: 65, no2: 33, so2: 6, uvIndex: 6 },
+  { daysAgo: 22, severity: 8, symptoms: ['sneezing', 'itchy_eyes', 'runny_nose', 'congestion'], timeSlot: 'morning', hour: 7, medications: 'Cetirizine, Flonase', grassPollen: 42, treePollen: 28, weedPollen: 6, pm25: 12, pm10: 22, ozone: 64, no2: 27, so2: 5, uvIndex: 6 },
+  { daysAgo: 21, severity: 7, symptoms: ['sneezing', 'itchy_eyes', 'headache'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine, Flonase', grassPollen: 40, treePollen: 26, weedPollen: 6, pm25: 10, pm10: 18, ozone: 62, no2: 24, so2: 4, uvIndex: 6 },
+  { daysAgo: 20, severity: 8, symptoms: ['sneezing', 'runny_nose', 'itchy_eyes', 'skin_reaction'], timeSlot: 'midday', hour: 12, medications: 'Cetirizine, Flonase, Piriton', grassPollen: 45, treePollen: 30, weedPollen: 7, pm25: 13, pm10: 23, ozone: 65, no2: 28, so2: 5, uvIndex: 7 },
+  { daysAgo: 19, severity: 9, symptoms: ['sneezing', 'congestion', 'headache', 'itchy_eyes'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 50, treePollen: 33, weedPollen: 7, pm25: 11, pm10: 20, ozone: 63, no2: 25, so2: 5, uvIndex: 7 },
+  { daysAgo: 18, severity: 9, symptoms: ['sneezing', 'itchy_eyes', 'runny_nose', 'congestion', 'headache'], timeSlot: 'early_morning', hour: 6, medications: 'Cetirizine, Flonase', grassPollen: 52, treePollen: 35, weedPollen: 8, pm25: 14, pm10: 25, ozone: 66, no2: 29, so2: 5, uvIndex: 7 },
+  { daysAgo: 17, severity: 8, symptoms: ['sneezing', 'runny_nose', 'congestion'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine, Flonase', grassPollen: 48, treePollen: 31, weedPollen: 7, pm25: 9, pm10: 16, ozone: 60, no2: 22, so2: 4, uvIndex: 6 },
+  { daysAgo: 16, severity: 7, symptoms: ['itchy_eyes', 'runny_nose', 'sneezing'], timeSlot: 'afternoon', hour: 14, medications: 'Cetirizine', grassPollen: 44, treePollen: 28, weedPollen: 6, pm25: 21, pm10: 38, ozone: 67, no2: 36, so2: 7, uvIndex: 6 },
+  { daysAgo: 15, severity: 6, symptoms: ['sneezing', 'congestion'], timeSlot: 'morning', hour: 10, medications: 'Cetirizine', grassPollen: 38, treePollen: 24, weedPollen: 6, pm25: 10, pm10: 18, ozone: 61, no2: 23, so2: 4, uvIndex: 6 },
+  { daysAgo: 14, severity: 6, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine', grassPollen: 35, treePollen: 22, weedPollen: 5, pm25: 8, pm10: 15, ozone: 59, no2: 21, so2: 4, uvIndex: 5 },
+  { daysAgo: 13, severity: 5, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'midday', hour: 13, medications: 'Cetirizine', grassPollen: 30, treePollen: 18, weedPollen: 5, pm25: 17, pm10: 31, ozone: 64, no2: 31, so2: 6, uvIndex: 5 },
+  { daysAgo: 12, severity: 7, symptoms: ['sneezing', 'itchy_eyes', 'headache'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 38, treePollen: 25, weedPollen: 6, pm25: 12, pm10: 22, ozone: 63, no2: 26, so2: 5, uvIndex: 5 },
+  { daysAgo: 11, severity: 6, symptoms: ['congestion', 'sneezing'], timeSlot: 'evening', hour: 19, medications: 'Cetirizine', grassPollen: 32, treePollen: 21, weedPollen: 5, pm25: 9, pm10: 16, ozone: 60, no2: 22, so2: 4, uvIndex: 4 },
+  { daysAgo: 10, severity: 5, symptoms: ['runny_nose', 'congestion'], timeSlot: 'afternoon', hour: 15, grassPollen: 28, treePollen: 18, weedPollen: 4, pm25: 20, pm10: 36, ozone: 66, no2: 34, so2: 6, uvIndex: 5 },
+  { daysAgo: 9, severity: 4, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 9, grassPollen: 24, treePollen: 15, weedPollen: 4, pm25: 8, pm10: 14, ozone: 58, no2: 20, so2: 4, uvIndex: 4 },
+  { daysAgo: 8, severity: 5, symptoms: ['runny_nose', 'sneezing'], timeSlot: 'morning', hour: 10, medications: 'Cetirizine', grassPollen: 26, treePollen: 16, weedPollen: 4, pm25: 10, pm10: 18, ozone: 61, no2: 23, so2: 4, uvIndex: 5 },
+  { daysAgo: 7, severity: 4, symptoms: ['itchy_eyes'], timeSlot: 'midday', hour: 12, grassPollen: 20, treePollen: 13, weedPollen: 3, pm25: 16, pm10: 29, ozone: 63, no2: 30, so2: 5, uvIndex: 5 },
+  { daysAgo: 6, severity: 3, symptoms: ['sneezing'], timeSlot: 'morning', hour: 8, grassPollen: 18, treePollen: 11, weedPollen: 3, pm25: 8, pm10: 14, ozone: 58, no2: 20, so2: 4, uvIndex: 4 },
+  { daysAgo: 5, severity: 3, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 14, grassPollen: 16, treePollen: 10, weedPollen: 3, pm25: 7, pm10: 13, ozone: 57, no2: 19, so2: 3, uvIndex: 4 },
+  { daysAgo: 4, severity: 4, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 9, grassPollen: 19, treePollen: 12, weedPollen: 3, pm25: 23, pm10: 41, ozone: 69, no2: 39, so2: 7, uvIndex: 4 },
+  { daysAgo: 3, severity: 3, symptoms: ['congestion'], timeSlot: 'evening', hour: 20, grassPollen: 15, treePollen: 9, weedPollen: 3, pm25: 9, pm10: 16, ozone: 59, no2: 21, so2: 4, uvIndex: 3 },
+  { daysAgo: 2, severity: 2, symptoms: ['sneezing'], timeSlot: 'morning', hour: 10, grassPollen: 12, treePollen: 7, weedPollen: 2, pm25: 7, pm10: 12, ozone: 56, no2: 18, so2: 3, uvIndex: 3 },
+  { daysAgo: 1, severity: 3, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 9, grassPollen: 14, treePollen: 8, weedPollen: 3, pm25: 8, pm10: 14, ozone: 58, no2: 20, so2: 4, uvIndex: 4 },
 ];
 
 function daysAgoISO(daysAgo: number, hour: number): string {
@@ -88,17 +96,19 @@ export async function seedTestLogs(): Promise<void> {
       );
     }
 
-    if (entry.grassPollen !== undefined || entry.treePollen !== undefined || entry.pm25 !== undefined) {
+    if (entry.grassPollen !== undefined) {
       await insertLogEnvironment({
         logId: id,
         date: dateStr,
         grassPollen: entry.grassPollen,
         treePollen: entry.treePollen,
-        weedPollen: 3,
+        weedPollen: entry.weedPollen,
         pm25: entry.pm25,
-        pm10: entry.pm25 ? entry.pm25 * 1.8 : undefined,
-        ozone: 60,
-        uvIndex: 4,
+        pm10: entry.pm10,
+        ozone: entry.ozone,
+        no2: entry.no2,
+        so2: entry.so2,
+        uvIndex: entry.uvIndex,
       });
     }
   }

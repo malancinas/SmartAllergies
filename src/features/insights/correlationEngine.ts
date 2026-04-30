@@ -1,12 +1,6 @@
 import type { CorrelationDataRow } from '@/services/database';
-
-export interface CorrelationResult {
-  key: string;
-  label: string;
-  category: 'pollen' | 'air_quality';
-  correlation: number;
-  dataPoints: number;
-}
+import type { CorrelationResult } from './types';
+export type { CorrelationResult } from './types';
 
 type FactorKey = keyof Omit<CorrelationDataRow, 'date' | 'maxSeverity'>;
 
