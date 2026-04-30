@@ -1,7 +1,7 @@
 import type { CorrelationDataRow } from '@/services/database';
 import type { AdvancedAllergyProfile, AggravatorResult, MedicationEffect, TriggerResult } from './types';
 
-export const MIN_DAYS_FOR_ADVANCED = 30;
+export const MIN_DAYS_FOR_ADVANCED = 14;
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 
@@ -113,9 +113,23 @@ const POLLEN_DOMAIN_THRESHOLDS: Record<PollenKey, number> = {
   weedPollen: 10,
 };
 
-const MIN_GROUP_DAYS = 5; // minimum days in each group to report medication effect
+const MIN_GROUP_DAYS = 3; // minimum days in each group to report medication effect
 
 // ─── Medication effect analysis ───────────────────────────────────────────────
+//
+// POST-V1 NOTE: MedicationEffect is computed but not surfaced in the UI.
+//
+// Why deferred: the comparison requires ≥3 medicated AND ≥3 unmedicated days
+// above the clinical pollen threshold (grass/tree ≥30, weed ≥10 grains/m³).
+// Most users will always medicate on bad days or never log medication at all,
+// so the card almost always shows a "log more unmedicated days" nudge — which
+// is unhelpful advice for allergy sufferers. There is also a causality risk:
+// users tend to medicate when they *expect* a bad day, so medicated days may
+// appear worse in the data even when medication helps.
+//
+// To revisit: validate sample sizes across a real user cohort, add a
+// propensity-score or lag-correction approach, and only surface the card when
+// the reduction is statistically meaningful (e.g. t-test p < 0.05).
 
 type LagPair = { pollen: number; severity: number; medicated: boolean };
 

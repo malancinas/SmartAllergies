@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Switch, Pressable, ScrollView, Linking, Alert } from 'react-native';
-import { seedTestLogs, seedTestLogs20, clearTestLogs } from '@/dev/seedTestData';
+import { seedTestLogs10, seedTestLogs15, seedTestLogs20, seedTestLogs30, seedTestLogs40, clearTestLogs } from '@/dev/seedTestData';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -13,6 +13,7 @@ import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAllergyProfileStore } from '@/stores/persistent/allergyProfileStore';
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
@@ -22,6 +23,7 @@ export function SettingsScreen() {
 
   const { tier, setTier } = useSubscriptionStore();
   const queryClient = useQueryClient();
+  const { clearCommittedProfile } = useAllergyProfileStore();
   const [seeding, setSeeding] = useState(false);
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
@@ -184,48 +186,36 @@ export function SettingsScreen() {
           <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
             Developer
           </Text>
-          <Pressable
-            onPress={async () => {
-              if (seeding) return;
-              setSeeding(true);
-              try {
-                await seedTestLogs20();
-                await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
-                await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
-                Alert.alert('Done', '20 days of test logs added.');
-              } catch (e) {
-                Alert.alert('Error', String(e));
-              } finally {
-                setSeeding(false);
-              }
-            }}
-            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
-          >
-            <Text className="text-base text-gray-900 dark:text-white">
-              {seeding ? 'Seeding…' : 'Seed 20 days of test logs'}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={async () => {
-              if (seeding) return;
-              setSeeding(true);
-              try {
-                await seedTestLogs();
-                await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
-                await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
-                Alert.alert('Done', '40 days of test logs added.');
-              } catch (e) {
-                Alert.alert('Error', String(e));
-              } finally {
-                setSeeding(false);
-              }
-            }}
-            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
-          >
-            <Text className="text-base text-gray-900 dark:text-white">
-              {seeding ? 'Seeding…' : 'Seed 40 days of test logs'}
-            </Text>
-          </Pressable>
+          {([
+            { label: '10 days', fn: seedTestLogs10 },
+            { label: '15 days', fn: seedTestLogs15 },
+            { label: '20 days', fn: seedTestLogs20 },
+            { label: '30 days', fn: seedTestLogs30 },
+            { label: '40 days', fn: seedTestLogs40 },
+          ] as const).map(({ label, fn }) => (
+            <Pressable
+              key={label}
+              onPress={async () => {
+                if (seeding) return;
+                setSeeding(true);
+                try {
+                  await fn();
+                  await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
+                  await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
+                  Alert.alert('Done', `${label} of test logs added.`);
+                } catch (e) {
+                  Alert.alert('Error', String(e));
+                } finally {
+                  setSeeding(false);
+                }
+              }}
+              className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+            >
+              <Text className="text-base text-gray-900 dark:text-white">
+                {seeding ? 'Seeding…' : `Seed ${label} of test logs`}
+              </Text>
+            </Pressable>
+          ))}
           <Pressable
             onPress={() =>
               Alert.alert('Clear test logs?', 'This removes all seeded test entries.', [
@@ -235,6 +225,7 @@ export function SettingsScreen() {
                   style: 'destructive',
                   onPress: async () => {
                     await clearTestLogs();
+                    clearCommittedProfile();
                     await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
                     await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
                     Alert.alert('Done', 'Test logs cleared.');

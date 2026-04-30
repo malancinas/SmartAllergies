@@ -124,8 +124,16 @@ export default function HomeScreen() {
                   : undefined
               }
               topTrigger={
-                effectiveIsPro && weights.personalised && profileData?.correlations.length
-                  ? profileData.correlations[0]
+                effectiveIsPro && weights.personalised && profileData
+                  ? profileData.advancedReady && profileData.advancedProfile?.primaryTrigger
+                    ? {
+                        key: profileData.advancedProfile.primaryTrigger.key,
+                        label: profileData.advancedProfile.primaryTrigger.label,
+                        category: 'pollen' as const,
+                        correlation: profileData.advancedProfile.primaryTrigger.pearsonR,
+                        dataPoints: profileData.advancedProfile.dataPoints,
+                      }
+                    : profileData.correlations.find((r) => r.category === 'pollen')
                   : undefined
               }
               onUpgradePress={() => showPaywall('Personalised risk score')}

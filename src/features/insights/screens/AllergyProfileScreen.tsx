@@ -5,7 +5,6 @@ import { Card } from '@/components/ui';
 import { useAllergyProfile } from '../hooks/useAllergyProfile';
 import { correlationStrength, type CorrelationResult } from '../correlationEngine';
 import type { AdvancedAllergyProfile, TriggerResult, MedicationEffect } from '../types';
-import { MIN_DAYS_FOR_ADVANCED } from '../advancedEngine';
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
@@ -30,6 +29,47 @@ function ProgressCard({ daysWithData, daysNeeded }: { daysWithData: number; days
       </View>
       <Text className="text-xs text-neutral-400 mt-1 text-right">
         {daysWithData} / {daysNeeded} days
+      </Text>
+    </Card>
+  );
+}
+
+function ModelLearningCard({ currentRSquared }: { currentRSquared: number }) {
+  const pct = Math.min(Math.round((currentRSquared / 0.15) * 100), 99);
+
+  const getMessage = () => {
+    if (currentRSquared < 0.05) {
+      return 'Your personalised ML model is just getting started — keep logging to help it learn your patterns.';
+    }
+    if (currentRSquared < 0.10) {
+      return "The model is picking up on your symptom patterns. It's getting clearer with every log.";
+    }
+    return "Almost there — the model has a strong signal and your full trigger breakdown is nearly ready.";
+  };
+
+  return (
+    <Card variant="outlined">
+      <View className="flex-row items-center justify-between mb-1">
+        <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">
+          ML model training
+        </Text>
+        <View className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900">
+          <Text className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+            Pearson active
+          </Text>
+        </View>
+      </View>
+      <Text className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+        {getMessage()}
+      </Text>
+      <View className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+        <View
+          className="h-full bg-primary-500 rounded-full"
+          style={{ width: `${pct}%` }}
+        />
+      </View>
+      <Text className="text-xs text-neutral-400 mt-1 text-right">
+        {pct}% of the way there
       </Text>
     </Card>
   );
@@ -68,15 +108,20 @@ function CorrelationBar({ result }: { result: CorrelationResult }) {
   );
 }
 
-function CorrelationSection({ title, results }: { title: string; results: CorrelationResult[] }) {
+function CorrelationSection({ title, subtitle, results }: { title: string; subtitle?: string; results: CorrelationResult[] }) {
   const visible = results.filter((r) => r.dataPoints > 0);
   if (visible.length === 0) return null;
 
   return (
     <Card variant="outlined">
-      <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-4">
-        {title}
-      </Text>
+      <View className="flex-row items-center justify-between mb-4">
+        <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200">
+          {title}
+        </Text>
+        {subtitle && (
+          <Text className="text-xs text-neutral-400">{subtitle}</Text>
+        )}
+      </View>
       {visible.map((r) => (
         <CorrelationBar key={r.key} result={r} />
       ))}
@@ -98,17 +143,41 @@ function confidenceLevel(profile: AdvancedAllergyProfile): 'low' | 'moderate' | 
   return 'low';
 }
 
-function ConfidenceChip({ profile }: { profile: AdvancedAllergyProfile }) {
-  const level = confidenceLevel(profile);
-  const configs = {
-    high: { label: 'High confidence', bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
-    moderate: { label: 'Building confidence', bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-300' },
-    low: { label: 'Early estimate', bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-500' },
-  };
-  const c = configs[level];
+function ModelStatusChip({ data }: { data: AllergyProfileData }) {
+  if (!data.ready) return null;
+
+  if (data.advancedReady && data.advancedProfile) {
+    const level = confidenceLevel(data.advancedProfile);
+    const r2 = (data.advancedProfile.rSquared * 100).toFixed(0);
+    const configs = {
+      high:     { label: `ML model · R²=${r2}%`, bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
+      moderate: { label: `ML model · R²=${r2}%`, bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-300' },
+      low:      { label: `ML model · R²=${r2}%`, bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-500' },
+    };
+    const c = configs[level];
+    return (
+      <View className={`self-start px-2.5 py-1 rounded-full ${c.bg}`}>
+        <Text className={`text-xs font-semibold ${c.text}`}>{c.label}</Text>
+      </View>
+    );
+  }
+
+  if (data.daysWithData >= data.advancedDaysNeeded) {
+    const pct = Math.min(Math.round((data.currentRSquared / 0.15) * 100), 99);
+    return (
+      <View className="self-start px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900">
+        <Text className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+          ML training · {pct}%
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View className={`self-start px-2.5 py-1 rounded-full ${c.bg}`}>
-      <Text className={`text-xs font-semibold ${c.text}`}>{c.label}</Text>
+    <View className="self-start px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900">
+      <Text className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+        Pearson · {data.daysWithData} days
+      </Text>
     </View>
   );
 }
@@ -152,6 +221,10 @@ function TriggerCard({ profile }: { profile: AdvancedAllergyProfile }) {
           {!profile.regressionStable
             ? ' · Breakdown will sharpen as more seasons are captured'
             : ''}
+        </Text>
+        <Text className="text-xs text-neutral-400 mt-1">
+          Ranked by unique contribution — a pollen ranked lower may still have a high individual
+          correlation if it moves closely in step with your primary trigger.
         </Text>
       </View>
     </Card>
@@ -236,7 +309,7 @@ function MedicationCard({ effect }: { effect: MedicationEffect }) {
       </View>
 
       <Text className="text-xs text-neutral-400">
-        Compared within high {effect.primaryTriggerLabel.toLowerCase()} days only · based on {lagLabel}
+        Compared within high {effect.primaryTriggerLabel.toLowerCase()} days only (≥{effect.pollenThreshold} grains/m³) · based on {lagLabel}
       </Text>
     </Card>
   );
@@ -246,10 +319,12 @@ function MedicationCard({ effect }: { effect: MedicationEffect }) {
 
 export default function AllergyProfileScreen() {
   const { data, loading, error } = useAllergyProfile();
+  const modelLearning = data && !data.advancedReady && data.daysWithData >= data.advancedDaysNeeded;
   const [showPearson, setShowPearson] = useState(false);
 
   const pollenResults = data?.correlations.filter((r) => r.category === 'pollen') ?? [];
   const aqResults = data?.correlations.filter((r) => r.category === 'air_quality') ?? [];
+
 
   return (
     <Screen>
@@ -262,9 +337,7 @@ export default function AllergyProfileScreen() {
               <Text className="text-2xl font-bold text-neutral-900 dark:text-white">
                 Allergy profile
               </Text>
-              {data?.advancedReady && data.advancedProfile && (
-                <ConfidenceChip profile={data.advancedProfile} />
-              )}
+              {data && <ModelStatusChip data={data} />}
             </View>
             <Text className="text-sm text-neutral-500 mt-1">
               How your environment affects your symptoms
@@ -294,9 +367,14 @@ export default function AllergyProfileScreen() {
                 </Card>
               )}
 
-              {/* Building Phase 1 */}
+              {/* Building Phase 1 — day count progress */}
               {!data.ready && data.daysWithData > 0 && (
                 <ProgressCard daysWithData={data.daysWithData} daysNeeded={data.daysNeeded} />
+              )}
+
+              {/* Phase 1 → Phase 2 — model quality progress */}
+              {modelLearning && (
+                <ModelLearningCard currentRSquared={data.currentRSquared} />
               )}
 
               {/* ── Phase 2 ── */}
@@ -304,24 +382,22 @@ export default function AllergyProfileScreen() {
                 <>
                   <TriggerCard profile={data.advancedProfile} />
                   <AggravatorCard profile={data.advancedProfile} />
-                  {data.advancedProfile.medicationEffect && (
-                    <MedicationCard effect={data.advancedProfile.medicationEffect} />
-                  )}
 
-                  <Pressable
-                    onPress={() => setShowPearson((v) => !v)}
-                    className="flex-row items-center justify-between py-2"
-                  >
-                    <Text className="text-sm text-primary-600 dark:text-primary-400 font-medium">
-                      {showPearson ? 'Hide' : 'View'} full correlation data
-                    </Text>
-                    <Text className="text-sm text-neutral-400">{showPearson ? '▲' : '▼'}</Text>
-                  </Pressable>
-
-                  {showPearson && (
+                  {aqResults.length > 0 && (
                     <>
-                      <CorrelationSection title="Pollen" results={pollenResults} />
-                      <CorrelationSection title="Air quality" results={aqResults} />
+                      <Pressable
+                        onPress={() => setShowPearson((v) => !v)}
+                        className="flex-row items-center justify-between py-2"
+                      >
+                        <Text className="text-sm text-primary-600 dark:text-primary-400 font-medium">
+                          {showPearson ? 'Hide' : 'View'} air quality correlations
+                        </Text>
+                        <Text className="text-sm text-neutral-400">{showPearson ? '▲' : '▼'}</Text>
+                      </Pressable>
+
+                      {showPearson && (
+                        <CorrelationSection title="Air quality" results={aqResults} />
+                      )}
                     </>
                   )}
                 </>
@@ -347,30 +423,9 @@ export default function AllergyProfileScreen() {
                     </Card>
                   )}
 
-                  <CorrelationSection title="Pollen" results={pollenResults} />
-                  <CorrelationSection title="Air quality" results={aqResults} />
+                  <CorrelationSection title="Pollen" subtitle="Pearson correlation" results={pollenResults} />
+                  <CorrelationSection title="Air quality" subtitle="Pearson correlation" results={aqResults} />
 
-                  {/* Advanced unlock progress */}
-                  <Card variant="outlined">
-                    <Text className="text-xs font-semibold text-neutral-500 dark:text-neutral-400 mb-2">
-                      Advanced analysis
-                    </Text>
-                    <Text className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">
-                      After {MIN_DAYS_FOR_ADVANCED} days of logging, you'll unlock trigger vs. aggravator
-                      analysis — showing exactly what causes your reactions and what makes them worse.
-                    </Text>
-                    <View className="h-1.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-                      <View
-                        className="h-full bg-primary-400 rounded-full"
-                        style={{
-                          width: `${Math.round((data.daysWithData / MIN_DAYS_FOR_ADVANCED) * 100)}%`,
-                        }}
-                      />
-                    </View>
-                    <Text className="text-xs text-neutral-400 mt-1 text-right">
-                      {data.daysWithData} / {MIN_DAYS_FOR_ADVANCED} days
-                    </Text>
-                  </Card>
                 </>
               )}
             </>
