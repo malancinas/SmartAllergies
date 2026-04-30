@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,6 +33,20 @@ export default function HomeScreen() {
   const location = usePollenStore((s) => s.location);
   const locationLabel = usePollenStore((s) => s.locationLabel);
   const allergenProfile = useSettingsStore((s) => s.allergenProfile);
+
+  // Normalise ML trigger betas into per-allergen weights for the peak hours card.
+  // Only active when Pro + the advanced model has converged (≥14 days of logs).
+  const triggerWeights = useMemo(() => {
+    if (!effectiveIsPro || !profileData?.advancedProfile) return undefined;
+    const keyMap: Record<string, string> = { grassPollen: 'grass', treePollen: 'tree', weedPollen: 'weed' };
+    const relevant = profileData.advancedProfile.triggers
+      .filter((t) => t.partialBeta > 0 && allergenProfile.includes(keyMap[t.key]))
+      .map((t) => ({ allergen: keyMap[t.key], beta: t.partialBeta }));
+    if (relevant.length === 0) return undefined;
+    const total = relevant.reduce((sum, t) => sum + t.beta, 0);
+    return Object.fromEntries(relevant.map((t) => [t.allergen, t.beta / total]));
+  }, [effectiveIsPro, profileData?.advancedProfile, allergenProfile]);
+
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [adPlaying, setAdPlaying] = useState(false);
 
@@ -166,6 +180,8 @@ export default function HomeScreen() {
             todayHourly={todayHourly}
             isPro={effectiveIsPro}
             onUpgradePress={() => showPaywall('Peak pollen hours')}
+            activeAllergens={allergenProfile}
+            triggerWeights={triggerWeights}
           />
 
           {/* Weather context */}

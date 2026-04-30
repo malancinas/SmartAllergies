@@ -6,6 +6,10 @@ interface Props {
   todayHourly: HourlyPollenPoint[];
   isPro: boolean;
   onUpgradePress: () => void;
+  /** Which allergen types to include — from the user's allergen profile setting */
+  activeAllergens: string[];
+  /** Beta-normalised weights per allergen type — present when the ML model is active (Pro only) */
+  triggerWeights?: Partial<Record<string, number>>;
 }
 
 function formatHour(isoTime: string): string {
@@ -22,13 +26,31 @@ interface WindowResult {
   avgTotal: number;
 }
 
-function findBestWindow(points: HourlyPollenPoint[], windowSize = 3): WindowResult | null {
+function pollenScore(
+  p: HourlyPollenPoint,
+  activeAllergens: string[],
+  weights?: Partial<Record<string, number>>,
+): number {
+  const types = (['tree', 'grass', 'weed'] as const).filter((a) => activeAllergens.includes(a));
+  if (types.length === 0) return p.tree + p.grass + p.weed;
+  if (weights) {
+    return types.reduce((sum, a) => sum + p[a] * (weights[a] ?? 0), 0);
+  }
+  return types.reduce((sum, a) => sum + p[a], 0);
+}
+
+function findBestWindow(
+  points: HourlyPollenPoint[],
+  activeAllergens: string[],
+  weights?: Partial<Record<string, number>>,
+  windowSize = 3,
+): WindowResult | null {
   if (points.length < windowSize) return null;
   let bestAvg = Infinity;
   let bestIdx = 0;
   for (let i = 0; i <= points.length - windowSize; i++) {
     const avg =
-      points.slice(i, i + windowSize).reduce((sum, p) => sum + p.tree + p.grass + p.weed, 0) /
+      points.slice(i, i + windowSize).reduce((sum, p) => sum + pollenScore(p, activeAllergens, weights), 0) /
       windowSize;
     if (avg < bestAvg) {
       bestAvg = avg;
@@ -42,13 +64,18 @@ function findBestWindow(points: HourlyPollenPoint[], windowSize = 3): WindowResu
   };
 }
 
-function findPeakWindow(points: HourlyPollenPoint[], windowSize = 3): WindowResult | null {
+function findPeakWindow(
+  points: HourlyPollenPoint[],
+  activeAllergens: string[],
+  weights?: Partial<Record<string, number>>,
+  windowSize = 3,
+): WindowResult | null {
   if (points.length < windowSize) return null;
   let peakAvg = -Infinity;
   let peakIdx = 0;
   for (let i = 0; i <= points.length - windowSize; i++) {
     const avg =
-      points.slice(i, i + windowSize).reduce((sum, p) => sum + p.tree + p.grass + p.weed, 0) /
+      points.slice(i, i + windowSize).reduce((sum, p) => sum + pollenScore(p, activeAllergens, weights), 0) /
       windowSize;
     if (avg > peakAvg) {
       peakAvg = avg;
@@ -62,7 +89,7 @@ function findPeakWindow(points: HourlyPollenPoint[], windowSize = 3): WindowResu
   };
 }
 
-export function PeakHoursCard({ todayHourly, isPro, onUpgradePress }: Props) {
+export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllergens, triggerWeights }: Props) {
   if (!isPro) {
     return (
       <TouchableOpacity activeOpacity={0.8} onPress={onUpgradePress}>
@@ -108,8 +135,8 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress }: Props) {
     return hour >= 6 && hour <= 21;
   });
 
-  const best = findBestWindow(daytimeHours);
-  const peak = findPeakWindow(daytimeHours);
+  const best = findBestWindow(daytimeHours, activeAllergens, triggerWeights);
+  const peak = findPeakWindow(daytimeHours, activeAllergens, triggerWeights);
 
   // If all data is zero (outside coverage) or no data yet, show a placeholder
   const allZero = todayHourly.length > 0 && todayHourly.every((h) => h.tree + h.grass + h.weed === 0);
