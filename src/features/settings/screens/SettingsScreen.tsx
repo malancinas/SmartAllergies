@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Switch, Pressable, ScrollView, Linking, Alert } from 'react-native';
-import { seedTestLogs, clearTestLogs } from '@/dev/seedTestData';
+import { seedTestLogs, seedTestLogs20, clearTestLogs } from '@/dev/seedTestData';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -189,10 +189,10 @@ export function SettingsScreen() {
               if (seeding) return;
               setSeeding(true);
               try {
-                await seedTestLogs();
+                await seedTestLogs20();
                 await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
                 await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
-                Alert.alert('Done', '30 days of test logs added.');
+                Alert.alert('Done', '20 days of test logs added.');
               } catch (e) {
                 Alert.alert('Error', String(e));
               } finally {
@@ -202,7 +202,28 @@ export function SettingsScreen() {
             className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
           >
             <Text className="text-base text-gray-900 dark:text-white">
-              {seeding ? 'Seeding…' : 'Seed 30 days of test logs'}
+              {seeding ? 'Seeding…' : 'Seed 20 days of test logs'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              if (seeding) return;
+              setSeeding(true);
+              try {
+                await seedTestLogs();
+                await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
+                await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
+                Alert.alert('Done', '40 days of test logs added.');
+              } catch (e) {
+                Alert.alert('Error', String(e));
+              } finally {
+                setSeeding(false);
+              }
+            }}
+            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+          >
+            <Text className="text-base text-gray-900 dark:text-white">
+              {seeding ? 'Seeding…' : 'Seed 40 days of test logs'}
             </Text>
           </Pressable>
           <Pressable

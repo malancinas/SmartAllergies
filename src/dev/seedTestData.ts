@@ -6,8 +6,7 @@ function makeId(daysAgo: number, index: number): string {
 
 type Symptom = 'sneezing' | 'itchy_eyes' | 'runny_nose' | 'congestion' | 'skin_reaction' | 'headache' | 'none';
 
-// Realistic 30-day scenario: mild symptoms early on, peaking mid-period, tapering off
-const DAYS: Array<{
+type DayEntry = {
   daysAgo: number;
   severity: number;
   symptoms: Symptom[];
@@ -23,10 +22,23 @@ const DAYS: Array<{
   no2?: number;
   so2?: number;
   uvIndex?: number;
-}> = [
+};
+
+// 40-day scenario: early season build-up, peaking mid-period, tapering off
+const DAYS: DayEntry[] = [
   // Pollen rises steadily then peaks, tracking severity closely.
   // Air quality stays at a realistic urban background with a couple of independent pollution spikes
   // that do NOT coincide with high-severity days — this keeps its correlation lower than pollen.
+  { daysAgo: 40, severity: 1, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 4, treePollen: 3, weedPollen: 1, pm25: 10, pm10: 18, ozone: 55, no2: 20, so2: 3, uvIndex: 2 },
+  { daysAgo: 39, severity: 2, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 8, grassPollen: 5, treePollen: 3, weedPollen: 1, pm25: 9, pm10: 16, ozone: 54, no2: 19, so2: 3, uvIndex: 2 },
+  { daysAgo: 38, severity: 1, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 14, grassPollen: 5, treePollen: 4, weedPollen: 1, pm25: 11, pm10: 20, ozone: 56, no2: 21, so2: 3, uvIndex: 2 },
+  { daysAgo: 37, severity: 2, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 10, grassPollen: 6, treePollen: 4, weedPollen: 1, pm25: 8, pm10: 15, ozone: 55, no2: 18, so2: 3, uvIndex: 3 },
+  { daysAgo: 36, severity: 2, symptoms: ['runny_nose'], timeSlot: 'midday', hour: 12, grassPollen: 7, treePollen: 5, weedPollen: 2, pm25: 19, pm10: 34, ozone: 62, no2: 32, so2: 6, uvIndex: 3 },
+  { daysAgo: 35, severity: 3, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 9, grassPollen: 8, treePollen: 5, weedPollen: 2, pm25: 9, pm10: 16, ozone: 57, no2: 21, so2: 3, uvIndex: 3 },
+  { daysAgo: 34, severity: 2, symptoms: ['congestion'], timeSlot: 'evening', hour: 19, grassPollen: 8, treePollen: 5, weedPollen: 2, pm25: 10, pm10: 18, ozone: 58, no2: 22, so2: 4, uvIndex: 3 },
+  { daysAgo: 33, severity: 3, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 8, grassPollen: 9, treePollen: 6, weedPollen: 2, pm25: 8, pm10: 14, ozone: 56, no2: 19, so2: 3, uvIndex: 3 },
+  { daysAgo: 32, severity: 3, symptoms: ['itchy_eyes', 'sneezing'], timeSlot: 'morning', hour: 10, grassPollen: 10, treePollen: 7, weedPollen: 2, pm25: 22, pm10: 39, ozone: 65, no2: 37, so2: 7, uvIndex: 3 },
+  { daysAgo: 31, severity: 3, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 9, grassPollen: 11, treePollen: 7, weedPollen: 3, pm25: 9, pm10: 16, ozone: 58, no2: 21, so2: 3, uvIndex: 3 },
   { daysAgo: 30, severity: 3, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 12, treePollen: 8, weedPollen: 3, pm25: 18, pm10: 32, ozone: 68, no2: 35, so2: 6, uvIndex: 3 },
   { daysAgo: 29, severity: 4, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 8, grassPollen: 15, treePollen: 10, weedPollen: 3, pm25: 9, pm10: 16, ozone: 60, no2: 22, so2: 4, uvIndex: 3 },
   { daysAgo: 28, severity: 3, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 14, grassPollen: 14, treePollen: 9, weedPollen: 3, pm25: 22, pm10: 40, ozone: 62, no2: 38, so2: 7, uvIndex: 4 },
@@ -83,6 +95,78 @@ export async function seedTestLogs(): Promise<void> {
       loggedAt,
       entry.severity,
       51.5074,   // London coords for consistency
+      -0.1278,
+      null,
+      entry.medications ?? null,
+    );
+
+    for (const symptom of entry.symptoms) {
+      await db.runAsync(
+        `INSERT OR IGNORE INTO log_symptoms (log_id, symptom) VALUES (?, ?)`,
+        id,
+        symptom,
+      );
+    }
+
+    if (entry.grassPollen !== undefined) {
+      await insertLogEnvironment({
+        logId: id,
+        date: dateStr,
+        grassPollen: entry.grassPollen,
+        treePollen: entry.treePollen,
+        weedPollen: entry.weedPollen,
+        pm25: entry.pm25,
+        pm10: entry.pm10,
+        ozone: entry.ozone,
+        no2: entry.no2,
+        so2: entry.so2,
+        uvIndex: entry.uvIndex,
+      });
+    }
+  }
+}
+
+// 20-day scenario: clear pollen-driven pattern for testing Pearson correlation
+const DAYS_20: DayEntry[] = [
+  { daysAgo: 20, severity: 2, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 8, treePollen: 5, weedPollen: 2, pm25: 10, pm10: 18, ozone: 58, no2: 22, so2: 4, uvIndex: 3 },
+  { daysAgo: 19, severity: 3, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 8, grassPollen: 12, treePollen: 8, weedPollen: 2, pm25: 9, pm10: 16, ozone: 57, no2: 21, so2: 3, uvIndex: 3 },
+  { daysAgo: 18, severity: 2, symptoms: ['runny_nose'], timeSlot: 'afternoon', hour: 15, grassPollen: 10, treePollen: 6, weedPollen: 2, pm25: 20, pm10: 36, ozone: 63, no2: 33, so2: 6, uvIndex: 4 },
+  { daysAgo: 17, severity: 4, symptoms: ['sneezing', 'itchy_eyes'], timeSlot: 'morning', hour: 9, grassPollen: 18, treePollen: 12, weedPollen: 3, pm25: 8, pm10: 15, ozone: 59, no2: 21, so2: 4, uvIndex: 4 },
+  { daysAgo: 16, severity: 5, symptoms: ['sneezing', 'congestion', 'itchy_eyes'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine', grassPollen: 24, treePollen: 16, weedPollen: 4, pm25: 11, pm10: 20, ozone: 61, no2: 24, so2: 4, uvIndex: 5 },
+  { daysAgo: 15, severity: 4, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'midday', hour: 12, medications: 'Cetirizine', grassPollen: 22, treePollen: 14, weedPollen: 4, pm25: 9, pm10: 17, ozone: 60, no2: 22, so2: 4, uvIndex: 5 },
+  { daysAgo: 14, severity: 6, symptoms: ['sneezing', 'runny_nose', 'congestion'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine', grassPollen: 30, treePollen: 20, weedPollen: 5, pm25: 21, pm10: 38, ozone: 66, no2: 35, so2: 6, uvIndex: 5 },
+  { daysAgo: 13, severity: 7, symptoms: ['sneezing', 'itchy_eyes', 'headache', 'congestion'], timeSlot: 'morning', hour: 7, medications: 'Cetirizine, Flonase', grassPollen: 38, treePollen: 25, weedPollen: 6, pm25: 10, pm10: 18, ozone: 62, no2: 24, so2: 4, uvIndex: 6 },
+  { daysAgo: 12, severity: 8, symptoms: ['sneezing', 'runny_nose', 'itchy_eyes', 'congestion'], timeSlot: 'early_morning', hour: 6, medications: 'Cetirizine, Flonase', grassPollen: 44, treePollen: 29, weedPollen: 7, pm25: 12, pm10: 22, ozone: 63, no2: 26, so2: 5, uvIndex: 6 },
+  { daysAgo: 11, severity: 7, symptoms: ['sneezing', 'congestion', 'headache'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 40, treePollen: 26, weedPollen: 6, pm25: 9, pm10: 16, ozone: 61, no2: 23, so2: 4, uvIndex: 6 },
+  { daysAgo: 10, severity: 6, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'afternoon', hour: 14, medications: 'Cetirizine', grassPollen: 34, treePollen: 22, weedPollen: 5, pm25: 8, pm10: 14, ozone: 59, no2: 21, so2: 4, uvIndex: 5 },
+  { daysAgo: 9, severity: 5, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 9, medications: 'Cetirizine', grassPollen: 28, treePollen: 18, weedPollen: 5, pm25: 22, pm10: 40, ozone: 67, no2: 37, so2: 7, uvIndex: 5 },
+  { daysAgo: 8, severity: 6, symptoms: ['sneezing', 'itchy_eyes', 'headache'], timeSlot: 'morning', hour: 8, medications: 'Cetirizine, Flonase', grassPollen: 32, treePollen: 21, weedPollen: 5, pm25: 11, pm10: 20, ozone: 62, no2: 25, so2: 5, uvIndex: 5 },
+  { daysAgo: 7, severity: 4, symptoms: ['congestion', 'sneezing'], timeSlot: 'midday', hour: 12, medications: 'Cetirizine', grassPollen: 22, treePollen: 14, weedPollen: 4, pm25: 9, pm10: 16, ozone: 60, no2: 22, so2: 4, uvIndex: 5 },
+  { daysAgo: 6, severity: 3, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 16, treePollen: 10, weedPollen: 3, pm25: 8, pm10: 14, ozone: 58, no2: 20, so2: 3, uvIndex: 4 },
+  { daysAgo: 5, severity: 4, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'afternoon', hour: 15, grassPollen: 20, treePollen: 13, weedPollen: 4, pm25: 18, pm10: 32, ozone: 64, no2: 30, so2: 5, uvIndex: 4 },
+  { daysAgo: 4, severity: 3, symptoms: ['sneezing', 'runny_nose'], timeSlot: 'morning', hour: 10, grassPollen: 17, treePollen: 11, weedPollen: 3, pm25: 9, pm10: 16, ozone: 59, no2: 21, so2: 4, uvIndex: 4 },
+  { daysAgo: 3, severity: 2, symptoms: ['congestion'], timeSlot: 'evening', hour: 20, grassPollen: 12, treePollen: 8, weedPollen: 2, pm25: 7, pm10: 13, ozone: 57, no2: 19, so2: 3, uvIndex: 3 },
+  { daysAgo: 2, severity: 2, symptoms: ['sneezing'], timeSlot: 'morning', hour: 9, grassPollen: 11, treePollen: 7, weedPollen: 2, pm25: 8, pm10: 14, ozone: 58, no2: 20, so2: 3, uvIndex: 3 },
+  { daysAgo: 1, severity: 3, symptoms: ['runny_nose', 'itchy_eyes'], timeSlot: 'morning', hour: 8, grassPollen: 14, treePollen: 9, weedPollen: 3, pm25: 8, pm10: 15, ozone: 59, no2: 21, so2: 4, uvIndex: 4 },
+];
+
+export async function seedTestLogs20(): Promise<void> {
+  const db = await getDatabase();
+
+  for (let i = 0; i < DAYS_20.length; i++) {
+    const entry = DAYS_20[i];
+    const id = makeId(entry.daysAgo, i + 100);
+    const loggedAt = daysAgoISO(entry.daysAgo, entry.hour);
+    const dateStr = loggedAt.slice(0, 10);
+
+    await db.runAsync(
+      `INSERT INTO symptom_logs (id, logged_at, created_at, severity, latitude, longitude, notes, medications)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      id,
+      loggedAt,
+      loggedAt,
+      entry.severity,
+      51.5074,
       -0.1278,
       null,
       entry.medications ?? null,
