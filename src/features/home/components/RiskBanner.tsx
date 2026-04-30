@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import type { RiskLevel } from '@/features/forecasting/types';
 import type { CorrelationResult } from '@/features/insights/correlationEngine';
-import { correlationStrength } from '@/features/insights/correlationEngine';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -64,18 +63,70 @@ const TRIGGER_EMOJI: Record<string, string> = {
   dust: '🟤',
 };
 
+const ALLERGEN_META: Record<string, { emoji: string; label: string }> = {
+  tree: { emoji: '🌳', label: 'Tree' },
+  grass: { emoji: '🌾', label: 'Grass' },
+  weed: { emoji: '🌿', label: 'Weed' },
+};
+
+function allergenDisplayLabel(allergens: string[]): { emoji: string; name: string } {
+  const active = allergens.filter((a) => ALLERGEN_META[a]);
+  if (active.length === 0) return { emoji: '🌿', name: 'None selected' };
+  const names = active.map((a) => ALLERGEN_META[a].label).join(', ');
+  return { emoji: ALLERGEN_META[active[0]].emoji, name: names + ' pollen' };
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface RiskBannerProps {
   level: RiskLevel;
   personalised: boolean;
   isPro: boolean;
-  /** Days still needed before profile is ready (Pro only, while building) */
+  /** 'model' = ML-derived triggers, 'manual' = user-selected allergens */
+  allergenSource?: 'model' | 'manual';
+  /** Active allergens for manual mode display */
+  activeAllergens?: string[];
+  /** Days still needed before profile is ready (Pro only, model mode only) */
   daysNeeded?: number;
-  /** Top correlator once profile is ready */
+  /** Top correlator once profile is ready (model mode only) */
   topTrigger?: CorrelationResult;
-  onUpgradePress?: () => void;
   onProfilePress?: () => void;
+  onChangeAllergensPress?: () => void;
+}
+
+// ─── Shared trigger row ───────────────────────────────────────────────────────
+
+function TriggerRow({
+  emoji,
+  rowLabel,
+  name,
+  onChangeAllergensPress,
+}: {
+  emoji: string;
+  rowLabel: string;
+  name: string;
+  onChangeAllergensPress?: () => void;
+}) {
+  return (
+    <View className="flex-row items-center justify-between">
+      <View className="flex-row items-center gap-2 flex-1">
+        <Text style={{ fontSize: 15 }}>{emoji}</Text>
+        <View className="flex-1">
+          <Text className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide font-medium">
+            {rowLabel}
+          </Text>
+          <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+            {name}
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity onPress={onChangeAllergensPress} activeOpacity={0.7} className="ml-3">
+        <Text className="text-xs font-semibold text-primary-600 dark:text-primary-400">
+          Change ›
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -84,19 +135,18 @@ export function RiskBanner({
   level,
   personalised,
   isPro,
+  allergenSource,
+  activeAllergens,
   daysNeeded,
   topTrigger,
-  onUpgradePress,
   onProfilePress,
+  onChangeAllergensPress,
 }: RiskBannerProps) {
   const base = GENERIC_CONFIG[level];
-  const label = personalised ? PERSONAL_CONFIG[level].label : base.label;
-  const sub = personalised ? PERSONAL_CONFIG[level].sub : base.sub;
+  const label = isPro ? PERSONAL_CONFIG[level].label : base.label;
+  const sub = isPro ? PERSONAL_CONFIG[level].sub : base.sub;
 
-  // Only surface a trigger if the correlation is at least moderate strength
-  const showTrigger =
-    isPro && personalised && topTrigger && Math.abs(topTrigger.correlation) >= 0.4;
-  const triggerStrength = topTrigger ? correlationStrength(topTrigger.correlation) : null;
+  const manualDisplay = allergenDisplayLabel(activeAllergens ?? []);
 
   return (
     <View className={`rounded-2xl border-2 p-4 ${base.bg} ${base.border}`}>
@@ -109,72 +159,60 @@ export function RiskBanner({
         </View>
       </View>
 
-      {/* Bottom section — only shown for Pro users */}
-      {isPro && (
-        <View className="mt-3 pt-3 border-t border-black/10 dark:border-white/10">
-          {personalised ? (
-            // Ready: trigger pill (if signal is strong enough) + profile CTA
-            <>
-              {showTrigger && topTrigger && triggerStrength && (
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-row items-center gap-2">
-                    <Text style={{ fontSize: 15 }}>{TRIGGER_EMOJI[topTrigger.key] ?? '🔬'}</Text>
-                    <View>
-                      <Text className="text-xs text-neutral-500 dark:text-neutral-400 uppercase tracking-wide font-medium">
-                        Your main trigger
-                      </Text>
-                      <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-                        {topTrigger.label}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    className="rounded-full px-2.5 py-1"
-                    style={{ backgroundColor: `${triggerStrength.color}22` }}
-                  >
-                    <Text className="text-xs font-semibold" style={{ color: triggerStrength.color }}>
-                      {triggerStrength.label}
-                    </Text>
-                  </View>
-                </View>
-              )}
-              <TouchableOpacity
-                onPress={onProfilePress}
-                activeOpacity={0.7}
-                className="flex-row items-center justify-between"
-              >
-                <Text className="text-sm font-semibold text-primary-600 dark:text-primary-400">
-                  See your personal allergy profile
+      <View className="mt-3 pt-3 border-t border-black/10 dark:border-white/10">
+        {isPro ? (
+          allergenSource === 'model' ? (
+            personalised && topTrigger ? (
+              // Pro, model mode, ready
+              <>
+                <TriggerRow
+                  emoji={TRIGGER_EMOJI[topTrigger.key] ?? '🔬'}
+                  rowLabel="Your analysed trigger"
+                  name={topTrigger.label}
+                  onChangeAllergensPress={onChangeAllergensPress}
+                />
+                <TouchableOpacity
+                  onPress={onProfilePress}
+                  activeOpacity={0.7}
+                  className="mt-3"
+                >
+                  <Text className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                    See your personal allergy profile ›
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              // Pro, model mode, still building
+              daysNeeded !== undefined && daysNeeded > 0 && (
+                <Text className="text-xs text-neutral-400">
+                  🧬 {daysNeeded} more day{daysNeeded === 1 ? '' : 's'} of logging to personalise your score.
                 </Text>
-                <Text className="text-sm text-primary-500">›</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            // Still building — show progress nudge
-            daysNeeded !== undefined && daysNeeded > 0 && (
-              <Text className="text-xs text-neutral-400">
-                🧬 {daysNeeded} more day{daysNeeded === 1 ? '' : 's'} of logging to personalise your score.
-              </Text>
+              )
             )
-          )}
-        </View>
-      )}
-
-      {/* Free user upgrade nudge */}
-      {!isPro && (
-        <TouchableOpacity
-          onPress={onUpgradePress}
-          activeOpacity={0.7}
-          className="mt-3 pt-3 border-t border-black/10 dark:border-white/10 flex-row items-center justify-between"
-        >
-          <Text className="text-xs text-neutral-500 dark:text-neutral-400 flex-1">
-            Based on local pollen levels. Upgrade to Pro for a score personalised to your allergy history.
-          </Text>
-          <Text className="text-xs font-semibold text-primary-600 dark:text-primary-400 ml-2">
-            Upgrade ›
-          </Text>
-        </TouchableOpacity>
-      )}
+          ) : (
+            // Pro, manual mode
+            <TriggerRow
+              emoji={manualDisplay.emoji}
+              rowLabel="Your selected allergens"
+              name={manualDisplay.name}
+              onChangeAllergensPress={onChangeAllergensPress}
+            />
+          )
+        ) : (
+          // Free user: show their selected allergens + upgrade message
+          <>
+            <TriggerRow
+              emoji={manualDisplay.emoji}
+              rowLabel="Your selected allergens"
+              name={manualDisplay.name}
+              onChangeAllergensPress={onChangeAllergensPress}
+            />
+            <Text className="text-xs text-neutral-500 dark:text-neutral-400 mt-3">
+              Upgrade to Pro for a risk score personalised to your allergy history.
+            </Text>
+          </>
+        )}
+      </View>
     </View>
   );
 }

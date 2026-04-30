@@ -101,9 +101,6 @@ function CorrelationBar({ result }: { result: CorrelationResult }) {
           style={{ width: `${pct}%`, backgroundColor: strength.color }}
         />
       </View>
-      <Text className="text-xs text-neutral-400 mt-0.5">
-        Based on {result.dataPoints} day{result.dataPoints === 1 ? '' : 's'} of data
-      </Text>
     </View>
   );
 }
@@ -131,33 +128,15 @@ function CorrelationSection({ title, subtitle, results }: { title: string; subti
 
 // ─── Phase 2 sub-components ───────────────────────────────────────────────────
 
-function confidenceLevel(profile: AdvancedAllergyProfile): 'low' | 'moderate' | 'high' {
-  if (!profile.regressionStable) return 'moderate';
-  let score = 0;
-  if (profile.dataPoints >= 45) score += 2;
-  else if (profile.dataPoints >= 30) score += 1;
-  if (profile.rSquared >= 0.40) score += 2;
-  else if (profile.rSquared >= 0.15) score += 1;
-  if (score >= 4) return 'high';
-  if (score >= 2) return 'moderate';
-  return 'low';
-}
 
 function ModelStatusChip({ data }: { data: AllergyProfileData }) {
   if (!data.ready) return null;
 
   if (data.advancedReady && data.advancedProfile) {
-    const level = confidenceLevel(data.advancedProfile);
-    const r2 = (data.advancedProfile.rSquared * 100).toFixed(0);
-    const configs = {
-      high:     { label: `ML model · R²=${r2}%`, bg: 'bg-green-100 dark:bg-green-900', text: 'text-green-700 dark:text-green-300' },
-      moderate: { label: `ML model · R²=${r2}%`, bg: 'bg-amber-100 dark:bg-amber-900', text: 'text-amber-700 dark:text-amber-300' },
-      low:      { label: `ML model · R²=${r2}%`, bg: 'bg-neutral-100 dark:bg-neutral-800', text: 'text-neutral-500' },
-    };
-    const c = configs[level];
+    const bucket = getConfidenceBucket(data.advancedProfile.rSquared);
     return (
-      <View className={`self-start px-2.5 py-1 rounded-full ${c.bg}`}>
-        <Text className={`text-xs font-semibold ${c.text}`}>{c.label}</Text>
+      <View className={`self-start px-2.5 py-1 rounded-full ${bucket.chipBg}`}>
+        <Text className={`text-xs font-semibold ${bucket.chipText}`}>{bucket.chip}</Text>
       </View>
     );
   }
@@ -203,29 +182,76 @@ function TriggerBar({ trigger, maxBeta }: { trigger: TriggerResult; maxBeta: num
   );
 }
 
+type ConfidenceBucket = {
+  chip: string;
+  chipBg: string;
+  chipText: string;
+  cardLabel: string;
+  cardMessage: string;
+};
+
+function getConfidenceBucket(r2: number): ConfidenceBucket {
+  if (r2 >= 0.50) return {
+    chip: '🟢 Very Confident',
+    chipBg: 'bg-green-100 dark:bg-green-900',
+    chipText: 'text-green-700 dark:text-green-300',
+    cardLabel: 'Highly predictable allergy profile',
+    cardMessage: 'Your symptoms are strongly driven by identifiable triggers.',
+  };
+  if (r2 >= 0.40) return {
+    chip: '🟢 Confident',
+    chipBg: 'bg-green-100 dark:bg-green-900',
+    chipText: 'text-green-700 dark:text-green-300',
+    cardLabel: 'Clear patterns detected',
+    cardMessage: 'Your allergy triggers are clear and your symptoms are becoming predictable.',
+  };
+  if (r2 >= 0.30) return {
+    chip: '🟢 Moderate confidence',
+    chipBg: 'bg-green-100 dark:bg-green-900',
+    chipText: 'text-green-700 dark:text-green-300',
+    cardLabel: 'Patterns starting to emerge',
+    cardMessage: 'Your symptoms are consistently linked to certain environmental triggers.',
+  };
+  return {
+    chip: '🟡 Still Learning',
+    chipBg: 'bg-amber-100 dark:bg-amber-900',
+    chipText: 'text-amber-700 dark:text-amber-300',
+    cardLabel: 'Patterns starting to emerge',
+    cardMessage: "We're beginning to see some links between your symptoms and environmental factors.",
+  };
+}
+
 function TriggerCard({ profile }: { profile: AdvancedAllergyProfile }) {
-  const maxBeta = Math.max(...profile.triggers.map((t) => Math.abs(t.partialBeta)), 0.01);
-  const r2Pct = Math.round(profile.rSquared * 100);
+  const sorted = [...profile.triggers].sort((a, b) => b.partialBeta - a.partialBeta);
+  const maxBeta = Math.max(...sorted.map((t) => Math.abs(t.partialBeta)), 0.01);
+  const bucket = getConfidenceBucket(profile.rSquared);
+
+  const secondaryTriggers = sorted.filter(
+    (t) => !t.isPrimary && t.partialBeta > 0 && t.partialBeta / maxBeta >= 0.35
+  );
+  const hasSecondaryTrigger = secondaryTriggers.length > 0;
+
+  const triggerNote = hasSecondaryTrigger
+    ? `We're detecting a potential second trigger alongside your primary one. Keep logging to confirm whether ${secondaryTriggers.map((t) => t.label.toLowerCase()).join(' and ')} is independently affecting your symptoms.`
+    : 'Other pollen types have little to no noticeable impact on your symptoms.';
 
   return (
     <Card variant="outlined">
       <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">
         Your main triggers
       </Text>
-      {profile.triggers.map((t) => (
+      {sorted.map((t) => (
         <TriggerBar key={t.key} trigger={t} maxBeta={maxBeta} />
       ))}
       <View className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+        <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+          {bucket.cardLabel}
+        </Text>
         <Text className="text-xs text-neutral-400">
-          Pollen pattern explains {r2Pct}% of your symptom variation
-          {!profile.regressionStable
-            ? ' · Breakdown will sharpen as more seasons are captured'
-            : ''}
+          {bucket.cardMessage}
+          {!profile.regressionStable ? ' Your breakdown will sharpen as more seasons are captured.' : ''}
         </Text>
-        <Text className="text-xs text-neutral-400 mt-1">
-          Ranked by unique contribution — a pollen ranked lower may still have a high individual
-          correlation if it moves closely in step with your primary trigger.
-        </Text>
+        <Text className="text-xs text-neutral-400 mt-2">{triggerNote}</Text>
       </View>
     </Card>
   );

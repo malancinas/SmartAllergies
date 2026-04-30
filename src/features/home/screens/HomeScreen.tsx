@@ -146,13 +146,15 @@ export default function HomeScreen() {
               level={riskToday.level}
               personalised={weights.personalised}
               isPro={effectiveIsPro}
+              allergenSource={allergenSource}
+              activeAllergens={activeAllergens}
               daysNeeded={
                 effectiveIsPro && allergenSource === 'model' && !weights.personalised && profileData
                   ? profileData.daysNeeded - profileData.daysWithData
                   : undefined
               }
               topTrigger={
-                effectiveIsPro && weights.personalised && profileData
+                effectiveIsPro && allergenSource === 'model' && weights.personalised && profileData
                   ? profileData.advancedReady && profileData.advancedProfile?.primaryTrigger
                     ? {
                         key: profileData.advancedProfile.primaryTrigger.key,
@@ -164,8 +166,10 @@ export default function HomeScreen() {
                     : profileData.correlations.find((r) => r.category === 'pollen')
                   : undefined
               }
-              onUpgradePress={() => showPaywall('Personalised risk score')}
               onProfilePress={() => navigation.navigate('AllergyProfile')}
+              onChangeAllergensPress={() =>
+                navigation.getParent()?.navigate('Settings', { screen: 'AllergenProfile' })
+              }
             />
           )}
 

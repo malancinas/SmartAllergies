@@ -138,8 +138,26 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
   const best = findBestWindow(daytimeHours, activeAllergens, triggerWeights);
   const peak = findPeakWindow(daytimeHours, activeAllergens, triggerWeights);
 
-  // If all data is zero (outside coverage) or no data yet, show a placeholder
-  const allZero = todayHourly.length > 0 && todayHourly.every((h) => h.tree + h.grass + h.weed === 0);
+  // Truly no API data for this location
+  const noData = todayHourly.length === 0 || daytimeHours.every((h) => h.tree + h.grass + h.weed === 0);
+
+  // API has data, but the selected allergen(s) are at 0 all day
+  const allergenAllClear =
+    !noData && daytimeHours.every((h) => pollenScore(h, activeAllergens, triggerWeights) === 0);
+
+  // No meaningful variation — pollen is uniformly very low all day
+  const uniformlyLow =
+    !noData &&
+    !allergenAllClear &&
+    best != null &&
+    peak != null &&
+    peak.startTime === best.startTime &&
+    peak.avgTotal === best.avgTotal;
+
+  const allergenLabel =
+    activeAllergens.length === 0
+      ? 'Your selected allergens'
+      : activeAllergens.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join(' & ') + ' pollen';
 
   return (
     <View className="bg-white dark:bg-neutral-800 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700">
@@ -147,8 +165,22 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
         Peak pollen hours
       </Text>
 
-      {allZero || !best || !peak ? (
+      {noData || !best || !peak ? (
         <Text className="text-xs text-neutral-400">Hourly data unavailable for your location.</Text>
+      ) : allergenAllClear ? (
+        <View className="flex-row items-center gap-2">
+          <Text className="text-base">🟢</Text>
+          <Text className="text-xs text-neutral-500 dark:text-neutral-400">
+            {allergenLabel} is at 0 today — all clear, go outside any time!
+          </Text>
+        </View>
+      ) : uniformlyLow ? (
+        <View className="flex-row items-center gap-2">
+          <Text className="text-base">🟢</Text>
+          <Text className="text-xs text-neutral-500 dark:text-neutral-400">
+            {allergenLabel} is very low all day — any time is a good time to go outside.
+          </Text>
+        </View>
       ) : (
         <View className="gap-3">
           <View className="flex-row items-center gap-3">
