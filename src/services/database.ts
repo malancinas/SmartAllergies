@@ -79,6 +79,18 @@ async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     // Column already exists — safe to ignore
   }
 
+  // Additive migration: individual pollen species (previously only aggregated tree/weed stored)
+  const speciesCols = ['alder_pollen', 'birch_pollen', 'olive_pollen', 'mugwort_pollen', 'ragweed_pollen'];
+  for (const col of speciesCols) {
+    try { await db.execAsync(`ALTER TABLE log_environment ADD COLUMN ${col} REAL`); } catch { /* exists */ }
+  }
+
+  // Additive migration: weather snapshot at time of logging
+  const weatherCols = ['temperature', 'humidity', 'wind_speed', 'precipitation_probability'];
+  for (const col of weatherCols) {
+    try { await db.execAsync(`ALTER TABLE log_environment ADD COLUMN ${col} REAL`); } catch { /* exists */ }
+  }
+
   logger.debug('Database initialised');
   return db;
 }
@@ -365,9 +377,17 @@ export async function incrementApiCallCount(userId: string, by = 1): Promise<num
 export interface LogEnvironmentInput {
   logId: string;
   date: string; // YYYY-MM-DD
+  // Aggregated pollen
   grassPollen?: number;
   treePollen?: number;
   weedPollen?: number;
+  // Individual pollen species (grains/m³)
+  alderPollen?: number;
+  birchPollen?: number;
+  olivePollen?: number;
+  mugwortPollen?: number;
+  ragweedPollen?: number;
+  // Air quality
   pm25?: number;
   pm10?: number;
   ozone?: number;
@@ -375,19 +395,33 @@ export interface LogEnvironmentInput {
   so2?: number;
   uvIndex?: number;
   dust?: number;
+  // Weather at time of logging
+  temperature?: number;         // °C
+  humidity?: number;            // %
+  windSpeed?: number;           // km/h
+  precipitationProbability?: number; // %
 }
 
 export async function insertLogEnvironment(params: LogEnvironmentInput): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `INSERT OR REPLACE INTO log_environment
-      (log_id, date, grass_pollen, tree_pollen, weed_pollen, pm25, pm10, ozone, no2, so2, uv_index, dust)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (log_id, date,
+       grass_pollen, tree_pollen, weed_pollen,
+       alder_pollen, birch_pollen, olive_pollen, mugwort_pollen, ragweed_pollen,
+       pm25, pm10, ozone, no2, so2, uv_index, dust,
+       temperature, humidity, wind_speed, precipitation_probability)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     params.logId,
     params.date,
     params.grassPollen ?? null,
     params.treePollen ?? null,
     params.weedPollen ?? null,
+    params.alderPollen ?? null,
+    params.birchPollen ?? null,
+    params.olivePollen ?? null,
+    params.mugwortPollen ?? null,
+    params.ragweedPollen ?? null,
     params.pm25 ?? null,
     params.pm10 ?? null,
     params.ozone ?? null,
@@ -395,15 +429,27 @@ export async function insertLogEnvironment(params: LogEnvironmentInput): Promise
     params.so2 ?? null,
     params.uvIndex ?? null,
     params.dust ?? null,
+    params.temperature ?? null,
+    params.humidity ?? null,
+    params.windSpeed ?? null,
+    params.precipitationProbability ?? null,
   );
 }
 
 export interface CorrelationDataRow {
   date: string;
   maxSeverity: number;
+  // Aggregated pollen
   grassPollen: number | null;
   treePollen: number | null;
   weedPollen: number | null;
+  // Individual pollen species
+  alderPollen: number | null;
+  birchPollen: number | null;
+  olivePollen: number | null;
+  mugwortPollen: number | null;
+  ragweedPollen: number | null;
+  // Air quality
   pm25: number | null;
   pm10: number | null;
   ozone: number | null;
@@ -411,6 +457,11 @@ export interface CorrelationDataRow {
   so2: number | null;
   uvIndex: number | null;
   dust: number | null;
+  // Weather
+  temperature: number | null;
+  humidity: number | null;
+  windSpeed: number | null;
+  precipitationProbability: number | null;
   /** True if any log that day recorded medication */
   medicated: boolean;
 }
@@ -423,6 +474,11 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
     grass_pollen: number | null;
     tree_pollen: number | null;
     weed_pollen: number | null;
+    alder_pollen: number | null;
+    birch_pollen: number | null;
+    olive_pollen: number | null;
+    mugwort_pollen: number | null;
+    ragweed_pollen: number | null;
     pm25: number | null;
     pm10: number | null;
     ozone: number | null;
@@ -430,7 +486,11 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
     so2: number | null;
     uv_index: number | null;
     dust: number | null;
-    medicated: number; // 1 if any log that day had medication, else 0
+    temperature: number | null;
+    humidity: number | null;
+    wind_speed: number | null;
+    precipitation_probability: number | null;
+    medicated: number;
   }>(
     `SELECT
        DATE(sl.logged_at) AS date,
@@ -438,6 +498,11 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
        AVG(le.grass_pollen) AS grass_pollen,
        AVG(le.tree_pollen) AS tree_pollen,
        AVG(le.weed_pollen) AS weed_pollen,
+       AVG(le.alder_pollen) AS alder_pollen,
+       AVG(le.birch_pollen) AS birch_pollen,
+       AVG(le.olive_pollen) AS olive_pollen,
+       AVG(le.mugwort_pollen) AS mugwort_pollen,
+       AVG(le.ragweed_pollen) AS ragweed_pollen,
        AVG(le.pm25) AS pm25,
        AVG(le.pm10) AS pm10,
        AVG(le.ozone) AS ozone,
@@ -445,6 +510,10 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
        AVG(le.so2) AS so2,
        AVG(le.uv_index) AS uv_index,
        AVG(le.dust) AS dust,
+       AVG(le.temperature) AS temperature,
+       AVG(le.humidity) AS humidity,
+       AVG(le.wind_speed) AS wind_speed,
+       AVG(le.precipitation_probability) AS precipitation_probability,
        MAX(CASE WHEN sl.medications IS NOT NULL AND sl.medications != '' THEN 1 ELSE 0 END) AS medicated
      FROM symptom_logs sl
      JOIN log_environment le ON le.log_id = sl.id
@@ -458,6 +527,11 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
     grassPollen: r.grass_pollen,
     treePollen: r.tree_pollen,
     weedPollen: r.weed_pollen,
+    alderPollen: r.alder_pollen,
+    birchPollen: r.birch_pollen,
+    olivePollen: r.olive_pollen,
+    mugwortPollen: r.mugwort_pollen,
+    ragweedPollen: r.ragweed_pollen,
     pm25: r.pm25,
     pm10: r.pm10,
     ozone: r.ozone,
@@ -465,6 +539,10 @@ export async function getCorrelationData(): Promise<CorrelationDataRow[]> {
     so2: r.so2,
     uvIndex: r.uv_index,
     dust: r.dust,
+    temperature: r.temperature,
+    humidity: r.humidity,
+    windSpeed: r.wind_speed,
+    precipitationProbability: r.precipitation_probability,
     medicated: r.medicated === 1,
   }));
 }

@@ -34,9 +34,17 @@ export interface SymptomLog {
 }
 
 export interface EnvironmentSnapshot {
+  // Aggregated pollen
   grassPollen?: number;
   treePollen?: number;
   weedPollen?: number;
+  // Individual pollen species (grains/m³)
+  alderPollen?: number;
+  birchPollen?: number;
+  olivePollen?: number;
+  mugwortPollen?: number;
+  ragweedPollen?: number;
+  // Air quality
   pm25?: number;
   pm10?: number;
   ozone?: number;
@@ -44,6 +52,11 @@ export interface EnvironmentSnapshot {
   so2?: number;
   uvIndex?: number;
   dust?: number;
+  // Weather at time of logging
+  temperature?: number;
+  humidity?: number;
+  windSpeed?: number;
+  precipitationProbability?: number;
 }
 
 export interface CreateSymptomLogInput {

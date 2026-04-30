@@ -28,7 +28,7 @@ export default function LogSymptomsScreen() {
 
   const { logSymptoms } = useSymptomLogger();
   const { location } = useLocation();
-  const { today: todayPollen } = useCurrentPollen();
+  const { today: todayPollen, todayWeather } = useCurrentPollen();
   const tier = useSubscriptionStore((s) => s.tier);
 
   // Pre-fill with the most recently used medication combination
@@ -80,9 +80,17 @@ export default function LogSymptomsScreen() {
         longitude: location?.longitude,
         environment: todayPollen
           ? {
+              // Aggregated pollen
               grassPollen: todayPollen.grass.rawValue,
               treePollen: todayPollen.tree.rawValue,
               weedPollen: todayPollen.weed.rawValue,
+              // Individual species
+              alderPollen: todayPollen.species?.find((s) => s.name === 'Alder')?.rawValue,
+              birchPollen: todayPollen.species?.find((s) => s.name === 'Birch')?.rawValue,
+              olivePollen: todayPollen.species?.find((s) => s.name === 'Olive')?.rawValue,
+              mugwortPollen: todayPollen.species?.find((s) => s.name === 'Mugwort')?.rawValue,
+              ragweedPollen: todayPollen.species?.find((s) => s.name === 'Ragweed')?.rawValue,
+              // Air quality
               pm25: todayPollen.airQuality?.pm25.rawValue,
               pm10: todayPollen.airQuality?.pm10.rawValue,
               ozone: todayPollen.airQuality?.ozone.rawValue,
@@ -90,6 +98,11 @@ export default function LogSymptomsScreen() {
               so2: todayPollen.airQuality?.so2.rawValue,
               uvIndex: todayPollen.airQuality?.uvIndex.rawValue,
               dust: todayPollen.airQuality?.dust.rawValue,
+              // Weather
+              temperature: todayWeather?.temperature,
+              humidity: todayWeather?.humidity,
+              windSpeed: todayWeather?.windSpeed,
+              precipitationProbability: todayWeather?.precipitationProbability,
             }
           : undefined,
       });
