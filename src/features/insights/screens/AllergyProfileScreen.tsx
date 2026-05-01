@@ -76,9 +76,9 @@ function ModelLearningCard({ currentRSquared }: { currentRSquared: number }) {
 }
 
 function CorrelationBar({ result }: { result: CorrelationResult }) {
-  const strength = correlationStrength(result.correlation);
-  const pct = Math.abs(result.correlation) * 100;
-  const isPositive = result.correlation >= 0;
+  const displayValue = Math.max(0, result.correlation);
+  const strength = correlationStrength(displayValue);
+  const pct = displayValue * 100;
 
   return (
     <View className="mb-4">
@@ -91,7 +91,7 @@ function CorrelationBar({ result }: { result: CorrelationResult }) {
             {strength.label}
           </Text>
           <Text className="text-xs text-neutral-400">
-            {isPositive ? '+' : '−'}{Math.abs(result.correlation).toFixed(2)}
+            +{displayValue.toFixed(2)}
           </Text>
         </View>
       </View>

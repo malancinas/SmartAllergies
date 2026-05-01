@@ -17,6 +17,9 @@ import { UpgradeMapSheet } from '../components/UpgradeMapSheet';
 import { isAqLayer, pollenLevelToAqLevel, type LayerType, type PollenLayerType } from '../types';
 import type { Coordinates } from '@/features/pollen/types';
 
+// ~1500 km in latitude degrees (1° ≈ 111.32 km). Applies to all users.
+const MAX_LATITUDE_DELTA = 13.5;
+
 const DEFAULT_REGION: Region = {
   latitude: 53.5,
   longitude: -1.5,
@@ -75,6 +78,7 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const centeredRef = useRef(false);
   const regionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
 
   const defaultLayer = useMemo(() => highestPollenLayer(today), [today]);
@@ -147,8 +151,9 @@ export default function MapScreen() {
   function handleZoomOut() {
     if (!mapRef.current) return;
     const r = currentRegion ?? initialRegion;
+    const maxDelta = MAX_LATITUDE_DELTA;
     mapRef.current.animateToRegion(
-      { ...r, latitudeDelta: Math.min(r.latitudeDelta * 2, 60), longitudeDelta: Math.min(r.longitudeDelta * 2, 60) },
+      { ...r, latitudeDelta: Math.min(r.latitudeDelta * 2, maxDelta), longitudeDelta: Math.min(r.longitudeDelta * 2, maxDelta) },
       250,
     );
   }
@@ -174,6 +179,7 @@ export default function MapScreen() {
         zoomEnabled={true}
         rotateEnabled={false}
         pitchEnabled={false}
+        minZoomLevel={5}
         onPress={handleMapPress}
         onMapReady={() => console.log('[MapView] ✅ map ready — provider=GOOGLE')}
         onMapError={(e) => console.error('[MapView] ❌ map error', e.nativeEvent)}
@@ -292,32 +298,39 @@ export default function MapScreen() {
       )}
 
       {/* Shared: zoom buttons */}
-      <View style={{
-        position: 'absolute',
-        bottom: 230,
-        right: 16,
-        borderRadius: 10,
-        overflow: 'hidden',
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
-      }}>
-        <TouchableOpacity
-          onPress={handleZoomIn}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}
-        >
-          <Text style={{ fontSize: 22, color: '#374151', lineHeight: 26 }}>+</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleZoomOut}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text style={{ fontSize: 22, color: '#374151', lineHeight: 26 }}>−</Text>
-        </TouchableOpacity>
-      </View>
+      {(() => {
+        const currentDelta = (currentRegion ?? initialRegion).latitudeDelta;
+        const zoomOutDisabled = currentDelta >= MAX_LATITUDE_DELTA;
+        return (
+          <View style={{
+            position: 'absolute',
+            bottom: 230,
+            right: 16,
+            borderRadius: 10,
+            overflow: 'hidden',
+            backgroundColor: '#fff',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 4,
+          }}>
+            <TouchableOpacity
+              onPress={handleZoomIn}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}
+            >
+              <Text style={{ fontSize: 22, color: '#374151', lineHeight: 26 }}>+</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleZoomOut}
+              disabled={zoomOutDisabled}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{ fontSize: 22, color: zoomOutDisabled ? '#d1d5db' : '#374151', lineHeight: 26 }}>−</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
 
       {/* Pro: locate-me FAB */}
       {effectiveMapIsPro && (
