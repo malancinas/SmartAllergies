@@ -6,12 +6,12 @@ import type { MergedDailyPollenForecast, PollenLevel, SpeciesData, AirQualityDat
 
 // ─── Level styles ─────────────────────────────────────────────────────────────
 
-const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string; rawBg: string; rawText: string; darkBg: string; darkText: string }> = {
-  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',       text: 'text-neutral-400',                        label: 'None',      rawBg: '#e5e7eb', rawText: '#9ca3af', darkBg: '#374151',                 darkText: '#9ca3af' },
-  low:      { bg: 'bg-success-100 dark:bg-success-900/40',    text: 'text-success-700 dark:text-success-300',  label: 'Low',       rawBg: '#dcfce7', rawText: '#15803d', darkBg: 'rgba(74,222,128,0.28)',   darkText: '#4ade80' },
-  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',    text: 'text-warning-700 dark:text-warning-300',  label: 'Medium',    rawBg: '#fef3c7', rawText: '#b45309', darkBg: 'rgba(251,191,36,0.28)',   darkText: '#fbbf24' },
-  high:     { bg: 'bg-error-100 dark:bg-error-900/40',        text: 'text-error-700 dark:text-error-300',      label: 'High',      rawBg: '#fee2e2', rawText: '#dc2626', darkBg: 'rgba(248,113,113,0.28)',  darkText: '#f87171' },
-  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',        text: 'text-error-800 dark:text-error-200',      label: 'Very high', rawBg: '#fecaca', rawText: '#b91c1c', darkBg: 'rgba(248,113,113,0.40)',  darkText: '#f87171' },
+const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string; rawBg: string; rawText: string; darkBg: string; darkText: string; rawBorder: string; darkBorder: string }> = {
+  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',       text: 'text-neutral-400',                        label: 'None',      rawBg: '#e5e7eb', rawText: '#9ca3af', darkBg: '#374151',                 darkText: '#9ca3af', rawBorder: '#d1d5db',                  darkBorder: 'rgba(156,163,175,0.35)' },
+  low:      { bg: 'bg-success-100 dark:bg-success-900/40',    text: 'text-success-700 dark:text-success-300',  label: 'Low',       rawBg: '#dcfce7', rawText: '#15803d', darkBg: 'rgba(74,222,128,0.28)',   darkText: '#4ade80', rawBorder: '#bbf7d0',                  darkBorder: 'rgba(74,222,128,0.50)'  },
+  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',    text: 'text-warning-700 dark:text-warning-300',  label: 'Medium',    rawBg: '#fef3c7', rawText: '#b45309', darkBg: 'rgba(251,191,36,0.28)',   darkText: '#fbbf24', rawBorder: '#fde68a',                  darkBorder: 'rgba(251,191,36,0.50)'  },
+  high:     { bg: 'bg-error-100 dark:bg-error-900/40',        text: 'text-error-700 dark:text-error-300',      label: 'High',      rawBg: '#fee2e2', rawText: '#dc2626', darkBg: 'rgba(248,113,113,0.28)',  darkText: '#f87171', rawBorder: '#fecaca',                  darkBorder: 'rgba(248,113,113,0.50)' },
+  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',        text: 'text-error-800 dark:text-error-200',      label: 'Very high', rawBg: '#fecaca', rawText: '#b91c1c', darkBg: 'rgba(248,113,113,0.40)',  darkText: '#f87171', rawBorder: '#fca5a5',                  darkBorder: 'rgba(248,113,113,0.65)' },
 };
 
 const AQ_LEVEL_LABEL: Record<PollenLevel, string> = {
@@ -75,6 +75,7 @@ function PollenGridCell({
   const s = LEVEL_STYLE[level];
   const displayLabel = levelLabel ?? s.label;
   const bg = scheme === 'dark' ? s.darkBg : s.rawBg;
+  const border = scheme === 'dark' ? s.darkBorder : s.rawBorder;
   const textColor = scheme === 'dark' ? s.darkText : s.rawText;
 
   return (
@@ -86,7 +87,7 @@ function PollenGridCell({
       <View
         className="rounded-2xl p-4"
         style={[
-          { minHeight: 118, backgroundColor: bg },
+          { minHeight: 118, backgroundColor: bg, borderWidth: 1, borderColor: border },
           !active && { opacity: 0.45 },
         ]}
       >

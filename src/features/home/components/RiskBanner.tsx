@@ -32,6 +32,8 @@ const LEVEL_CONFIG: Record<
     bg: string;
     bgLight: string;
     bgDark: string;
+    borderLight: string;
+    borderDark: string;
     border: string;
     headerColor: string;
     titleColor: string;
@@ -52,6 +54,8 @@ const LEVEL_CONFIG: Record<
     bg: 'bg-success-100 dark:bg-success-900/40',
     bgLight: '#dcfce7',
     bgDark: 'rgba(74,222,128,0.28)',
+    borderLight: '#bbf7d0',
+    borderDark: 'rgba(74,222,128,0.50)',
     border: 'border-success-200 dark:border-success-700',
     headerColor: '#22c55e',
     titleColor: '#14532d',
@@ -71,6 +75,8 @@ const LEVEL_CONFIG: Record<
     bg: 'bg-warning-100 dark:bg-warning-900/40',
     bgLight: '#fef3c7',
     bgDark: 'rgba(251,191,36,0.28)',
+    borderLight: '#fde68a',
+    borderDark: 'rgba(251,191,36,0.50)',
     border: 'border-warning-200 dark:border-warning-600',
     headerColor: '#f59e0b',
     titleColor: '#78350f',
@@ -90,6 +96,8 @@ const LEVEL_CONFIG: Record<
     bg: 'bg-error-100 dark:bg-error-900/40',
     bgLight: '#fee2e2',
     bgDark: 'rgba(248,113,113,0.28)',
+    borderLight: '#fecaca',
+    borderDark: 'rgba(248,113,113,0.50)',
     border: 'border-error-200 dark:border-error-600',
     headerColor: '#ef4444',
     titleColor: '#7f1d1d',
@@ -359,8 +367,9 @@ export function RiskBanner({
   const manualDisplay = allergenDisplayLabel(activeAllergens ?? []);
   const dividerColor = scheme === 'dark' ? cfg.dividerColorDark : cfg.dividerColor;
 
-  const titleColor = scheme === 'dark' ? cfg.titleColorDark : cfg.titleColor;
-  const bgColor    = scheme === 'dark' ? cfg.bgDark         : cfg.bgLight;
+  const titleColor   = scheme === 'dark' ? cfg.titleColorDark : cfg.titleColor;
+  const bgColor      = scheme === 'dark' ? cfg.bgDark         : cfg.bgLight;
+  const borderColor  = scheme === 'dark' ? cfg.borderDark     : cfg.borderLight;
 
   return (
     <>
@@ -378,7 +387,7 @@ export function RiskBanner({
     />
     <View
       className="rounded-2xl p-4"
-      style={{ backgroundColor: bgColor }}
+      style={{ backgroundColor: bgColor, borderWidth: 1, borderColor }}
     >
       {/* Header row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
