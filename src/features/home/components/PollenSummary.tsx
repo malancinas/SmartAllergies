@@ -94,7 +94,7 @@ function PollenGridCell({
         <Ionicons name={iconName} size={24} color={textColor} style={{ marginBottom: 10 }} />
         <Text style={{ fontSize: 12, color: textColor, opacity: 0.75, marginBottom: 2 }}>{label}</Text>
         <Text style={{ fontSize: 20, fontWeight: '800', color: textColor, lineHeight: 24 }}>{displayLabel}</Text>
-        <Text style={{ fontSize: 9, color: '#a5b4fc', marginTop: 6 }}>tap for detail</Text>
+        <Text style={{ fontSize: 11, color: textColor, opacity: 0.75, marginTop: 6 }}>tap for detail</Text>
       </View>
     </TouchableOpacity>
   );
