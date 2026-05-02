@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { DailyRiskScore, RiskLevel } from '@/features/forecasting/types';
 import type { PollenLevel, SpeciesData, AirQualityData, AirQualityMetric } from '@/features/pollen/types';
 
 const POLLEN_DOT_COLOR: Record<PollenLevel, string> = {
-  none: '#d1d5db',
+  none: '#9ca3af',
   low: '#22c55e',
   medium: '#f59e0b',
   high: '#ef4444',
@@ -83,6 +83,8 @@ interface ForecastStripProps {
 
 export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStripProps) {
   const [selected, setSelected] = useState<DailyRiskScore | null>(null);
+  const scheme = useColorScheme();
+  const dayBg = scheme === 'dark' ? '#374151' : '#e5e7eb';
 
   if (upcoming.length === 0) return null;
 
@@ -91,9 +93,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
 
   return (
     <>
-      <View className="bg-white dark:bg-neutral-800 rounded-3xl p-4">
-        {/* Cards — flex row fills full width, no scroll */}
-        <View style={{ flexDirection: 'row', gap: 6 }}>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
           {upcoming.map((day, index) => {
             const locked = !isPro && index >= 1;
 
@@ -105,8 +105,8 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                 style={{ flex: 1 }}
               >
                 <View
-                  className="bg-neutral-50 dark:bg-neutral-700/60 rounded-2xl"
-                  style={{ paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center' }}
+                  className="rounded-2xl"
+                  style={{ paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: dayBg }}
                 >
                   <Text className={locked ? 'text-neutral-600 dark:text-neutral-600' : 'text-neutral-400 dark:text-neutral-400'} style={{ fontSize: 11, fontWeight: '500' }}>
                     {formatWeekday(day.date)}
@@ -160,22 +160,6 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
               </TouchableOpacity>
             );
           })}
-        </View>
-
-        {/* Color legend — spread across full width */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 4 }}>
-          {([
-            { color: '#22c55e', label: 'Low' },
-            { color: '#f59e0b', label: 'Medium' },
-            { color: '#ef4444', label: 'High' },
-            { color: '#9ca3af', label: 'None' },
-          ] as const).map(({ color, label }) => (
-            <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <View style={{ width: 9, height: 9, borderRadius: 4.5, backgroundColor: color }} />
-              <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '500' }}>{label}</Text>
-            </View>
-          ))}
-        </View>
       </View>
 
       <BottomSheet
