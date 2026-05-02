@@ -1,4 +1,3 @@
-import type { PollenLevel } from '@/features/pollen/types';
 import type { SymptomType } from '@/features/symptoms/types';
 
 export interface ExportSymptomLog {
@@ -10,7 +9,28 @@ export interface ExportSymptomLog {
   longitude: number | null;
   notes: string | null;
   medications: string | null;
-  pollenLevel?: PollenLevel;
+  // Pollen (grains/m³, from log_environment)
+  grassPollen: number | null;
+  treePollen: number | null;
+  weedPollen: number | null;
+  alderPollen: number | null;
+  birchPollen: number | null;
+  olivePollen: number | null;
+  mugwortPollen: number | null;
+  ragweedPollen: number | null;
+  // Air quality
+  pm25: number | null;
+  pm10: number | null;
+  ozone: number | null;
+  no2: number | null;
+  so2: number | null;
+  uvIndex: number | null;
+  dust: number | null;
+  // Weather
+  temperature: number | null;
+  humidity: number | null;
+  windSpeed: number | null;
+  precipitationProbability: number | null;
 }
 
 export interface ExportSummary {
@@ -43,24 +63,64 @@ function formatTime(iso: string): string {
   }
 }
 
-const LEVEL_LABEL: Record<PollenLevel, string> = {
-  none: 'None',
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  very_high: 'Very High',
-};
-
 function symptomLabel(s: SymptomType): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function fmt(val: number | null, unit = '', decimals = 0): string {
+  if (val == null) return '—';
+  return `${val.toFixed(decimals)}${unit}`;
+}
+
+function hasEnvData(log: ExportSymptomLog): boolean {
+  return (
+    log.grassPollen != null || log.treePollen != null || log.weedPollen != null ||
+    log.alderPollen != null || log.birchPollen != null || log.olivePollen != null ||
+    log.mugwortPollen != null || log.ragweedPollen != null ||
+    log.pm25 != null || log.pm10 != null || log.ozone != null ||
+    log.uvIndex != null || log.temperature != null || log.humidity != null
+  );
+}
+
+function envRow(log: ExportSymptomLog): string {
+  if (!hasEnvData(log)) return '';
+
+  const pollenParts: string[] = [];
+  if (log.grassPollen != null) pollenParts.push(`Grass: ${fmt(log.grassPollen)}`);
+  if (log.treePollen != null) pollenParts.push(`Tree: ${fmt(log.treePollen)}`);
+  if (log.weedPollen != null) pollenParts.push(`Weed: ${fmt(log.weedPollen)}`);
+  if (log.alderPollen != null) pollenParts.push(`Alder: ${fmt(log.alderPollen)}`);
+  if (log.birchPollen != null) pollenParts.push(`Birch: ${fmt(log.birchPollen)}`);
+  if (log.olivePollen != null) pollenParts.push(`Olive: ${fmt(log.olivePollen)}`);
+  if (log.mugwortPollen != null) pollenParts.push(`Mugwort: ${fmt(log.mugwortPollen)}`);
+  if (log.ragweedPollen != null) pollenParts.push(`Ragweed: ${fmt(log.ragweedPollen)}`);
+
+  const aqParts: string[] = [];
+  if (log.pm25 != null) aqParts.push(`PM2.5: ${fmt(log.pm25, ' µg/m³', 1)}`);
+  if (log.pm10 != null) aqParts.push(`PM10: ${fmt(log.pm10, ' µg/m³', 1)}`);
+  if (log.ozone != null) aqParts.push(`O₃: ${fmt(log.ozone, ' µg/m³', 1)}`);
+  if (log.no2 != null) aqParts.push(`NO₂: ${fmt(log.no2, ' µg/m³', 1)}`);
+  if (log.so2 != null) aqParts.push(`SO₂: ${fmt(log.so2, ' µg/m³', 1)}`);
+  if (log.uvIndex != null) aqParts.push(`UV: ${fmt(log.uvIndex, '', 1)}`);
+  if (log.dust != null) aqParts.push(`Dust: ${fmt(log.dust, ' µg/m³', 1)}`);
+
+  const wxParts: string[] = [];
+  if (log.temperature != null) wxParts.push(`Temp: ${fmt(log.temperature, '°C', 1)}`);
+  if (log.humidity != null) wxParts.push(`Humidity: ${fmt(log.humidity, '%')}`);
+  if (log.windSpeed != null) wxParts.push(`Wind: ${fmt(log.windSpeed, ' km/h', 1)}`);
+  if (log.precipitationProbability != null) wxParts.push(`Rain: ${fmt(log.precipitationProbability, '%')}`);
+
+  const sections: string[] = [];
+  if (pollenParts.length > 0) sections.push(`🌿 Pollen (grains/m³): ${pollenParts.join(' · ')}`);
+  if (aqParts.length > 0) sections.push(`💨 Air quality: ${aqParts.join(' · ')}`);
+  if (wxParts.length > 0) sections.push(`🌡 Weather: ${wxParts.join(' · ')}`);
+
+  return `<tr class="env-row"><td colspan="6"><div class="env-data">${sections.join('<br>')}</div></td></tr>`;
+}
+
 export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSummary): string {
   const worstDaysHtml = summary.worstDays
-    .map(
-      (d) =>
-        `<li>${formatDate(d.date + 'T00:00:00')} — severity ${d.maxSeverity}/10</li>`,
-    )
+    .map((d) => `<li>${formatDate(d.date + 'T00:00:00')} — severity ${d.maxSeverity}/10</li>`)
     .join('');
 
   const topSymptomsHtml = summary.mostCommonSymptoms
@@ -68,18 +128,19 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
     .join(' ');
 
   const rowsHtml = logs
-    .map(
-      (log) => `
-      <tr>
+    .map((log) => {
+      const sevClass = log.severity <= 3 ? 'low' : log.severity <= 6 ? 'med' : 'high';
+      return `
+      <tr class="log-row">
         <td>${formatDate(log.loggedAt)}</td>
         <td>${formatTime(log.loggedAt)}</td>
-        <td>${log.symptoms.map(symptomLabel).join(', ')}</td>
-        <td class="severity-${log.severity <= 3 ? 'low' : log.severity <= 6 ? 'med' : 'high'}">${log.severity}/10</td>
-        <td>${log.pollenLevel ? LEVEL_LABEL[log.pollenLevel] : '—'}</td>
+        <td class="severity-${sevClass}">${log.severity}/10</td>
+        <td>${log.symptoms.map(symptomLabel).join(', ') || '—'}</td>
         <td>${log.medications ?? '—'}</td>
         <td>${log.notes ?? '—'}</td>
-      </tr>`,
-    )
+      </tr>
+      ${envRow(log)}`;
+    })
     .join('');
 
   return `<!DOCTYPE html>
@@ -104,8 +165,12 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
     .tag { background: #eff6ff; color: #2563eb; border-radius: 4px; padding: 2px 8px; font-size: 12px; margin-right: 4px; }
     table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
     th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-weight: 600; color: #374151; }
-    td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
-    tr:nth-child(even) td { background: #fafafa; }
+    td { padding: 7px 10px; vertical-align: top; }
+    .log-row td { border-top: 1px solid #e5e7eb; }
+    .log-row:nth-child(4n+1) td, .log-row:nth-child(4n+1) + .env-row td { background: #fafafa; }
+    .env-row td { padding: 2px 10px 8px 10px; }
+    .env-data { font-size: 10.5px; color: #6b7280; line-height: 1.6; background: #f9fafb;
+      border-radius: 4px; padding: 6px 10px; }
     .severity-low { color: #16a34a; font-weight: 600; }
     .severity-med { color: #d97706; font-weight: 600; }
     .severity-high { color: #dc2626; font-weight: 600; }
@@ -116,7 +181,7 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
 </head>
 <body>
   <div class="header">
-    <h1>Local Allergies — Allergy Report</h1>
+    <h1>SmartAllergies — Allergy Report</h1>
     <p>Generated ${formatDate(summary.generatedAt)} &nbsp;·&nbsp; Period: ${formatDate(summary.fromDate + 'T00:00:00')} – ${formatDate(summary.toDate + 'T00:00:00')}</p>
   </div>
 
@@ -138,31 +203,22 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
     </div>
   </div>
 
-  ${
-    summary.worstDays.length > 0
-      ? `<div class="section">
+  ${summary.worstDays.length > 0 ? `<div class="section">
     <div class="section-title">Worst Days</div>
     <ul>${worstDaysHtml}</ul>
-  </div>`
-      : ''
-  }
+  </div>` : ''}
 
-  ${
-    summary.mostCommonSymptoms.length > 0
-      ? `<div class="section">
+  ${summary.mostCommonSymptoms.length > 0 ? `<div class="section">
     <div class="section-title">Most Common Symptoms</div>
     <div style="margin-top:4px">${topSymptomsHtml}</div>
-  </div>`
-      : ''
-  }
+  </div>` : ''}
 
   <div class="section">
     <div class="section-title">Symptom Log</div>
     <table>
       <thead>
         <tr>
-          <th>Date</th><th>Time</th><th>Symptoms</th><th>Severity</th>
-          <th>Pollen</th><th>Medications</th><th>Notes</th>
+          <th>Date</th><th>Time</th><th>Severity</th><th>Symptoms</th><th>Medications</th><th>Notes</th>
         </tr>
       </thead>
       <tbody>${rowsHtml}</tbody>
@@ -171,7 +227,7 @@ export function exportDataToPdfHtml(logs: ExportSymptomLog[], summary: ExportSum
 
   <div class="disclaimer">
     This report is for informational purposes only. Please consult your allergist or physician for medical advice.
-    Local Allergies does not provide medical diagnoses.
+    SmartAllergies does not provide medical diagnoses.
   </div>
 </body>
 </html>`;

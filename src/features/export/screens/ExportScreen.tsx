@@ -133,6 +133,11 @@ export default function ExportScreen() {
             onPress={handleGenerate}
             disabled={generating || isLoading || summary.totalLogs === 0}
           />
+          {!isLoading && summary.totalLogs === 0 && (
+            <Text className="text-xs text-neutral-400 text-center">
+              No logs found for this period. Log some symptoms first, then come back to export.
+            </Text>
+          )}
 
           {/* Disclaimer */}
           <Text className="text-xs text-neutral-400 text-center px-4">

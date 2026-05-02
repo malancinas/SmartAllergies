@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getSymptomLogs, getPollenCache } from '@/services/database';
+import { getSymptomLogsForExport } from '@/services/database';
 import type { ExportSymptomLog, ExportSummary } from '../pdfTemplate';
 import type { SymptomType } from '@/features/symptoms/types';
 
@@ -26,7 +26,6 @@ function buildSummary(
     };
   }
 
-  // Worst days: group by date, take top 3 by max severity
   const dayMap = new Map<string, number>();
   for (const log of logs) {
     const date = log.loggedAt.slice(0, 10);
@@ -37,7 +36,6 @@ function buildSummary(
     .slice(0, 3)
     .map(([date, maxSeverity]) => ({ date, maxSeverity }));
 
-  // Most common symptoms
   const symptomCount = new Map<SymptomType, number>();
   for (const log of logs) {
     for (const s of log.symptoms) {
@@ -63,38 +61,37 @@ async function fetchExportData(days: number): Promise<{ logs: ExportSymptomLog[]
   const toDate = new Date().toISOString();
   const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-  const rows = await getSymptomLogs(fromDate, toDate);
+  const rows = await getSymptomLogsForExport(fromDate, toDate);
 
-  // For each log, try to find a matching pollen cache entry
-  const exportLogs: ExportSymptomLog[] = await Promise.all(
-    rows.map(async (row) => {
-      const datePrefix = row.logged_at.slice(0, 10);
-      const latKey = row.latitude != null ? Number(row.latitude).toFixed(2) : null;
-      const lonKey = row.longitude != null ? Number(row.longitude).toFixed(2) : null;
-
-      let pollenLevel: ExportSymptomLog['pollenLevel'];
-      if (latKey && lonKey) {
-        const hourKey = row.logged_at.slice(0, 13);
-        const cached = await getPollenCache<{ daily: Array<{ date: string; overallLevel: string }> }>(
-          `pollen_${latKey}_${lonKey}_${hourKey.slice(0, 13)}`,
-        );
-        const dayEntry = cached?.daily?.find((d) => d.date === datePrefix);
-        pollenLevel = dayEntry?.overallLevel as ExportSymptomLog['pollenLevel'];
-      }
-
-      return {
-        id: row.id,
-        loggedAt: row.logged_at,
-        severity: row.severity,
-        symptoms: row.symptoms as SymptomType[],
-        latitude: row.latitude,
-        longitude: row.longitude,
-        notes: row.notes,
-        medications: row.medications,
-        pollenLevel,
-      };
-    }),
-  );
+  const exportLogs: ExportSymptomLog[] = rows.map((row) => ({
+    id: row.id,
+    loggedAt: row.logged_at,
+    severity: row.severity,
+    symptoms: row.symptoms as SymptomType[],
+    latitude: row.latitude,
+    longitude: row.longitude,
+    notes: row.notes,
+    medications: row.medications,
+    grassPollen: row.grass_pollen,
+    treePollen: row.tree_pollen,
+    weedPollen: row.weed_pollen,
+    alderPollen: row.alder_pollen,
+    birchPollen: row.birch_pollen,
+    olivePollen: row.olive_pollen,
+    mugwortPollen: row.mugwort_pollen,
+    ragweedPollen: row.ragweed_pollen,
+    pm25: row.pm25,
+    pm10: row.pm10,
+    ozone: row.ozone,
+    no2: row.no2,
+    so2: row.so2,
+    uvIndex: row.uv_index,
+    dust: row.dust,
+    temperature: row.temperature,
+    humidity: row.humidity,
+    windSpeed: row.wind_speed,
+    precipitationProbability: row.precipitation_probability,
+  }));
 
   const summary = buildSummary(exportLogs, fromDate.slice(0, 10), toDate.slice(0, 10));
   return { logs: exportLogs, summary };

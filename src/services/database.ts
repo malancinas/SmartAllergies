@@ -119,6 +119,28 @@ export interface SymptomLogRow {
   symptoms: string[]; // populated by join
 }
 
+export interface SymptomLogExportRow extends SymptomLogRow {
+  grass_pollen: number | null;
+  tree_pollen: number | null;
+  weed_pollen: number | null;
+  alder_pollen: number | null;
+  birch_pollen: number | null;
+  olive_pollen: number | null;
+  mugwort_pollen: number | null;
+  ragweed_pollen: number | null;
+  pm25: number | null;
+  pm10: number | null;
+  ozone: number | null;
+  no2: number | null;
+  so2: number | null;
+  uv_index: number | null;
+  dust: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  wind_speed: number | null;
+  precipitation_probability: number | null;
+}
+
 // ─── Symptom Logs ────────────────────────────────────────────────────────────
 
 export async function insertSymptomLog(params: {
@@ -167,6 +189,38 @@ export async function getSymptomLogs(
   );
 
   const results: SymptomLogRow[] = [];
+  for (const log of logs) {
+    const symptomRows = await db.getAllAsync<{ symptom: string }>(
+      `SELECT symptom FROM log_symptoms WHERE log_id = ?`,
+      log.id,
+    );
+    results.push({ ...log, symptoms: symptomRows.map((r) => r.symptom) });
+  }
+
+  return results;
+}
+
+export async function getSymptomLogsForExport(
+  fromDate: string,
+  toDate: string,
+): Promise<SymptomLogExportRow[]> {
+  const db = await getDatabase();
+
+  const logs = await db.getAllAsync<Omit<SymptomLogExportRow, 'symptoms'>>(
+    `SELECT sl.id, sl.logged_at, sl.created_at, sl.severity, sl.latitude, sl.longitude, sl.notes, sl.medications,
+            le.grass_pollen, le.tree_pollen, le.weed_pollen,
+            le.alder_pollen, le.birch_pollen, le.olive_pollen, le.mugwort_pollen, le.ragweed_pollen,
+            le.pm25, le.pm10, le.ozone, le.no2, le.so2, le.uv_index, le.dust,
+            le.temperature, le.humidity, le.wind_speed, le.precipitation_probability
+     FROM symptom_logs sl
+     LEFT JOIN log_environment le ON le.log_id = sl.id
+     WHERE sl.logged_at >= ? AND sl.logged_at <= ?
+     ORDER BY sl.logged_at DESC`,
+    fromDate,
+    toDate,
+  );
+
+  const results: SymptomLogExportRow[] = [];
   for (const log of logs) {
     const symptomRows = await db.getAllAsync<{ symptom: string }>(
       `SELECT symptom FROM log_symptoms WHERE log_id = ?`,
