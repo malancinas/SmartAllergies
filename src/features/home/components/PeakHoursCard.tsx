@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, useColorScheme } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import type { HourlyPollenPoint } from '@/features/pollen/types';
 
@@ -86,7 +87,7 @@ function findModerateWindow(
   return { startTime: points[modIdx].time, endTime: points[modIdx + windowSize - 1].time, avgTotal: modAvg };
 }
 
-// ─── Grouped time bar (5 × 3-hour segments) ───────────────────────────────────
+// ─── Grouped time bar (5 × 3-hour segments, windows as source of truth) ──────
 
 const TIME_GROUPS = [
   { label: '6 am',  hours: [6, 7, 8] },
@@ -97,57 +98,59 @@ const TIME_GROUPS = [
 ];
 const TIME_AXIS_LABELS = ['6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm'];
 
-function segmentColor(avg: number, peakAvg: number, isDark: boolean): string {
-  if (peakAvg === 0) return isDark ? 'rgba(74,222,128,0.28)' : '#dcfce7';
-  if (avg >= peakAvg * 0.75) return isDark ? 'rgba(248,113,113,0.28)' : '#fee2e2';
-  if (avg >= peakAvg * 0.35) return isDark ? 'rgba(251,191,36,0.28)' : '#fef3c7';
-  return isDark ? 'rgba(74,222,128,0.28)' : '#dcfce7';
+type SegmentLevel = 'peak' | 'moderate' | 'low';
+
+function windowHours(w: WindowResult): Set<number> {
+  const start = parseInt(w.startTime.slice(11, 13), 10);
+  const end   = parseInt(w.endTime.slice(11, 13), 10);
+  const s = new Set<number>();
+  for (let h = start; h <= end; h++) s.add(h);
+  return s;
 }
 
-function segmentTextColor(avg: number, peakAvg: number, isDark: boolean): string {
-  if (peakAvg === 0) return isDark ? '#4ade80' : '#15803d';
-  if (avg >= peakAvg * 0.75) return isDark ? '#f87171' : '#dc2626';
-  if (avg >= peakAvg * 0.35) return isDark ? '#fbbf24' : '#b45309';
-  return isDark ? '#4ade80' : '#15803d';
+function classifySegment(
+  hours: number[],
+  peakHours: Set<number>,
+  moderateHours: Set<number>,
+): SegmentLevel {
+  if (hours.some((h) => peakHours.has(h))) return 'peak';
+  if (hours.some((h) => moderateHours.has(h))) return 'moderate';
+  return 'low';
 }
 
-const LEGEND_COLORS = {
-  peak:     { light: '#fee2e2', dark: 'rgba(248,113,113,0.28)' },
-  moderate: { light: '#fef3c7', dark: 'rgba(251,191,36,0.28)'  },
-  low:      { light: '#dcfce7', dark: 'rgba(74,222,128,0.28)'  },
+const LEVEL_COLORS = {
+  peak:     { light: '#fee2e2' as const, dark: 'rgba(248,113,113,0.28)' as const },
+  moderate: { light: '#fef3c7' as const, dark: 'rgba(251,191,36,0.28)'  as const },
+  low:      { light: '#dcfce7' as const, dark: 'rgba(74,222,128,0.28)'  as const },
 };
+const LEVEL_TEXT = {
+  peak:     { light: '#dc2626', dark: '#f87171' },
+  moderate: { light: '#b45309', dark: '#fbbf24' },
+  low:      { light: '#15803d', dark: '#4ade80' },
+};
+const LEVEL_LABEL: Record<SegmentLevel, string> = { peak: 'Peak', moderate: 'Mod', low: 'Low' };
 
-function segmentLabel(avg: number, peakAvg: number): string {
-  if (peakAvg === 0) return 'Low';
-  if (avg >= peakAvg * 0.75) return 'Peak';
-  if (avg >= peakAvg * 0.35) return 'Mod';
-  return 'Low';
+function levelColor(level: SegmentLevel, isDark: boolean): string {
+  return isDark ? LEVEL_COLORS[level].dark : LEVEL_COLORS[level].light;
 }
 
 function GroupedBar({
-  points,
-  peakAvg,
-  activeAllergens,
-  weights,
+  peak,
+  moderate,
 }: {
-  points: HourlyPollenPoint[];
-  peakAvg: number;
-  activeAllergens: string[];
-  weights?: Partial<Record<string, number>>;
+  peak: WindowResult;
+  moderate: WindowResult | null;
 }) {
   const isDark = useColorScheme() === 'dark';
-  const groups = TIME_GROUPS.map(({ label, hours }) => {
-    const groupPoints = points.filter((p) => hours.includes(parseInt(p.time.slice(11, 13), 10)));
-    const avg = groupPoints.length
-      ? groupPoints.reduce((s, p) => s + pollenScore(p, activeAllergens, weights), 0) / groupPoints.length
-      : 0;
-    return { label, avg };
-  });
+  const peakHours = windowHours(peak);
+  const modHours  = moderate ? windowHours(moderate) : new Set<number>();
 
-  const legendColors = [
-    { color: isDark ? LEGEND_COLORS.peak.dark     : LEGEND_COLORS.peak.light,     label: 'Peak pollen' },
-    { color: isDark ? LEGEND_COLORS.moderate.dark : LEGEND_COLORS.moderate.light, label: 'Moderate' },
-    { color: isDark ? LEGEND_COLORS.low.dark      : LEGEND_COLORS.low.light,      label: 'Low' },
+  const segments = TIME_GROUPS.map(({ hours }) => classifySegment(hours, peakHours, modHours));
+
+  const legendItems = [
+    { level: 'peak'     as const, label: 'Peak pollen' },
+    { level: 'moderate' as const, label: 'Moderate' },
+    { level: 'low'      as const, label: 'Low' },
   ];
 
   return (
@@ -159,29 +162,58 @@ function GroupedBar({
         ))}
       </View>
 
-      {/* Segmented bar — continuous, no gaps */}
-      <View style={{ flexDirection: 'row', height: 36, borderRadius: 8, overflow: 'hidden' }}>
-        {groups.map(({ avg }, i) => {
-          const color = segmentColor(avg, peakAvg, isDark);
-          const lbl   = segmentLabel(avg, peakAvg);
-          return (
-            <View
-              key={i}
-              style={{ flex: 1, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{ fontSize: 10, fontWeight: '700', color: segmentTextColor(avg, peakAvg, isDark) }}>{lbl}</Text>
-            </View>
-          );
-        })}
-      </View>
+      {/* Segmented bar — single gradient with tight fade zones at colour transitions */}
+      {(() => {
+        // Each segment occupies 20% of the bar. Fade zone is ±2% around each boundary.
+        const n = segments.length;
+        const gradientColors: string[] = [];
+        const gradientLocations: number[] = [];
+        segments.forEach((level, i) => {
+          const c = levelColor(level, isDark);
+          const start = i / n;
+          const end   = (i + 1) / n;
+          const fadeHalf = 0.02;
+          if (i === 0) {
+            gradientColors.push(c);
+            gradientLocations.push(start);
+          }
+          gradientColors.push(c);
+          gradientLocations.push(Math.max(start, end - fadeHalf));
+          if (i < n - 1) {
+            gradientColors.push(levelColor(segments[i + 1], isDark));
+            gradientLocations.push(Math.min(1, end + fadeHalf));
+          }
+        });
+        gradientColors.push(levelColor(segments[n - 1], isDark));
+        gradientLocations.push(1);
 
-      {/* Legend — outline squares, spread across width */}
+        return (
+          <LinearGradient
+            colors={gradientColors as [string, string, ...string[]]}
+            locations={gradientLocations as [number, number, ...number[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flexDirection: 'row', height: 36, borderRadius: 8, overflow: 'hidden' }}
+          >
+            {segments.map((level, i) => (
+              <View key={i} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? LEVEL_TEXT[level].dark : LEVEL_TEXT[level].light }}>
+                  {LEVEL_LABEL[level]}
+                </Text>
+              </View>
+            ))}
+          </LinearGradient>
+        );
+      })()}
+
+      {/* Legend */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 2 }}>
-        {legendColors.map(({ color, label }) => (
+        {legendItems.map(({ level, label }) => (
           <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <View style={{
               width: 11, height: 11, borderRadius: 2,
-              borderWidth: 1.5, borderColor: color,
+              borderWidth: 1.5,
+              borderColor: levelColor(level, isDark),
               backgroundColor: 'transparent',
             }} />
             <Text style={{ fontSize: 11, color: '#9ca3af' }}>{label}</Text>
@@ -331,10 +363,8 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
         <View style={{ gap: 10 }}>
           {/* Grouped time bar */}
           <GroupedBar
-            points={daytimeHours}
-            peakAvg={peak.avgTotal}
-            activeAllergens={activeAllergens}
-            weights={triggerWeights}
+            peak={peak}
+            moderate={moderate}
           />
 
           {/* Peak window */}
