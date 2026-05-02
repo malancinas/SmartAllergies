@@ -1,6 +1,7 @@
 import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, type LayoutChangeEvent } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, type Region, type MapPressEvent } from 'react-native-maps';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { useProGate } from '@/features/subscription/hooks/useProGate';
@@ -40,6 +41,17 @@ function highestPollenLayer(today: ReturnType<typeof useCurrentPollen>['today'])
 }
 
 export default function MapScreen() {
+  const colorScheme = useColorScheme();
+  const dark = colorScheme === 'dark';
+
+  // Adaptive surface colours for map overlays
+  const pillBg = dark ? 'rgba(30,30,30,0.95)' : 'rgba(255,255,255,0.95)';
+  const pillText = dark ? '#f3f4f6' : '#374151';
+  const zoomBg = dark ? '#1f2937' : '#ffffff';
+  const zoomText = dark ? '#f3f4f6' : '#374151';
+  const zoomBorder = dark ? '#374151' : '#e5e7eb';
+  const zoomDisabled = dark ? '#4b5563' : '#d1d5db';
+
   const { location } = useLocation();
   const { today } = useCurrentPollen();
   const { isPro, showPaywall, paywallProps } = useProGate();
@@ -218,27 +230,27 @@ export default function MapScreen() {
           left: 12,
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: 'rgba(255,255,255,0.92)',
-          borderRadius: 20,
+          backgroundColor: dark ? 'rgba(30,30,30,0.95)' : 'rgba(30,30,30,0.88)',
+          borderRadius: 999,
           paddingHorizontal: 12,
           paddingVertical: 7,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
-          elevation: 3,
-          gap: 5,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 6,
+          elevation: 4,
+          gap: 6,
         }}
       >
         {adPlaying ? (
           <ActivityIndicator size="small" color="#6366f1" style={{ marginHorizontal: 6 }} />
         ) : (
           <>
-            <Text style={{ fontSize: 13 }}>📍</Text>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', maxWidth: 140 }} numberOfLines={1}>
+            <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#ef4444' }} />
+            <Text style={{ fontSize: 12, fontWeight: '500', color: '#e5e7eb', maxWidth: 160 }} numberOfLines={1}>
               {locationLabel ?? 'My location'}
             </Text>
-            <Text style={{ fontSize: 11, color: '#9ca3af' }}>▾</Text>
+            <Text style={{ fontSize: 11, color: '#6b7280' }}>▾</Text>
           </>
         )}
       </TouchableOpacity>
@@ -253,19 +265,19 @@ export default function MapScreen() {
             right: 12,
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            backgroundColor: pillBg,
             borderRadius: 20,
             paddingHorizontal: 10,
             paddingVertical: 6,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.15,
+            shadowOpacity: 0.2,
             shadowRadius: 4,
             elevation: 3,
           }}
         >
           <Text style={{ fontSize: 13, marginRight: 4 }}>🔒</Text>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: pillText }}>
             Unlock live hyperlocal map
           </Text>
         </TouchableOpacity>
@@ -279,19 +291,19 @@ export default function MapScreen() {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 5,
-            backgroundColor: mapViewMode === 'pro' ? 'rgba(99,102,241,0.92)' : 'rgba(255,255,255,0.92)',
+            backgroundColor: mapViewMode === 'pro' ? 'rgba(99,102,241,0.92)' : pillBg,
             borderRadius: 20,
             paddingHorizontal: 10,
             paddingVertical: 6,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.15,
+            shadowOpacity: 0.2,
             shadowRadius: 4,
             elevation: 3,
           }}
         >
           <Text style={{ fontSize: 12 }}>{mapViewMode === 'pro' ? '✨' : '🗺'}</Text>
-          <Text style={{ fontSize: 12, fontWeight: '600', color: mapViewMode === 'pro' ? '#fff' : '#374151' }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: mapViewMode === 'pro' ? '#fff' : pillText }}>
             {mapViewMode === 'pro' ? 'Pro view' : 'Free view'}
           </Text>
         </TouchableOpacity>
@@ -308,25 +320,25 @@ export default function MapScreen() {
             right: 16,
             borderRadius: 10,
             overflow: 'hidden',
-            backgroundColor: '#fff',
+            backgroundColor: zoomBg,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
+            shadowOpacity: 0.25,
             shadowRadius: 4,
             elevation: 4,
           }}>
             <TouchableOpacity
               onPress={handleZoomIn}
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}
+              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: zoomBorder }}
             >
-              <Text style={{ fontSize: 22, color: '#374151', lineHeight: 26 }}>+</Text>
+              <Text style={{ fontSize: 22, color: zoomText, lineHeight: 26 }}>+</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleZoomOut}
               disabled={zoomOutDisabled}
               style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={{ fontSize: 22, color: zoomOutDisabled ? '#d1d5db' : '#374151', lineHeight: 26 }}>−</Text>
+              <Text style={{ fontSize: 22, color: zoomOutDisabled ? zoomDisabled : zoomText, lineHeight: 26 }}>−</Text>
             </TouchableOpacity>
           </View>
         );
@@ -343,12 +355,12 @@ export default function MapScreen() {
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor: '#fff',
+            backgroundColor: zoomBg,
             alignItems: 'center',
             justifyContent: 'center',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
+            shadowOpacity: 0.25,
             shadowRadius: 4,
             elevation: 4,
           }}

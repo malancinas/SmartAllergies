@@ -9,6 +9,7 @@ interface UseCurrentPollenResult {
   forecast: MergedDailyPollenForecast[];
   todayHourly: HourlyPollenPoint[];
   todayWeather: WeatherPoint | null;
+  weatherForecast: WeatherPoint[];
   limitedCoverage: boolean;
   loading: boolean;
   error: Error | null;
@@ -58,6 +59,7 @@ export function useCurrentPollen(): UseCurrentPollenResult {
     forecast: mergedPollen.forecast,
     todayHourly,
     todayWeather,
+    weatherForecast: weatherQuery.data?.hourly ?? [],
     limitedCoverage: mergedPollen.limitedCoverage,
     loading,
     error,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { type LayerType, type PollenLayerType, type AqLayerType, type AqLevel, isAqLayer, AQ_COLORS } from '../types';
 
 interface PollenLayerInfo {
@@ -39,11 +40,22 @@ interface Props {
 }
 
 export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywall }: Props) {
+  const colorScheme = useColorScheme();
+  const dark = colorScheme === 'dark';
+
+  const containerBg = dark ? 'rgba(20,20,20,0.97)' : 'rgba(255,255,255,0.97)';
+  const tabInactiveBorder = dark ? '#374151' : '#e5e7eb';
+  const tabInactiveText = dark ? '#d1d5db' : '#374151';
+  const subLockedBg = dark ? '#1f2937' : '#f3f4f6';
+  const subLockedBorder = dark ? '#374151' : '#d1d5db';
+  const subLockedText = dark ? '#6b7280' : '#9ca3af';
+  const subInactiveText = dark ? '#d1d5db' : '#374151';
+  const dividerColor = dark ? '#374151' : '#e5e7eb';
+
   const aqActive = isAqLayer(selected);
   const aqTabColor = AQ_COLORS[aqiLevel ?? 'none'];
 
   function handleAqTabPress() {
-    // If already on an AQ layer, no-op — sub-row handles selection within the group
     if (!aqActive) onSelect('aqi');
   }
 
@@ -60,19 +72,19 @@ export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywa
       style={{
         position: 'absolute',
         bottom: 90,
-        alignSelf: 'center',
-        backgroundColor: 'rgba(255,255,255,0.95)',
+        left: 8,
+        right: 8,
+        backgroundColor: containerBg,
         borderRadius: 24,
         padding: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.18,
+        shadowOpacity: dark ? 0.4 : 0.18,
         shadowRadius: 6,
         elevation: 5,
-        maxWidth: '95%',
       }}
     >
-      {/* Top row: pollen tabs + AQ tab */}
+      {/* Top row: pollen tabs + AQ tab — flex so each tab gets equal width inside the bounding box */}
       <View style={{ flexDirection: 'row', gap: 4 }}>
         {POLLEN_LAYERS.map(({ key, emoji, label }) => {
           const active = selected === key;
@@ -81,17 +93,18 @@ export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywa
               key={key}
               onPress={() => onSelect(key)}
               style={{
-                paddingHorizontal: 14,
+                flex: 1,
                 paddingVertical: 8,
                 borderRadius: 20,
                 backgroundColor: active ? '#6366f1' : 'transparent',
                 borderWidth: 2,
-                borderColor: active ? '#6366f1' : '#E5E7EB',
+                borderColor: active ? '#6366f1' : tabInactiveBorder,
                 alignItems: 'center',
+                justifyContent: 'center',
               }}
               activeOpacity={0.75}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : '#374151' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : tabInactiveText }} numberOfLines={1}>
                 {emoji} {label}
               </Text>
             </TouchableOpacity>
@@ -102,17 +115,18 @@ export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywa
         <TouchableOpacity
           onPress={handleAqTabPress}
           style={{
-            paddingHorizontal: 14,
+            flex: 1,
             paddingVertical: 8,
             borderRadius: 20,
             backgroundColor: aqActive ? aqTabColor : 'transparent',
             borderWidth: 2,
-            borderColor: aqActive ? aqTabColor : '#E5E7EB',
+            borderColor: aqActive ? aqTabColor : tabInactiveBorder,
             alignItems: 'center',
+            justifyContent: 'center',
           }}
           activeOpacity={0.75}
         >
-          <Text style={{ fontSize: 13, fontWeight: '600', color: aqActive ? '#fff' : '#374151' }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: aqActive ? '#fff' : tabInactiveText }} numberOfLines={1}>
             💨 Air Quality
           </Text>
         </TouchableOpacity>
@@ -121,7 +135,7 @@ export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywa
       {/* Sub-row: individual pollutant selector, visible when AQ tab is active */}
       {aqActive && (
         <>
-          <View style={{ height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 4, marginTop: 4 }} />
+          <View style={{ height: 1, backgroundColor: dividerColor, marginHorizontal: 4, marginTop: 4 }} />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -138,9 +152,9 @@ export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywa
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 16,
-                    backgroundColor: active ? AQ_COLORS['moderate'] : locked ? '#F3F4F6' : 'transparent',
+                    backgroundColor: active ? AQ_COLORS['moderate'] : locked ? subLockedBg : 'transparent',
                     borderWidth: 1.5,
-                    borderColor: active ? AQ_COLORS['moderate'] : locked ? '#D1D5DB' : '#D1D5DB',
+                    borderColor: active ? AQ_COLORS['moderate'] : subLockedBorder,
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 4,
@@ -148,14 +162,12 @@ export function LayerSelector({ selected, onSelect, aqiLevel, isPro, onShowPaywa
                   }}
                   activeOpacity={0.75}
                 >
-                  {locked && (
-                    <Text style={{ fontSize: 10 }}>🔒</Text>
-                  )}
+                  {locked && <Text style={{ fontSize: 10 }}>🔒</Text>}
                   <Text
                     style={{
                       fontSize: 12,
                       fontWeight: '600',
-                      color: active ? '#fff' : locked ? '#9CA3AF' : '#374151',
+                      color: active ? '#fff' : locked ? subLockedText : subInactiveText,
                     }}
                   >
                     {label}

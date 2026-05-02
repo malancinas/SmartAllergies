@@ -16,9 +16,10 @@ export interface BottomSheetProps {
   snapPoints?: number[];
   children: React.ReactNode;
   testID?: string;
+  backgroundColor?: string;
 }
 
-export function BottomSheet({ visible, onClose, snapPoints = [0.5], children, testID }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, snapPoints = [0.5], children, testID, backgroundColor = 'white' }: BottomSheetProps) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
   const defaultHeight = SCREEN_HEIGHT * (snapPoints[0] ?? 0.5);
@@ -66,7 +67,7 @@ export function BottomSheet({ visible, onClose, snapPoints = [0.5], children, te
               left: 0,
               right: 0,
               height: defaultHeight,
-              backgroundColor: 'white',
+              backgroundColor,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
             },
@@ -74,7 +75,7 @@ export function BottomSheet({ visible, onClose, snapPoints = [0.5], children, te
           ]}
         >
           <View className="items-center pt-3 pb-2">
-            <View className="w-10 h-1 bg-neutral-300 rounded-full" />
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: backgroundColor === 'white' ? '#d1d5db' : 'rgba(255,255,255,0.2)' }} />
           </View>
           <View className="flex-1 px-4 pb-4">{children}</View>
         </Animated.View>

@@ -22,7 +22,7 @@ import { ChangeLocationSheet } from '@/features/location/components/ChangeLocati
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
   const { user } = useAuth();
-  const { today: todayPollen, forecast: pollenForecast, todayHourly, todayWeather, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
+  const { today: todayPollen, forecast: pollenForecast, todayHourly, todayWeather, weatherForecast, limitedCoverage, permissionDenied, loading: pollenLoading, staleSince } =
     useCurrentPollen();
   const { today: riskToday, upcoming, weights, loading: forecastLoading } = useForecast();
   const { isPro, showPaywall, paywallProps } = useProGate();
@@ -185,6 +185,8 @@ export default function HomeScreen() {
                 allergenProfile={activeAllergens}
                 isPro={effectiveIsPro}
                 onUpgradePress={() => showPaywall('Air quality details')}
+                todayHourly={todayHourly}
+                locationLabel={locationLabel ?? undefined}
               />
             </>
           )}
@@ -199,6 +201,10 @@ export default function HomeScreen() {
                 upcoming={upcoming}
                 isPro={effectiveIsPro}
                 onUpgradePress={() => showPaywall('Extended forecast')}
+                weights={weights}
+                riskToday={riskToday}
+                locationLabel={locationLabel ?? undefined}
+                weatherForecast={weatherForecast}
               />
             </>
           )}
