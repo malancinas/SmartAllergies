@@ -35,6 +35,7 @@ import ar from './src/locales/ar.json';
 import RootNavigator from '@/navigation/RootNavigator';
 import { Loader } from '@/components/ui/Loader';
 import { ToastContainer } from '@/components/ui/Toast';
+import { useColorScheme as useNativewindColorScheme } from 'nativewind';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useAuthStore } from '@/stores/persistent/authStore';
 import { initRevenueCat, syncEntitlement, loginRevenueCat } from '@/features/subscription/service';
@@ -53,6 +54,15 @@ i18n.use(initReactI18next).init({
   defaultNS: 'common',
 });
 
+
+function ThemeSync() {
+  const { setColorScheme } = useNativewindColorScheme();
+  const theme = useSettingsStore((s) => s.theme);
+  React.useEffect(() => {
+    setColorScheme(theme);
+  }, [theme, setColorScheme]);
+  return null;
+}
 
 function AppWithI18n() {
   const language = useSettingsStore((s) => s.language);
@@ -76,6 +86,7 @@ function AppWithI18n() {
 
   return (
     <>
+      <ThemeSync />
       <RootNavigator />
       <Loader />
       <ToastContainer />

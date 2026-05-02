@@ -64,7 +64,7 @@ const DEFAULT_SCHEDULES: AlertSchedule[] = [
 export const useSettingsStore = create<SettingsState & SettingsActions>()(
   persist(
     (set) => ({
-      theme: 'system',
+      theme: 'dark',
       language: 'en',
       notificationsEnabled: true,
       alertSchedules: DEFAULT_SCHEDULES,
@@ -96,13 +96,17 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
     {
       name: 'settings-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // Migrate: if alertSchedules is missing (old install), use defaults
       merge: (persisted: unknown, current) => {
         const p = persisted as Partial<SettingsState & SettingsActions>;
+        const result = { ...current, ...p };
         if (!p.alertSchedules || p.alertSchedules.length === 0) {
-          return { ...current, ...p, alertSchedules: DEFAULT_SCHEDULES };
+          result.alertSchedules = DEFAULT_SCHEDULES;
         }
-        return { ...current, ...p };
+        // Upgrade old 'system' installs to explicit dark mode for the new dark design
+        if (!p.theme || p.theme === 'system') {
+          result.theme = 'dark';
+        }
+        return result;
       },
     },
   ),

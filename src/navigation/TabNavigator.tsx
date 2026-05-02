@@ -11,8 +11,6 @@ import SettingsNavigator from './SettingsNavigator';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// ─── Simple icon components (replace with icon library of your choice) ────────
-
 function HomeIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>🏠</Text>;
 }
@@ -22,11 +20,10 @@ function HistoryIcon({ color }: { color: string }) {
 function MapIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>🗺️</Text>;
 }
-function SettingsIcon({ color }: { color: string }) {
-  return <Text style={{ color, fontSize: 20 }}>⚙️</Text>;
+function ProfileIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 20 }}>👤</Text>;
 }
 
-// Centre "Log" tab uses a prominent + button
 function LogTabIcon({ focused }: { focused: boolean }) {
   return (
     <View
@@ -54,10 +51,16 @@ export default function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: colors.primary[600],
-        tabBarInactiveTintColor: colors.neutral[400],
+        tabBarActiveTintColor: colors.primary[400],
+        tabBarInactiveTintColor: colors.neutral[500],
         headerShown: false,
-        tabBarStyle: { paddingBottom: Platform.OS === 'ios' ? 20 : 6, height: Platform.OS === 'ios' ? 82 : 62 },
+        tabBarStyle: {
+          paddingBottom: Platform.OS === 'ios' ? 20 : 6,
+          height: Platform.OS === 'ios' ? 82 : 62,
+          backgroundColor: '#111827',
+          borderTopColor: '#1f2937',
+          borderTopWidth: 1,
+        },
       }}
     >
       <Tab.Screen
@@ -77,14 +80,6 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Map"
-        component={MapScreen}
-        options={{
-          tabBarLabel: 'Map',
-          tabBarIcon: ({ color }) => <MapIcon color={color} />,
-        }}
-      />
-      <Tab.Screen
         name="Log"
         component={LogSymptomsScreen}
         options={{
@@ -93,11 +88,19 @@ export default function TabNavigator() {
         }}
       />
       <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{
+          tabBarLabel: 'Map',
+          tabBarIcon: ({ color }) => <MapIcon color={color} />,
+        }}
+      />
+      <Tab.Screen
         name="Settings"
         component={SettingsNavigator}
         options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({ color }) => <SettingsIcon color={color} />,
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color }) => <ProfileIcon color={color} />,
         }}
       />
     </Tab.Navigator>

@@ -83,41 +83,41 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Stack spacing={5} className="py-4">
           {/* Greeting */}
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1">
-              <Text className="text-2xl font-bold text-neutral-900 dark:text-white">
-                Hello, {user?.name ?? 'there'} 👋
-              </Text>
-              <Text className="text-sm text-neutral-500 mt-1">
-                {new Date().toLocaleDateString(undefined, {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-            </View>
+          <View>
+            {/* Location chip — own row at top */}
             <TouchableOpacity
               onPress={handleChangeLocationPress}
               activeOpacity={0.8}
               disabled={adPlaying}
-              className="flex-row items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-full px-3 py-1.5 mt-1"
+              style={{ alignSelf: 'flex-start' }}
+              className="flex-row items-center gap-1.5 bg-neutral-800 rounded-full px-3 py-1.5 mb-3"
             >
               {adPlaying ? (
                 <ActivityIndicator size="small" color="#6366f1" style={{ marginHorizontal: 4 }} />
               ) : (
                 <>
-                  <Text style={{ fontSize: 12 }}>📍</Text>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#ef4444' }} />
                   <Text
-                    className="text-xs font-medium text-neutral-700 dark:text-neutral-300"
+                    className="text-xs font-medium text-neutral-200"
                     numberOfLines={1}
-                    style={{ maxWidth: 100 }}
+                    style={{ maxWidth: 160 }}
                   >
                     {locationLabel ?? 'My location'}
                   </Text>
-                  <Text className="text-xs text-neutral-400">▾</Text>
+                  <Text className="text-xs text-neutral-500">▾</Text>
                 </>
               )}
             </TouchableOpacity>
+            <Text className="text-3xl font-bold text-neutral-900 dark:text-white">
+              Hello, {user?.name ?? 'there'} 👋
+            </Text>
+            <Text className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+              {new Date().toLocaleDateString(undefined, {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+              })}
+            </Text>
           </View>
 
           {/* Stale data badge — shown when offline and serving cached data */}
@@ -175,32 +175,47 @@ export default function HomeScreen() {
 
           {/* Today's pollen breakdown */}
           {todayPollen && (
-            <PollenSummary
-              today={todayPollen}
-              limitedCoverage={limitedCoverage}
-              allergenProfile={activeAllergens}
-              isPro={effectiveIsPro}
-              onUpgradePress={() => showPaywall('Air quality details')}
-            />
+            <>
+              <Text className="text-xs font-bold tracking-widest text-neutral-400 dark:text-neutral-500 uppercase px-0.5">
+                Today's Pollen
+              </Text>
+              <PollenSummary
+                today={todayPollen}
+                limitedCoverage={limitedCoverage}
+                allergenProfile={activeAllergens}
+                isPro={effectiveIsPro}
+                onUpgradePress={() => showPaywall('Air quality details')}
+              />
+            </>
           )}
 
           {/* 5-day forecast strip — days after tomorrow are Pro-only */}
           {upcoming.length > 0 && (
-            <ForecastStrip
-              upcoming={upcoming}
-              isPro={effectiveIsPro}
-              onUpgradePress={() => showPaywall('Extended forecast')}
-            />
+            <>
+              <Text className="text-xs font-bold tracking-widest text-neutral-400 dark:text-neutral-500 uppercase px-0.5">
+                Coming Up
+              </Text>
+              <ForecastStrip
+                upcoming={upcoming}
+                isPro={effectiveIsPro}
+                onUpgradePress={() => showPaywall('Extended forecast')}
+              />
+            </>
           )}
 
           {/* Peak pollen hours — Pro feature using already-fetched hourly data */}
-          <PeakHoursCard
-            todayHourly={todayHourly}
-            isPro={effectiveIsPro}
-            onUpgradePress={() => showPaywall('Peak pollen hours')}
-            activeAllergens={activeAllergens}
-            triggerWeights={triggerWeights}
-          />
+          <>
+            <Text className="text-xs font-bold tracking-widest text-neutral-400 dark:text-neutral-500 uppercase px-0.5">
+              Peak Pollen Hours
+            </Text>
+            <PeakHoursCard
+              todayHourly={todayHourly}
+              isPro={effectiveIsPro}
+              onUpgradePress={() => showPaywall('Peak pollen hours')}
+              activeAllergens={activeAllergens}
+              triggerWeights={triggerWeights}
+            />
+          </>
 
           {/* Weather context */}
           {todayWeather && (

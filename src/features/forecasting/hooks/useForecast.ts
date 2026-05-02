@@ -47,7 +47,9 @@ export function useForecast(): AllergyForecast & { loading: boolean; error: Erro
       weights = allergenProfileToWeights(allergenProfile);
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const n = new Date();
+    const p = (v: number) => String(v).padStart(2, '0');
+    const todayStr = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
     const todayForecast = forecast.find((d) => d.date === todayStr);
     const upcomingForecasts = forecast.filter((d) => d.date > todayStr);
 

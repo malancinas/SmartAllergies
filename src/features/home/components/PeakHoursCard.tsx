@@ -1,23 +1,24 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { HourlyPollenPoint } from '@/features/pollen/types';
 
 interface Props {
   todayHourly: HourlyPollenPoint[];
   isPro: boolean;
   onUpgradePress: () => void;
-  /** Which allergen types to include — from the user's allergen profile setting */
   activeAllergens: string[];
-  /** Beta-normalised weights per allergen type — present when the ML model is active (Pro only) */
   triggerWeights?: Partial<Record<string, number>>;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatHour(isoTime: string): string {
   const hour = parseInt(isoTime.slice(11, 13), 10);
-  if (hour === 0) return '12am';
-  if (hour < 12) return `${hour}am`;
-  if (hour === 12) return '12pm';
-  return `${hour - 12}pm`;
+  if (hour === 0) return '12 am';
+  if (hour < 12) return `${hour} am`;
+  if (hour === 12) return '12 pm';
+  return `${hour - 12} pm`;
 }
 
 interface WindowResult {
@@ -33,9 +34,7 @@ function pollenScore(
 ): number {
   const types = (['tree', 'grass', 'weed'] as const).filter((a) => activeAllergens.includes(a));
   if (types.length === 0) return p.tree + p.grass + p.weed;
-  if (weights) {
-    return types.reduce((sum, a) => sum + p[a] * (weights[a] ?? 0), 0);
-  }
+  if (weights) return types.reduce((sum, a) => sum + p[a] * (weights[a] ?? 0), 0);
   return types.reduce((sum, a) => sum + p[a], 0);
 }
 
@@ -46,22 +45,12 @@ function findBestWindow(
   windowSize = 3,
 ): WindowResult | null {
   if (points.length < windowSize) return null;
-  let bestAvg = Infinity;
-  let bestIdx = 0;
+  let bestAvg = Infinity, bestIdx = 0;
   for (let i = 0; i <= points.length - windowSize; i++) {
-    const avg =
-      points.slice(i, i + windowSize).reduce((sum, p) => sum + pollenScore(p, activeAllergens, weights), 0) /
-      windowSize;
-    if (avg < bestAvg) {
-      bestAvg = avg;
-      bestIdx = i;
-    }
+    const avg = points.slice(i, i + windowSize).reduce((s, p) => s + pollenScore(p, activeAllergens, weights), 0) / windowSize;
+    if (avg < bestAvg) { bestAvg = avg; bestIdx = i; }
   }
-  return {
-    startTime: points[bestIdx].time,
-    endTime: points[bestIdx + windowSize - 1].time,
-    avgTotal: bestAvg,
-  };
+  return { startTime: points[bestIdx].time, endTime: points[bestIdx + windowSize - 1].time, avgTotal: bestAvg };
 }
 
 function findPeakWindow(
@@ -71,29 +60,181 @@ function findPeakWindow(
   windowSize = 3,
 ): WindowResult | null {
   if (points.length < windowSize) return null;
-  let peakAvg = -Infinity;
-  let peakIdx = 0;
+  let peakAvg = -Infinity, peakIdx = 0;
   for (let i = 0; i <= points.length - windowSize; i++) {
-    const avg =
-      points.slice(i, i + windowSize).reduce((sum, p) => sum + pollenScore(p, activeAllergens, weights), 0) /
-      windowSize;
-    if (avg > peakAvg) {
-      peakAvg = avg;
-      peakIdx = i;
-    }
+    const avg = points.slice(i, i + windowSize).reduce((s, p) => s + pollenScore(p, activeAllergens, weights), 0) / windowSize;
+    if (avg > peakAvg) { peakAvg = avg; peakIdx = i; }
   }
-  return {
-    startTime: points[peakIdx].time,
-    endTime: points[peakIdx + windowSize - 1].time,
-    avgTotal: peakAvg,
-  };
+  return { startTime: points[peakIdx].time, endTime: points[peakIdx + windowSize - 1].time, avgTotal: peakAvg };
 }
+
+function findModerateWindow(
+  points: HourlyPollenPoint[],
+  activeAllergens: string[],
+  peakIdx: number,
+  weights?: Partial<Record<string, number>>,
+  windowSize = 2,
+): WindowResult | null {
+  if (points.length < windowSize) return null;
+  let modAvg = -Infinity, modIdx = -1;
+  for (let i = 0; i <= points.length - windowSize; i++) {
+    if (Math.abs(i - peakIdx) < windowSize) continue;
+    const avg = points.slice(i, i + windowSize).reduce((s, p) => s + pollenScore(p, activeAllergens, weights), 0) / windowSize;
+    if (avg > modAvg) { modAvg = avg; modIdx = i; }
+  }
+  if (modIdx === -1) return null;
+  return { startTime: points[modIdx].time, endTime: points[modIdx + windowSize - 1].time, avgTotal: modAvg };
+}
+
+// ─── Grouped time bar (5 × 3-hour segments) ───────────────────────────────────
+
+const TIME_GROUPS = [
+  { label: '6 am',  hours: [6, 7, 8] },
+  { label: '9 am',  hours: [9, 10, 11] },
+  { label: '12 pm', hours: [12, 13, 14] },
+  { label: '3 pm',  hours: [15, 16, 17] },
+  { label: '6 pm',  hours: [18, 19, 20] },
+];
+const TIME_AXIS_LABELS = ['6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm'];
+
+function segmentColor(avg: number, peakAvg: number): string {
+  if (peakAvg === 0) return '#22c55e';
+  if (avg >= peakAvg * 0.75) return '#ef4444';
+  if (avg >= peakAvg * 0.35) return '#f59e0b';
+  return '#22c55e';
+}
+
+function segmentLabel(avg: number, peakAvg: number): string {
+  if (peakAvg === 0) return 'Low';
+  if (avg >= peakAvg * 0.75) return 'Peak';
+  if (avg >= peakAvg * 0.35) return 'Mod';
+  return 'Low';
+}
+
+function GroupedBar({
+  points,
+  peakAvg,
+  activeAllergens,
+  weights,
+}: {
+  points: HourlyPollenPoint[];
+  peakAvg: number;
+  activeAllergens: string[];
+  weights?: Partial<Record<string, number>>;
+}) {
+  const groups = TIME_GROUPS.map(({ label, hours }) => {
+    const groupPoints = points.filter((p) => hours.includes(parseInt(p.time.slice(11, 13), 10)));
+    const avg = groupPoints.length
+      ? groupPoints.reduce((s, p) => s + pollenScore(p, activeAllergens, weights), 0) / groupPoints.length
+      : 0;
+    return { label, avg };
+  });
+
+  return (
+    <View>
+      {/* Time axis labels */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+        {TIME_AXIS_LABELS.map((lbl) => (
+          <Text key={lbl} style={{ fontSize: 10, color: '#9ca3af' }}>{lbl}</Text>
+        ))}
+      </View>
+
+      {/* Segmented bar */}
+      <View style={{ flexDirection: 'row', height: 36, borderRadius: 8, overflow: 'hidden', gap: 2 }}>
+        {groups.map(({ avg }, i) => {
+          const color = segmentColor(avg, peakAvg);
+          const lbl   = segmentLabel(avg, peakAvg);
+          return (
+            <View
+              key={i}
+              style={{ flex: 1, backgroundColor: color, alignItems: 'center', justifyContent: 'center', borderRadius: i === 0 ? 6 : i === groups.length - 1 ? 6 : 2 }}
+            >
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', opacity: 0.9 }}>{lbl}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Legend — outline squares, spread across width */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 2 }}>
+        {([
+          { color: '#ef4444', label: 'Peak pollen' },
+          { color: '#f59e0b', label: 'Moderate' },
+          { color: '#22c55e', label: 'Low' },
+        ] as const).map(({ color, label }) => (
+          <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={{
+              width: 11, height: 11, borderRadius: 2,
+              borderWidth: 1.5, borderColor: color,
+              backgroundColor: 'transparent',
+            }} />
+            <Text style={{ fontSize: 11, color: '#9ca3af' }}>{label}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Window row ───────────────────────────────────────────────────────────────
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function WindowRow({
+  iconName,
+  iconColor,
+  iconBg,
+  categoryLabel,
+  timeLabel,
+  description,
+  badge,
+  badgeColor,
+  badgeBg,
+}: {
+  iconName: IoniconName;
+  iconColor: string;
+  iconBg: string;
+  categoryLabel: string;
+  timeLabel: string;
+  description: string;
+  badge: string;
+  badgeColor: string;
+  badgeBg: string;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: iconBg,
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Ionicons name={iconName} size={20} color={iconColor} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 1 }}>{categoryLabel}</Text>
+        <Text className="text-neutral-900 dark:text-white" style={{ fontSize: 16, fontWeight: '800', lineHeight: 20 }}>{timeLabel}</Text>
+        <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{description}</Text>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: badgeBg }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: badgeColor }}>{badge}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Divider ─────────────────────────────────────────────────────────────────
+
+function Divider() {
+  return <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 2 }} />;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllergens, triggerWeights }: Props) {
   if (!isPro) {
     return (
       <TouchableOpacity activeOpacity={0.8} onPress={onUpgradePress}>
-        <View className="bg-white dark:bg-neutral-800 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700">
+        <View className="bg-white dark:bg-neutral-800 rounded-2xl p-4 border border-neutral-100 dark:border-neutral-700">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
               Peak pollen hours
@@ -102,19 +243,19 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
               <Text className="text-[10px] font-bold text-violet-600 dark:text-violet-400">PRO</Text>
             </View>
           </View>
-          <View className="opacity-30 gap-2">
+          <View style={{ opacity: 0.3, gap: 8 }}>
             <View className="flex-row items-center gap-2">
               <Text className="text-lg">🟢</Text>
               <View>
                 <Text className="text-xs text-neutral-500">Best time outside</Text>
-                <Text className="text-sm font-semibold text-neutral-800 dark:text-white">7am – 9am</Text>
+                <Text className="text-sm font-semibold text-neutral-800 dark:text-white">7 am – 9 am</Text>
               </View>
             </View>
             <View className="flex-row items-center gap-2">
               <Text className="text-lg">🔴</Text>
               <View>
                 <Text className="text-xs text-neutral-500">Peak pollen window</Text>
-                <Text className="text-sm font-semibold text-neutral-800 dark:text-white">12pm – 3pm</Text>
+                <Text className="text-sm font-semibold text-neutral-800 dark:text-white">12 pm – 3 pm</Text>
               </View>
             </View>
           </View>
@@ -129,42 +270,35 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
     );
   }
 
-  // Daytime hours only (6am–9pm) for more useful recommendations
+  // Daytime 6am–8pm (hours 6–20 = 15 data points, groups into 5 × 3-hr bands)
   const daytimeHours = todayHourly.filter((h) => {
     const hour = parseInt(h.time.slice(11, 13), 10);
-    return hour >= 6 && hour <= 21;
+    return hour >= 6 && hour <= 20;
   });
 
   const best = findBestWindow(daytimeHours, activeAllergens, triggerWeights);
   const peak = findPeakWindow(daytimeHours, activeAllergens, triggerWeights);
 
-  // Truly no API data for this location
   const noData = todayHourly.length === 0 || daytimeHours.every((h) => h.tree + h.grass + h.weed === 0);
-
-  // API has data, but the selected allergen(s) are at 0 all day
   const allergenAllClear =
     !noData && daytimeHours.every((h) => pollenScore(h, activeAllergens, triggerWeights) === 0);
-
-  // No meaningful variation — pollen is uniformly very low all day
   const uniformlyLow =
-    !noData &&
-    !allergenAllClear &&
-    best != null &&
-    peak != null &&
-    peak.startTime === best.startTime &&
-    peak.avgTotal === best.avgTotal;
+    !noData && !allergenAllClear && best != null && peak != null &&
+    peak.startTime === best.startTime && peak.avgTotal === best.avgTotal;
 
   const allergenLabel =
     activeAllergens.length === 0
-      ? 'Your selected allergens'
+      ? 'your allergens'
       : activeAllergens.map((a) => a.charAt(0).toUpperCase() + a.slice(1)).join(' & ') + ' pollen';
 
-  return (
-    <View className="bg-white dark:bg-neutral-800 rounded-xl p-4 border border-neutral-100 dark:border-neutral-700">
-      <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">
-        Peak pollen hours
-      </Text>
+  let peakStartIdx = 0;
+  if (peak) peakStartIdx = daytimeHours.findIndex((h) => h.time === peak.startTime);
+  const moderate = peak && !uniformlyLow
+    ? findModerateWindow(daytimeHours, activeAllergens, peakStartIdx, triggerWeights)
+    : null;
 
+  return (
+    <View className="bg-white dark:bg-neutral-800 rounded-2xl p-4 border border-neutral-100 dark:border-neutral-700">
       {noData || !best || !peak ? (
         <Text className="text-xs text-neutral-400">Hourly data unavailable for your location.</Text>
       ) : allergenAllClear ? (
@@ -182,34 +316,62 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
           </Text>
         </View>
       ) : (
-        <View className="gap-3">
-          <View className="flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 items-center justify-center">
-              <Text className="text-base">🌿</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs text-neutral-500 dark:text-neutral-400">Best time outside</Text>
-              <Text className="text-sm font-semibold text-neutral-800 dark:text-white">
-                {formatHour(best.startTime)} – {formatHour(best.endTime)}
-              </Text>
-            </View>
-            <Text className="text-xs text-green-600 dark:text-green-400 font-medium">Lower risk</Text>
-          </View>
+        <View style={{ gap: 16 }}>
+          {/* Grouped time bar */}
+          <GroupedBar
+            points={daytimeHours}
+            peakAvg={peak.avgTotal}
+            activeAllergens={activeAllergens}
+            weights={triggerWeights}
+          />
 
-          <View className="h-px bg-neutral-100 dark:bg-neutral-700" />
+          <Divider />
 
-          <View className="flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 items-center justify-center">
-              <Text className="text-base">⚠️</Text>
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs text-neutral-500 dark:text-neutral-400">Peak pollen window</Text>
-              <Text className="text-sm font-semibold text-neutral-800 dark:text-white">
-                {formatHour(peak.startTime)} – {formatHour(peak.endTime)}
-              </Text>
-            </View>
-            <Text className="text-xs text-red-500 dark:text-red-400 font-medium">Avoid if possible</Text>
-          </View>
+          {/* Peak window */}
+          <WindowRow
+            iconName="warning-outline"
+            iconColor="#ef4444"
+            iconBg="rgba(239,68,68,0.15)"
+            categoryLabel="Peak pollen window"
+            timeLabel={`${formatHour(peak.startTime)} – ${formatHour(peak.endTime)}`}
+            description={`Highest ${allergenLabel} concentration`}
+            badge="Avoid"
+            badgeColor="#ef4444"
+            badgeBg="rgba(239,68,68,0.12)"
+          />
+
+          {/* Moderate window */}
+          {moderate && moderate.avgTotal > 0 && (
+            <>
+              <Divider />
+              <WindowRow
+                iconName="time-outline"
+                iconColor="#f59e0b"
+                iconBg="rgba(245,158,11,0.15)"
+                categoryLabel="Moderate window"
+                timeLabel={`${formatHour(moderate.startTime)} – ${formatHour(moderate.endTime)}`}
+                description="Limit time outdoors if sensitive"
+                badge="Caution"
+                badgeColor="#f59e0b"
+                badgeBg="rgba(245,158,11,0.12)"
+              />
+            </>
+          )}
+
+          <Divider />
+
+          {/* Best window */}
+          <WindowRow
+            iconName="checkmark-circle-outline"
+            iconColor="#22c55e"
+            iconBg="rgba(34,197,94,0.15)"
+            categoryLabel="Best time outside"
+            timeLabel={`${formatHour(best.startTime)} – ${formatHour(best.endTime)}`}
+            description="Pollen is at its lowest during this window"
+            badge="Lower risk"
+            badgeColor="#22c55e"
+            badgeBg="rgba(34,197,94,0.12)"
+          />
         </View>
       )}
     </View>

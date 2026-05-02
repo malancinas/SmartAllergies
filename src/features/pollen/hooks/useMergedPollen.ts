@@ -36,8 +36,10 @@ export function useMergedPollen(
     // Don't propagate Google errors — merger handles missing data gracefully
   });
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const fetchedAt = new Date().toISOString();
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const fetchedAt = now.toISOString();
 
   const omDaily = omQuery.data?.daily ?? [];
   const googleDaily = googleQuery.data ?? [];

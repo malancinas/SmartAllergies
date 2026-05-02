@@ -28,8 +28,10 @@ export function useCurrentPollen(): UseCurrentPollenResult {
     location?.longitude ?? null,
   );
 
-  const currentHour = new Date().toISOString().slice(0, 13);
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const currentHour = `${todayStr}T${pad(now.getHours())}`;
 
   const todayHourly = useMemo(
     () => mergedPollen.hourly.filter((h) => h.time.startsWith(todayStr)),

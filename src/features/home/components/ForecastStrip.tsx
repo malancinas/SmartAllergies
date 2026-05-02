@@ -18,6 +18,18 @@ const RISK_COLOR: Record<RiskLevel, string> = {
   high: '#ef4444',
 };
 
+const RISK_BG: Record<RiskLevel, string> = {
+  low: 'rgba(34,197,94,0.15)',
+  medium: 'rgba(245,158,11,0.15)',
+  high: 'rgba(239,68,68,0.15)',
+};
+
+const RISK_LABEL: Record<RiskLevel, string> = {
+  low: 'Low',
+  medium: 'Med',
+  high: 'High',
+};
+
 const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string }> = {
   none: { bg: 'bg-neutral-100 dark:bg-neutral-700', text: 'text-neutral-500', label: 'None' },
   low: { bg: 'bg-success-100 dark:bg-success-900/40', text: 'text-success-700 dark:text-success-300', label: 'Low' },
@@ -48,14 +60,14 @@ function formatAqValue(metric: AirQualityMetric, key: string): string {
   return Math.round(v).toString();
 }
 
-function formatDay(dateStr: string): string {
+function formatWeekday(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00');
   return d.toLocaleDateString(undefined, { weekday: 'short' });
 }
 
-function formatDate(dateStr: string): string {
+function formatDayNumber(dateStr: string): string {
   const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(undefined, { day: 'numeric' });
 }
 
 function formatFullDate(dateStr: string): string {
@@ -80,10 +92,8 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
   return (
     <>
       <View>
-        <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">
-          Coming up
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+        {/* Cards — flex row fills full width, no scroll */}
+        <View style={{ flexDirection: 'row', gap: 6 }}>
           {upcoming.map((day, index) => {
             const locked = !isPro && index >= 1;
 
@@ -92,62 +102,96 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                 key={day.date}
                 activeOpacity={1}
                 onPress={locked ? onUpgradePress : () => setSelected(day)}
-                className="mx-1"
+                style={{ flex: 1 }}
               >
-                <View className="items-center bg-white dark:bg-neutral-800 rounded-xl px-3 py-3 border border-neutral-100 dark:border-neutral-700 overflow-hidden">
-                  <Text className={`text-xs ${locked ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-400'}`}>
-                    {formatDay(day.date)}
+                <View
+                  className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-100 dark:border-neutral-700"
+                  style={{ paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center' }}
+                >
+                  <Text className={locked ? 'text-neutral-600 dark:text-neutral-600' : 'text-neutral-400 dark:text-neutral-400'} style={{ fontSize: 11, fontWeight: '500' }}>
+                    {formatWeekday(day.date)}
                   </Text>
-                  <Text className={`text-xs ${locked ? 'text-neutral-300 dark:text-neutral-600' : 'text-neutral-400'}`}>
-                    {formatDate(day.date)}
+                  <Text className={locked ? 'text-neutral-600 dark:text-neutral-600' : 'text-neutral-800 dark:text-white'} style={{ fontSize: 18, fontWeight: '800', lineHeight: 24, marginTop: 1 }}>
+                    {formatDayNumber(day.date)}
                   </Text>
 
                   {locked ? (
                     <>
-                      <Text className="text-base mt-2">🔒</Text>
-                      <View className="mt-1 bg-violet-100 dark:bg-violet-900/40 rounded-full px-2 py-0.5">
-                        <Text className="text-[10px] font-semibold text-violet-600 dark:text-violet-400">
-                          PRO
-                        </Text>
+                      <Text style={{ fontSize: 16, marginTop: 8 }}>🔒</Text>
+                      <View style={{ marginTop: 4, backgroundColor: 'rgba(139,92,246,0.2)', borderRadius: 20, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#a78bfa' }}>PRO</Text>
                       </View>
                     </>
                   ) : (
-                    <View className="mt-2 gap-1">
-                      {(['tree', 'grass', 'weed'] as const).map((type) => (
-                        <View key={type} className="flex-row items-center gap-1.5">
-                          <View
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 4,
-                              backgroundColor: POLLEN_DOT_COLOR[day.pollenLevels?.[type] ?? 'none'],
-                            }}
-                          />
-                          <Text style={{ fontSize: 10, color: '#6b7280', fontWeight: '500' }}>
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
-                          </Text>
-                        </View>
-                      ))}
-                      {day.airQuality && (
-                        <View className="flex-row items-center gap-1.5">
-                          <View
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: 4,
-                              backgroundColor: POLLEN_DOT_COLOR[day.airQuality.overallLevel],
-                            }}
-                          />
-                          <Text style={{ fontSize: 10, color: '#6b7280', fontWeight: '500' }}>Air</Text>
-                        </View>
-                      )}
-                    </View>
+                    <>
+                      <View style={{ marginTop: 8, gap: 3, alignSelf: 'stretch' }}>
+                        {(['tree', 'grass', 'weed'] as const).map((type) => (
+                          <View key={type} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                            <View
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: POLLEN_DOT_COLOR[day.pollenLevels?.[type] ?? 'none'],
+                              }}
+                            />
+                            <Text className="text-neutral-500 dark:text-neutral-400" style={{ fontSize: 10, fontWeight: '500' }}>
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </Text>
+                          </View>
+                        ))}
+                        {day.airQuality && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                            <View
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: POLLEN_DOT_COLOR[day.airQuality.overallLevel],
+                              }}
+                            />
+                            <Text className="text-neutral-500 dark:text-neutral-400" style={{ fontSize: 10, fontWeight: '500' }}>Air</Text>
+                          </View>
+                        )}
+                      </View>
+                      {/* Risk badge */}
+                      <View
+                        style={{
+                          marginTop: 10,
+                          paddingHorizontal: 10,
+                          paddingVertical: 3,
+                          borderRadius: 20,
+                          borderWidth: 1,
+                          borderColor: RISK_COLOR[day.level],
+                          backgroundColor: RISK_BG[day.level],
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: RISK_COLOR[day.level] }}>
+                          {RISK_LABEL[day.level]}
+                        </Text>
+                      </View>
+                    </>
                   )}
                 </View>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
+
+        {/* Color legend — spread across full width */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, paddingHorizontal: 4 }}>
+          {([
+            { color: '#22c55e', label: 'Low' },
+            { color: '#f59e0b', label: 'Medium' },
+            { color: '#ef4444', label: 'High' },
+            { color: '#9ca3af', label: 'None' },
+          ] as const).map(({ color, label }) => (
+            <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 9, height: 9, borderRadius: 4.5, backgroundColor: color }} />
+              <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '500' }}>{label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       <BottomSheet

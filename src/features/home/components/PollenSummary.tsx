@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Card } from '@/components/ui';
+import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { MergedDailyPollenForecast, PollenLevel, SpeciesData, AirQualityData, AirQualityMetric } from '@/features/pollen/types';
 
-const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string }> = {
-  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',        text: 'text-neutral-500',                           label: 'None' },
-  low:      { bg: 'bg-success-100 dark:bg-success-900/40',     text: 'text-success-700 dark:text-success-300',     label: 'Low' },
-  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',     text: 'text-warning-700 dark:text-warning-300',     label: 'Medium' },
-  high:     { bg: 'bg-error-100 dark:bg-error-900/40',         text: 'text-error-700 dark:text-error-300',         label: 'High' },
-  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',         text: 'text-error-800 dark:text-error-200',         label: 'Very high' },
+// ─── Level styles ─────────────────────────────────────────────────────────────
+
+const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string; rawBg: string; rawText: string }> = {
+  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',       text: 'text-neutral-400',                        label: 'None',      rawBg: '#e5e7eb', rawText: '#9ca3af' },
+  low:      { bg: 'bg-success-100 dark:bg-success-900/40',    text: 'text-success-700 dark:text-success-300',  label: 'Low',       rawBg: '#dcfce7', rawText: '#15803d' },
+  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',    text: 'text-warning-700 dark:text-warning-300',  label: 'Medium',    rawBg: '#fef3c7', rawText: '#b45309' },
+  high:     { bg: 'bg-error-100 dark:bg-error-900/40',        text: 'text-error-700 dark:text-error-300',      label: 'High',      rawBg: '#fee2e2', rawText: '#dc2626' },
+  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',        text: 'text-error-800 dark:text-error-200',      label: 'Very high', rawBg: '#fecaca', rawText: '#b91c1c' },
 };
 
 const AQ_LEVEL_LABEL: Record<PollenLevel, string> = {
@@ -17,9 +19,15 @@ const AQ_LEVEL_LABEL: Record<PollenLevel, string> = {
 };
 
 const CATEGORY_LABEL: Record<'tree' | 'grass' | 'weed', string> = {
-  tree: 'Tree',
-  grass: 'Grass',
-  weed: 'Weed',
+  tree: 'Tree', grass: 'Grass', weed: 'Weed',
+};
+
+type CategoryIconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const CATEGORY_ICON: Record<'tree' | 'grass' | 'weed', CategoryIconName> = {
+  tree: 'leaf',
+  grass: 'leaf-outline',
+  weed: 'star-outline',
 };
 
 const AQ_METRICS: { key: keyof Omit<AirQualityData, 'overallLevel'>; label: string }[] = [
@@ -46,29 +54,43 @@ function formatAqValue(metric: AirQualityMetric, key: string): string {
   return Math.round(v).toString();
 }
 
-function PollenPill({
+// ─── 2×2 grid cell ────────────────────────────────────────────────────────────
+
+function PollenGridCell({
+  iconName,
   label,
   level,
+  levelLabel,
   active,
   onPress,
-  levelLabel,
 }: {
+  iconName: CategoryIconName;
   label: string;
   level: PollenLevel;
+  levelLabel?: string;
   active: boolean;
   onPress: () => void;
-  levelLabel?: string;
 }) {
-  const style = LEVEL_STYLE[level];
+  const s = LEVEL_STYLE[level];
+  const displayLabel = levelLabel ?? s.label;
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={1} style={{ flex: 1 }}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.85}
+      style={{ flex: 1 }}
+    >
       <View
-        className={`items-center py-3 rounded-xl ${style.bg}`}
-        style={active ? { borderWidth: 2, borderColor: '#6366f1' } : { opacity: 0.45 }}
+        className={`rounded-2xl p-4 ${s.bg}`}
+        style={[
+          { minHeight: 118 },
+          !active && { opacity: 0.45 },
+        ]}
       >
-        <Text className={`text-xs font-medium ${style.text}`}>{label}</Text>
-        <Text className={`text-sm font-bold mt-0.5 ${style.text}`}>{levelLabel ?? style.label}</Text>
-        <Text style={{ fontSize: 9, marginTop: 3, color: '#a5b4fc' }}>tap for detail</Text>
+        <Ionicons name={iconName} size={24} color={s.rawText} style={{ marginBottom: 10 }} />
+        <Text style={{ fontSize: 12, color: s.rawText, opacity: 0.75, marginBottom: 2 }}>{label}</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: s.rawText, lineHeight: 24 }}>{displayLabel}</Text>
+        <Text style={{ fontSize: 9, color: '#a5b4fc', marginTop: 6 }}>tap for detail</Text>
       </View>
     </TouchableOpacity>
   );
@@ -102,13 +124,9 @@ function SpeciesRow({ species }: { species: SpeciesData }) {
   const style = LEVEL_STYLE[species.level];
   return (
     <View className="flex-row items-center justify-between py-2.5 border-b border-neutral-100 dark:border-neutral-700">
-      <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
-        {species.name}
-      </Text>
+      <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{species.name}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={{ fontSize: 12, color: '#9ca3af' }}>
-          {formatGrains(species.rawValue)} g/m³
-        </Text>
+        <Text style={{ fontSize: 12, color: '#9ca3af' }}>{formatGrains(species.rawValue)} g/m³</Text>
         <View className={`px-2.5 py-0.5 rounded-full ${style.bg}`}>
           <Text className={`text-xs font-semibold ${style.text}`}>{style.label}</Text>
         </View>
@@ -116,6 +134,8 @@ function SpeciesRow({ species }: { species: SpeciesData }) {
     </View>
   );
 }
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface PollenSummaryProps {
   today: MergedDailyPollenForecast;
@@ -125,24 +145,15 @@ interface PollenSummaryProps {
   onUpgradePress: () => void;
 }
 
-export function PollenSummary({
-  today,
-  limitedCoverage,
-  allergenProfile,
-  isPro,
-  onUpgradePress,
-}: PollenSummaryProps) {
+export function PollenSummary({ today, limitedCoverage, allergenProfile, isPro, onUpgradePress }: PollenSummaryProps) {
   const profile = allergenProfile ?? ['tree', 'grass', 'weed'];
   const allSelected = profile.length === 0;
   const [openCategory, setOpenCategory] = useState<'tree' | 'grass' | 'weed' | null>(null);
   const [aqOpen, setAqOpen] = useState(false);
 
-  const categorySpecies = openCategory
-    ? (today.species ?? []).filter((s) => s.category === openCategory)
-    : [];
-
+  const categorySpecies = openCategory ? (today.species ?? []).filter((s) => s.category === openCategory) : [];
   const categoryLevel = openCategory ? today[openCategory].level : 'none';
-  const categoryRaw = openCategory ? today[openCategory].rawValue : 0;
+  const categoryRaw   = openCategory ? today[openCategory].rawValue : 0;
 
   const aq = today.airQuality;
   const aqLevel = aq?.overallLevel ?? 'none';
@@ -150,45 +161,55 @@ export function PollenSummary({
 
   return (
     <>
-      <Card variant="outlined">
-        <View className="flex-row items-center mb-3">
-          <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-            Today's pollen
-          </Text>
+      {/* 2×2 grid */}
+      <View style={{ gap: 10 }}>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <PollenGridCell
+            iconName={CATEGORY_ICON.tree}
+            label={CATEGORY_LABEL.tree}
+            level={today.tree.level}
+            active={allSelected || profile.includes('tree')}
+            onPress={() => setOpenCategory('tree')}
+          />
+          <PollenGridCell
+            iconName={CATEGORY_ICON.grass}
+            label={CATEGORY_LABEL.grass}
+            level={today.grass.level}
+            active={allSelected || profile.includes('grass')}
+            onPress={() => setOpenCategory('grass')}
+          />
         </View>
-        <View className="flex-row gap-2">
-          {(['tree', 'grass', 'weed'] as const).map((cat) => (
-            <PollenPill
-              key={cat}
-              label={CATEGORY_LABEL[cat]}
-              level={today[cat].level}
-              active={allSelected || profile.includes(cat)}
-              onPress={() => setOpenCategory(cat)}
-            />
-          ))}
-          {aq && (
-            <PollenPill
-              label="Air Quality"
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <PollenGridCell
+            iconName={CATEGORY_ICON.weed}
+            label={CATEGORY_LABEL.weed}
+            level={today.weed.level}
+            active={allSelected || profile.includes('weed')}
+            onPress={() => setOpenCategory('weed')}
+          />
+          {aq ? (
+            <PollenGridCell
+              iconName={'partly-sunny-outline' as CategoryIconName}
+              label="Air quality"
               level={aqLevel}
               levelLabel={AQ_LEVEL_LABEL[aqLevel]}
               active
               onPress={() => setAqOpen(true)}
             />
+          ) : (
+            <View style={{ flex: 1 }} />
           )}
         </View>
-        {limitedCoverage && (
-          <Text className="text-xs text-neutral-400 mt-2 text-center">
-            Limited pollen data for your region
-          </Text>
-        )}
-      </Card>
+      </View>
+
+      {limitedCoverage && (
+        <Text className="text-xs text-neutral-400 mt-1 text-center">
+          Limited pollen data for your region
+        </Text>
+      )}
 
       {/* Pollen category detail sheet */}
-      <BottomSheet
-        visible={openCategory !== null}
-        onClose={() => setOpenCategory(null)}
-        snapPoints={[0.72]}
-      >
+      <BottomSheet visible={openCategory !== null} onClose={() => setOpenCategory(null)} snapPoints={[0.72]}>
         <View className="flex-1">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-lg font-bold text-neutral-900 dark:text-white">
@@ -200,14 +221,10 @@ export function PollenSummary({
               </Text>
             </View>
           </View>
-
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 16 }}>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: '#111827' }}>
-              {formatGrains(categoryRaw)}
-            </Text>
+            <Text style={{ fontSize: 28, fontWeight: '800', color: '#111827' }}>{formatGrains(categoryRaw)}</Text>
             <Text style={{ fontSize: 13, color: '#9ca3af', fontWeight: '500' }}>grains/m³ today</Text>
           </View>
-
           {categorySpecies.length > 0 ? (
             <>
               <Text style={{ fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, marginBottom: 2 }}>
@@ -216,9 +233,7 @@ export function PollenSummary({
               {categorySpecies.map((s) => <SpeciesRow key={s.name} species={s} />)}
             </>
           ) : (
-            <Text className="text-sm text-neutral-400 mb-2">
-              No species-level data available for this category.
-            </Text>
+            <Text className="text-sm text-neutral-400 mb-2">No species-level data available for this category.</Text>
           )}
         </View>
       </BottomSheet>
@@ -230,9 +245,7 @@ export function PollenSummary({
             <View className="flex-row items-center justify-between mb-3">
               <Text className="text-lg font-bold text-neutral-900 dark:text-white">Air Quality</Text>
               <View className={`px-3 py-1 rounded-full ${aqStyle.bg}`}>
-                <Text className={`text-sm font-semibold ${aqStyle.text}`}>
-                  {AQ_LEVEL_LABEL[aqLevel]}
-                </Text>
+                <Text className={`text-sm font-semibold ${aqStyle.text}`}>{AQ_LEVEL_LABEL[aqLevel]}</Text>
               </View>
             </View>
             <Text style={{ fontSize: 11, fontWeight: '600', color: '#9ca3af', letterSpacing: 0.5, marginBottom: 2 }}>
