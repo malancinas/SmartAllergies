@@ -376,7 +376,7 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
             categoryLabel="Peak pollen window"
             timeLabel={`${formatHour(peak.startTime)} – ${formatHour(peak.endTime)}`}
             description={`Highest ${allergenLabel} concentration`}
-            badge="Avoid"
+            badge="Highest Risk"
             badgeColor="#fff"
             badgeBg="#ef4444"
           />
@@ -406,7 +406,7 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
             categoryLabel="Best time outside"
             timeLabel={`${formatHour(best.startTime)} – ${formatHour(best.endTime)}`}
             description="Pollen is at its lowest during this window"
-            badge="Lower risk"
+            badge="Lowest Risk"
             badgeColor="#fff"
             badgeBg="#22c55e"
           />
