@@ -20,20 +20,26 @@ const SEVERITY_LABELS: Record<number, string> = {
   10: 'Worst ever',
 };
 
-function severityColor(value: number): string {
-  if (value <= 3) return 'text-success-600';
-  if (value <= 6) return 'text-warning-600';
-  return 'text-error-600';
+function badgeStyle(value: number): { bg: string; text: string } {
+  if (value <= 3) return { bg: 'bg-success-100 dark:bg-success-900/40', text: 'text-success-700 dark:text-success-300' };
+  if (value <= 6) return { bg: 'bg-warning-100 dark:bg-warning-900/40', text: 'text-warning-700 dark:text-warning-300' };
+  return { bg: 'bg-error-100 dark:bg-error-900/40', text: 'text-error-700 dark:text-error-300' };
 }
 
 export function SeverityInput({ value, onChange }: SeverityInputProps) {
+  const { bg, text } = badgeStyle(value);
   return (
     <View>
-      <View className="flex-row justify-between items-baseline mb-2">
-        <Text className="text-3xl font-bold text-neutral-900 dark:text-white">{value}</Text>
-        <Text className={`text-sm font-medium ${severityColor(value)}`}>
-          {SEVERITY_LABELS[value] ?? ''}
+      <View className="flex-row justify-between items-center mb-3">
+        <Text className="text-3xl font-bold text-neutral-900 dark:text-white">
+          {value}
+          <Text className="text-xl font-normal text-neutral-400"> / 10</Text>
         </Text>
+        <View className={`px-3 py-1 rounded-full ${bg}`}>
+          <Text className={`text-sm font-semibold ${text}`}>
+            {SEVERITY_LABELS[value] ?? ''}
+          </Text>
+        </View>
       </View>
       <Slider min={1} max={10} value={value} onChange={onChange} step={1} />
       <View className="flex-row justify-between mt-1">

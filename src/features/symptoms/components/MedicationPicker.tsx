@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, useColorScheme } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui';
 import { getPreviouslyUsedMedications } from '@/services/database';
@@ -31,6 +31,8 @@ export function MedicationPicker({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string[]>([]);
   const [previouslyUsed, setPreviouslyUsed] = useState<string[]>([]);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     getPreviouslyUsedMedications().then(setPreviouslyUsed);
@@ -62,9 +64,11 @@ export function MedicationPicker({
   return (
     <>
       <View>
-        <Text className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
-          {label}
-        </Text>
+        {label ? (
+          <Text className="text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
+            {label}
+          </Text>
+        ) : null}
         <TouchableOpacity
           onPress={openSheet}
           className="border border-neutral-300 dark:border-neutral-600 rounded-xl px-4 py-3 bg-white dark:bg-neutral-800 flex-row justify-between items-center"
@@ -85,20 +89,26 @@ export function MedicationPicker({
         </TouchableOpacity>
       </View>
 
-      <BottomSheet visible={open} onClose={handleDone} snapPoints={[0.65]}>
+      <BottomSheet
+        visible={open}
+        onClose={handleDone}
+        snapPoints={[0.65]}
+        backgroundColor={isDark ? '#171717' : 'white'}
+      >
         <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-base font-semibold text-neutral-800">Medications taken</Text>
+          <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-100">
+            Medications taken
+          </Text>
           {draft.length > 0 && (
             <TouchableOpacity onPress={handleClear}>
-              <Text className="text-sm text-neutral-400">Clear</Text>
+              <Text className="text-sm text-neutral-400 dark:text-neutral-500">Clear</Text>
             </TouchableOpacity>
           )}
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-          {/* Previously used */}
           {previouslyUsed.length > 0 && (
-            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1">
+            <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mb-1">
               Previously used
             </Text>
           )}
@@ -108,18 +118,22 @@ export function MedicationPicker({
               <TouchableOpacity
                 key={`prev-${med}`}
                 onPress={() => toggleDraft(med)}
-                className={`py-3 border-b border-neutral-100 flex-row justify-between items-center`}
+                className="py-3 border-b border-neutral-100 dark:border-neutral-800 flex-row justify-between items-center"
               >
                 <Text
                   className={`text-sm flex-1 mr-2 ${
-                    selected ? 'text-primary-600 font-semibold' : 'text-neutral-700'
+                    selected
+                      ? 'text-primary-600 dark:text-primary-400 font-semibold'
+                      : 'text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
                   {med}
                 </Text>
                 <View
                   className={`w-5 h-5 rounded border-2 items-center justify-center ${
-                    selected ? 'bg-primary-500 border-primary-500' : 'border-neutral-300'
+                    selected
+                      ? 'bg-primary-500 border-primary-500'
+                      : 'border-neutral-300 dark:border-neutral-600'
                   }`}
                 >
                   {selected && <Text className="text-white text-xs font-bold">✓</Text>}
@@ -128,9 +142,8 @@ export function MedicationPicker({
             );
           })}
 
-          {/* Common medications */}
           {commonNotPrevious.length > 0 && (
-            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mt-3 mb-1">
+            <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wide mt-3 mb-1">
               Common allergy medications
             </Text>
           )}
@@ -140,18 +153,22 @@ export function MedicationPicker({
               <TouchableOpacity
                 key={med}
                 onPress={() => toggleDraft(med)}
-                className="py-3 border-b border-neutral-100 flex-row justify-between items-center"
+                className="py-3 border-b border-neutral-100 dark:border-neutral-800 flex-row justify-between items-center"
               >
                 <Text
                   className={`text-sm flex-1 mr-2 ${
-                    selected ? 'text-primary-600 font-semibold' : 'text-neutral-700'
+                    selected
+                      ? 'text-primary-600 dark:text-primary-400 font-semibold'
+                      : 'text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
                   {med}
                 </Text>
                 <View
                   className={`w-5 h-5 rounded border-2 items-center justify-center ${
-                    selected ? 'bg-primary-500 border-primary-500' : 'border-neutral-300'
+                    selected
+                      ? 'bg-primary-500 border-primary-500'
+                      : 'border-neutral-300 dark:border-neutral-600'
                   }`}
                 >
                   {selected && <Text className="text-white text-xs font-bold">✓</Text>}

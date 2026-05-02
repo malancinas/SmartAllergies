@@ -75,7 +75,7 @@ export function BottomSheet({ visible, onClose, snapPoints = [0.5], children, te
           ]}
         >
           <View className="items-center pt-3 pb-2">
-            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: backgroundColor === 'white' ? '#d1d5db' : 'rgba(255,255,255,0.2)' }} />
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: backgroundColor === 'white' ? '#d1d5db' : 'rgba(255,255,255,0.15)' }} />
           </View>
           <View className="flex-1 px-4 pb-4">{children}</View>
         </Animated.View>

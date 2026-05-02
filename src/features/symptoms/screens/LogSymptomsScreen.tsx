@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { Screen, Stack } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
@@ -21,6 +22,8 @@ export default function LogSymptomsScreen() {
   const [severity, setSeverity] = useState(5);
   const [timeSlot, setTimeSlot] = useState<TimeSlotKey>('morning');
   const [medications, setMedications] = useState<string[]>([]);
+  const [notes, setNotes] = useState('');
+  const [locationName, setLocationName] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
 
@@ -31,10 +34,21 @@ export default function LogSymptomsScreen() {
   const { today: todayPollen, todayWeather } = useCurrentPollen();
   const tier = useSubscriptionStore((s) => s.tier);
 
-  // Pre-fill with the most recently used medication combination
   useEffect(() => {
     getMostRecentMedicationSelection().then(setMedications);
   }, []);
+
+  useEffect(() => {
+    if (!location) return;
+    Location.reverseGeocodeAsync({ latitude: location.latitude, longitude: location.longitude })
+      .then((results) => {
+        const r = results[0];
+        if (!r) return;
+        const parts = [r.city, r.region, r.country].filter(Boolean);
+        setLocationName(parts.slice(0, 2).join(', '));
+      })
+      .catch(() => {});
+  }, [location]);
 
   function toggleSymptom(symptom: SymptomType) {
     setSelectedSymptoms((prev) => {
@@ -59,7 +73,7 @@ export default function LogSymptomsScreen() {
 
   async function handleSubmit() {
     if (selectedSymptoms.length === 0) {
-      Alert.alert('No symptoms selected', 'Select at least one symptom, or tap "None" if you have no symptoms today.');
+      Alert.alert('No symptoms selected', 'Select at least one symptom, or tap "None today" if you have no symptoms.');
       return;
     }
 
@@ -75,22 +89,20 @@ export default function LogSymptomsScreen() {
         symptoms: selectedSymptoms,
         severity,
         timeSlot,
+        notes: notes.trim() || undefined,
         medications: medications.length > 0 ? medications.join(', ') : undefined,
         latitude: location?.latitude,
         longitude: location?.longitude,
         environment: todayPollen
           ? {
-              // Aggregated pollen
               grassPollen: todayPollen.grass.rawValue,
               treePollen: todayPollen.tree.rawValue,
               weedPollen: todayPollen.weed.rawValue,
-              // Individual species
               alderPollen: todayPollen.species?.find((s) => s.name === 'Alder')?.rawValue,
               birchPollen: todayPollen.species?.find((s) => s.name === 'Birch')?.rawValue,
               olivePollen: todayPollen.species?.find((s) => s.name === 'Olive')?.rawValue,
               mugwortPollen: todayPollen.species?.find((s) => s.name === 'Mugwort')?.rawValue,
               ragweedPollen: todayPollen.species?.find((s) => s.name === 'Ragweed')?.rawValue,
-              // Air quality
               pm25: todayPollen.airQuality?.pm25.rawValue,
               pm10: todayPollen.airQuality?.pm10.rawValue,
               ozone: todayPollen.airQuality?.ozone.rawValue,
@@ -98,7 +110,6 @@ export default function LogSymptomsScreen() {
               so2: todayPollen.airQuality?.so2.rawValue,
               uvIndex: todayPollen.airQuality?.uvIndex.rawValue,
               dust: todayPollen.airQuality?.dust.rawValue,
-              // Weather
               temperature: todayWeather?.temperature,
               humidity: todayWeather?.humidity,
               windSpeed: todayWeather?.windSpeed,
@@ -107,9 +118,9 @@ export default function LogSymptomsScreen() {
           : undefined,
       });
 
-      // Reset form, then re-fetch most recent medication for the next log
       setSelectedSymptoms([]);
       setSeverity(5);
+      setNotes('');
       getMostRecentMedicationSelection().then(setMedications);
       navigation.navigate('History');
     } catch {
@@ -117,6 +128,12 @@ export default function LogSymptomsScreen() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Split time slots into rows of 2
+  const timeSlotRows: (typeof TIME_SLOTS[number])[][] = [];
+  for (let i = 0; i < TIME_SLOTS.length; i += 2) {
+    timeSlotRows.push([TIME_SLOTS[i], TIME_SLOTS[i + 1]].filter(Boolean) as typeof TIME_SLOTS[number][]);
   }
 
   return (
@@ -135,7 +152,7 @@ export default function LogSymptomsScreen() {
 
           {/* Symptom picker */}
           <View>
-            <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">
+            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-3">
               Symptoms
             </Text>
             <SymptomGrid selected={selectedSymptoms} onToggle={toggleSymptom} />
@@ -143,7 +160,7 @@ export default function LogSymptomsScreen() {
 
           {/* Severity */}
           <View>
-            <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">
+            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-3">
               Overall severity
             </Text>
             <SeverityInput value={severity} onChange={setSeverity} />
@@ -151,44 +168,70 @@ export default function LogSymptomsScreen() {
 
           {/* Time of day */}
           <View>
-            <Text className="text-base font-semibold text-neutral-800 dark:text-neutral-200 mb-3">
+            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-3">
               Time of day
             </Text>
-            <View className="flex-row flex-wrap gap-2">
-              {TIME_SLOTS.map((slot) => {
-                const active = timeSlot === slot.key;
-                return (
-                  <TouchableOpacity
-                    key={slot.key}
-                    onPress={() => setTimeSlot(slot.key)}
-                    className={`px-4 py-2 rounded-full border ${
-                      active
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'bg-white border-neutral-300 dark:bg-neutral-800 dark:border-neutral-600'
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm font-medium ${
-                        active ? 'text-white' : 'text-neutral-700 dark:text-neutral-300'
-                      }`}
-                    >
-                      {slot.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={{ gap: 8 }}>
+              {timeSlotRows.map((row, rowIndex) => (
+                <View key={rowIndex} className="flex-row" style={{ gap: 8 }}>
+                  {row.map((slot) => {
+                    const active = timeSlot === slot.key;
+                    return (
+                      <TouchableOpacity
+                        key={slot.key}
+                        onPress={() => setTimeSlot(slot.key)}
+                        style={{ flex: 1 }}
+                        className={`py-3 rounded-xl items-center border ${
+                          active
+                            ? 'bg-primary-500 border-primary-500'
+                            : 'bg-white border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700'
+                        }`}
+                      >
+                        <Text
+                          className={`text-sm font-medium ${
+                            active ? 'text-white' : 'text-neutral-600 dark:text-neutral-400'
+                          }`}
+                        >
+                          {slot.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
           </View>
 
           {/* Medications */}
-          <MedicationPicker value={medications} onChange={setMedications} />
+          <View>
+            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-3">
+              Medication taken (optional)
+            </Text>
+            <MedicationPicker value={medications} onChange={setMedications} label="" />
+          </View>
 
-          {/* Location indicator */}
-          {location && (
-            <View className="flex-row items-center">
-              <Text className="text-xs text-neutral-400">📍 Using your location</Text>
-            </View>
-          )}
+          {/* Notes */}
+          <View>
+            <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-3">
+              Notes (optional)
+            </Text>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="e.g. went for a walk, windows open all day…"
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              className="border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white"
+              style={{ minHeight: 80 }}
+            />
+            {location && (
+              <Text className="text-xs text-neutral-400 mt-2">
+                📍 Logging with your current location{locationName ? ` — ${locationName}` : ''}
+              </Text>
+            )}
+          </View>
 
           {/* Free tier notice */}
           {tier === 'free' && (
