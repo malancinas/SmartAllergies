@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { ENV } from '@/config/env';
 import { logger } from './logger';
 import type { RiskLevel } from '@/features/forecasting/types';
@@ -6,7 +7,25 @@ import type { DailyRiskScore } from '@/features/forecasting/types';
 import type { PollenLevel } from '@/features/pollen/types';
 import type { AlertSchedule, AlertThreshold } from '@/stores/persistent/settingsStore';
 
+// Required for notifications to appear while the app is in the foreground.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 export async function requestPermission(): Promise<boolean> {
+  // Android API 26+ requires a channel before any notification can be delivered.
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'Allergy Alerts',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+    });
+  }
+
   const { status } = await Notifications.requestPermissionsAsync();
   return status === 'granted';
 }
@@ -35,11 +54,11 @@ export async function cancelAll(): Promise<void> {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Hours >= 18 or < 5 are "night" — alert content uses tomorrow's forecast */
-function isNightHour(hour: number): boolean {
+export function isNightHour(hour: number): boolean {
   return hour >= 18 || hour < 5;
 }
 
-function meetsThreshold(level: RiskLevel, threshold: AlertThreshold): boolean {
+export function meetsThreshold(level: RiskLevel, threshold: AlertThreshold): boolean {
   return threshold === 'medium' ? level !== 'low' : level === 'high';
 }
 
@@ -83,14 +102,14 @@ const NIGHT_COPY: Record<RiskLevel, { title: string; body: string }> = {
   },
 };
 
-function buildThresholdContent(
+export function buildThresholdContent(
   level: RiskLevel,
   isNight: boolean,
 ): { title: string; body: string } {
   return isNight ? NIGHT_COPY[level] : MORNING_COPY[level];
 }
 
-function buildCustomContent(
+export function buildCustomContent(
   allergens: string[],
   pollenLevels: { tree: PollenLevel; grass: PollenLevel; weed: PollenLevel },
   isNight: boolean,
@@ -107,7 +126,7 @@ function buildCustomContent(
   };
 }
 
-function buildPersonalisedContent(
+export function buildPersonalisedContent(
   level: RiskLevel,
   isNight: boolean,
   primaryTrigger: string,

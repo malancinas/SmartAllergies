@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Switch, Pressable, ScrollView, Linking, Alert } from 'react-native';
 import { seedTestLogs10, seedTestLogs15, seedTestLogs20, seedTestLogs30, seedTestLogs40, clearTestLogs } from '@/dev/seedTestData';
+import { fireScenario, ALL_SCENARIOS } from '@/dev/alertDebug';
+import type { AlertScenario } from '@/dev/alertDebug';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { SettingsStackParamList } from '@/types/navigation';
@@ -25,6 +27,7 @@ export function SettingsScreen() {
   const queryClient = useQueryClient();
   const { clearCommittedProfile } = useAllergyProfileStore();
   const [seeding, setSeeding] = useState(false);
+  const [alertDebugExpanded, setAlertDebugExpanded] = useState(false);
   const isDark = theme === 'dark';
   const appVersion = Constants.expoConfig?.version ?? '—';
 
@@ -249,6 +252,37 @@ export function SettingsScreen() {
               Toggle pro (currently: {tier})
             </Text>
           </Pressable>
+
+          {/* Alert scenario tester */}
+          <Pressable
+            onPress={() => setAlertDebugExpanded((v) => !v)}
+            className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
+          >
+            <View>
+              <Text className="text-base text-gray-900 dark:text-white">
+                Alert scenarios {alertDebugExpanded ? '▲' : '▼'}
+              </Text>
+              <Text className="text-xs text-gray-400 mt-0.5">Each fires in 3s — navigate away first</Text>
+            </View>
+          </Pressable>
+
+          {alertDebugExpanded && ALL_SCENARIOS.map((scenario: AlertScenario) => (
+            <Pressable
+              key={scenario}
+              onPress={async () => {
+                try {
+                  await fireScenario(scenario);
+                  Alert.alert('Scheduled', `"${scenario}" fires in 3s`);
+                } catch (e) {
+                  Alert.alert('Error', String(e));
+                }
+              }}
+              className="flex-row items-center justify-between py-2 pl-4 border-b border-gray-100 dark:border-gray-800"
+            >
+              <Text className="text-sm text-gray-700 dark:text-gray-300 font-mono">{scenario}</Text>
+              <Text className="text-gray-400 text-xs">Fire</Text>
+            </Pressable>
+          ))}
         </View>
       )}
 
