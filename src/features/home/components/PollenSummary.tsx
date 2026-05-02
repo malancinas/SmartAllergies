@@ -133,7 +133,7 @@ type CategoryIconName = React.ComponentProps<typeof Ionicons>['name'];
 const CATEGORY_ICON: Record<'tree' | 'grass' | 'weed', CategoryIconName> = {
   tree: 'leaf',
   grass: 'leaf-outline',
-  weed: 'star-outline',
+  weed: 'flower-outline',
 };
 
 const AQ_METRICS: { key: keyof Omit<AirQualityData, 'overallLevel'>; label: string }[] = [
