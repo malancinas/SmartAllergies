@@ -166,7 +166,7 @@ function ModelStatusChip({ data }: { data: AllergyProfileData }) {
 
 function TriggerBar({ trigger, maxBeta }: { trigger: TriggerResult; maxBeta: number }) {
   const pct = maxBeta === 0 ? 0 : Math.min(100, Math.max(0, (trigger.partialBeta / maxBeta)) * 100);
-  const color = trigger.isPrimary ? '#ef4444' : '#94a3b8';
+  const color = trigger.isPrimary ? '#ef4444' : trigger.isSecondary ? '#f97316' : '#94a3b8';
 
   return (
     <View className="mb-3">
@@ -175,6 +175,8 @@ function TriggerBar({ trigger, maxBeta }: { trigger: TriggerResult; maxBeta: num
           {trigger.label}
           {trigger.isPrimary ? (
             <Text className="text-xs text-red-500"> · Primary trigger</Text>
+          ) : trigger.isSecondary ? (
+            <Text className="text-xs text-orange-500"> · Secondary trigger</Text>
           ) : null}
         </Text>
       </View>
