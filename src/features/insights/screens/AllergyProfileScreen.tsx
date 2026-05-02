@@ -75,9 +75,17 @@ function ModelLearningCard({ currentRSquared }: { currentRSquared: number }) {
   );
 }
 
-function CorrelationBar({ result }: { result: CorrelationResult }) {
+function aqStrength(r: number): { label: string; color: string } {
+  const abs = Math.abs(r);
+  if (abs >= 0.7) return { label: 'Strong effect',       color: '#ef4444' };
+  if (abs >= 0.4) return { label: 'Likely affects you',  color: '#f97316' };
+  if (abs >= 0.2) return { label: 'May affect you',      color: '#eab308' };
+  return                  { label: 'No clear effect',    color: '#94a3b8' };
+}
+
+function CorrelationBar({ result, category }: { result: CorrelationResult; category?: string }) {
   const displayValue = Math.max(0, result.correlation);
-  const strength = correlationStrength(displayValue);
+  const strength = category === 'air_quality' ? aqStrength(displayValue) : correlationStrength(displayValue);
   const pct = displayValue * 100;
 
   return (
@@ -86,14 +94,9 @@ function CorrelationBar({ result }: { result: CorrelationResult }) {
         <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200 flex-1 mr-2">
           {result.label}
         </Text>
-        <View className="flex-row items-center gap-2">
-          <Text className="text-xs font-semibold" style={{ color: strength.color }}>
-            {strength.label}
-          </Text>
-          <Text className="text-xs text-neutral-400">
-            +{displayValue.toFixed(2)}
-          </Text>
-        </View>
+        <Text className="text-xs font-semibold" style={{ color: strength.color }}>
+          {strength.label}
+        </Text>
       </View>
       <View className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
         <View
@@ -105,7 +108,7 @@ function CorrelationBar({ result }: { result: CorrelationResult }) {
   );
 }
 
-function CorrelationSection({ title, subtitle, results }: { title: string; subtitle?: string; results: CorrelationResult[] }) {
+function CorrelationSection({ title, subtitle, results, category }: { title: string; subtitle?: string; results: CorrelationResult[]; category?: string }) {
   const visible = results.filter((r) => r.dataPoints > 0);
   if (visible.length === 0) return null;
 
@@ -120,7 +123,7 @@ function CorrelationSection({ title, subtitle, results }: { title: string; subti
         )}
       </View>
       {visible.map((r) => (
-        <CorrelationBar key={r.key} result={r} />
+        <CorrelationBar key={r.key} result={r} category={category} />
       ))}
     </Card>
   );
@@ -420,7 +423,7 @@ export default function AllergyProfileScreen() {
                       </Pressable>
 
                       {showPearson && (
-                        <CorrelationSection title="Air quality" results={aqResults} />
+                        <CorrelationSection title="Air quality" results={aqResults} category="air_quality" />
                       )}
                     </>
                   )}
@@ -448,7 +451,7 @@ export default function AllergyProfileScreen() {
                   )}
 
                   <CorrelationSection title="Pollen" subtitle="Pearson correlation" results={pollenResults} />
-                  <CorrelationSection title="Air quality" subtitle="Pearson correlation" results={aqResults} />
+                  <CorrelationSection title="Air quality" subtitle="Pearson correlation" results={aqResults} category="air_quality" />
 
                 </>
               )}

@@ -76,7 +76,7 @@ export default function OnboardingAllergensScreen() {
           </Text>
         </View>
 
-        <Button label="Let's go" onPress={finish} />
+        <Button label="Let's go" onPress={finish} disabled={allergenProfile.length === 0} />
       </View>
     </SafeAreaView>
   );

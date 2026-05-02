@@ -166,6 +166,15 @@ export default function HomeScreen() {
                     : profileData.correlations.find((r) => r.category === 'pollen')
                   : undefined
               }
+              topAggravator={
+                effectiveIsPro && allergenSource === 'model' && weights.personalised &&
+                profileData?.advancedProfile?.topAggravator?.isSignificant
+                  ? {
+                      label: profileData.advancedProfile.topAggravator!.label,
+                      residualCorrelation: profileData.advancedProfile.topAggravator!.residualCorrelation,
+                    }
+                  : undefined
+              }
               onProfilePress={() => navigation.navigate('AllergyProfile')}
               onChangeAllergensPress={() =>
                 navigation.getParent()?.navigate('Settings', { screen: 'AllergenProfile' })

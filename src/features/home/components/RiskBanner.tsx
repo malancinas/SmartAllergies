@@ -197,6 +197,7 @@ interface RiskBannerProps {
   activeAllergens?: string[];
   daysNeeded?: number;
   topTrigger?: CorrelationResult;
+  topAggravator?: { label: string; residualCorrelation: number };
   onProfilePress?: () => void;
   onChangeAllergensPress?: () => void;
 }
@@ -230,6 +231,25 @@ function TriggerRow({
   );
 }
 
+function aggravatorStrength(r: number): string {
+  const abs = Math.abs(r);
+  if (abs >= 0.6) return 'Strong amplifier';
+  if (abs >= 0.4) return 'Moderate amplifier';
+  return 'Mild amplifier';
+}
+
+function AggravatorRow({ dotColor, label, residualCorrelation }: { dotColor: string; label: string; residualCorrelation: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 8 }}>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor, opacity: 0.55 }} />
+      <Text style={{ fontSize: 13, color: dotColor, opacity: 0.8 }}>
+        <Text style={{ fontWeight: '600' }}>{label}</Text>
+        <Text style={{ fontWeight: '400' }}> — {aggravatorStrength(residualCorrelation)}</Text>
+      </Text>
+    </View>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 function RiskInfoModal({
@@ -242,6 +262,7 @@ function RiskInfoModal({
   activeAllergens,
   daysNeeded,
   topTrigger,
+  topAggravator,
   headerColor,
 }: {
   visible: boolean;
@@ -253,6 +274,7 @@ function RiskInfoModal({
   activeAllergens?: string[];
   daysNeeded?: number;
   topTrigger?: CorrelationResult;
+  topAggravator?: { label: string; residualCorrelation: number };
   headerColor: string;
 }) {
   const scheme = useColorScheme();
@@ -325,6 +347,17 @@ function RiskInfoModal({
               </View>
             )}
 
+            {/* Aggravator line — only shown for personalised Pro model */}
+            {isModelPro && personalised && topAggravator && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: headerColor, opacity: 0.5 }} />
+                <Text style={{ fontSize: 12, color: textSecondary }}>
+                  <Text style={{ fontWeight: '600', color: textPrimary }}>{topAggravator.label}</Text>
+                  {` amplifies your reaction (${aggravatorStrength(topAggravator.residualCorrelation).toLowerCase()})`}
+                </Text>
+              </View>
+            )}
+
             {/* Learning note */}
             {learningLine && (
               <Text style={{ fontSize: 12, color: headerColor, fontWeight: '600', marginTop: 2 }}>
@@ -356,6 +389,7 @@ export function RiskBanner({
   activeAllergens,
   daysNeeded,
   topTrigger,
+  topAggravator,
   onProfilePress,
   onChangeAllergensPress,
 }: RiskBannerProps) {
@@ -383,6 +417,7 @@ export function RiskBanner({
       activeAllergens={activeAllergens}
       daysNeeded={daysNeeded}
       topTrigger={topTrigger}
+      topAggravator={topAggravator}
       headerColor={cfg.headerColor}
     />
     <View
@@ -428,6 +463,13 @@ export function RiskBanner({
                   rowLabel="Learnt Trigger"
                   onChangeAllergensPress={onChangeAllergensPress}
                 />
+                {topAggravator && (
+                  <AggravatorRow
+                    dotColor={cfg.dotColor}
+                    label={topAggravator.label}
+                    residualCorrelation={topAggravator.residualCorrelation}
+                  />
+                )}
                 <TouchableOpacity onPress={onProfilePress} activeOpacity={0.7} style={{ marginTop: 10 }}>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#6366f1' }}>
                     See your personal allergy profile ›

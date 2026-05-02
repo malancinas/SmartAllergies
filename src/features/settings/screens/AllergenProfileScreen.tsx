@@ -56,6 +56,7 @@ export function AllergenProfileScreen() {
 
   function toggle(key: string) {
     if (allergenProfile.includes(key)) {
+      if (allergenProfile.length === 1) return;
       setAllergenProfile(allergenProfile.filter((k) => k !== key));
     } else {
       setAllergenProfile([...allergenProfile, key]);

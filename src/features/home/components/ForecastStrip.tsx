@@ -94,9 +94,27 @@ function buildPlanAheadMessage(
   day: DailyRiskScore,
   isWorstDay: boolean,
   weights?: CorrelationWeights,
+  topAggravator?: string,
+  isPro?: boolean,
 ): string {
   const dayName = new Date(day.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long' });
 
+  // Pro + learned trigger + learned aggravator → combination messages
+  if (weights?.personalised && isPro && topAggravator) {
+    const allergen = primaryAllergenLabel(weights);
+    if (isWorstDay && day.level === 'high') {
+      return `${dayName} is your worst predicted day this week. High ${allergen} with elevated ${topAggravator} — this combination tends to amplify your symptoms. Prepare your medication the night before.`;
+    }
+    if (day.level === 'high') {
+      return `High ${allergen} + elevated ${topAggravator} expected — this combination typically worsens your symptoms. Take antihistamines before going out.`;
+    }
+    if (day.level === 'medium') {
+      return `Moderate ${allergen} expected, with elevated ${topAggravator}. This combination can affect you — carry medication and limit prolonged outdoor time.`;
+    }
+    return `Low ${allergen} exposure predicted. ${topAggravator} levels are also manageable. A good day to be outdoors.`;
+  }
+
+  // Personalised by allergen (pro without aggravator, or free with specific allergen selected)
   if (weights?.personalised) {
     const allergen = primaryAllergenLabel(weights);
     if (isWorstDay && day.level === 'high') {
@@ -160,11 +178,12 @@ interface ForecastStripProps {
   riskToday?: DailyRiskScore | null;
   locationLabel?: string;
   weatherForecast?: WeatherPoint[];
+  topAggravator?: string;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskToday, locationLabel, weatherForecast = [] }: ForecastStripProps) {
+export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskToday, locationLabel, weatherForecast = [], topAggravator }: ForecastStripProps) {
   const [selected, setSelected] = useState<DailyRiskScore | null>(null);
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -184,7 +203,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskTo
     : selected?.level === 'low' ? 'Low exposure expected' : 'Elevated allergens forecast';
 
   const locationStr = locationLabel ?? 'Your location';
-  const planMessage = selected ? buildPlanAheadMessage(selected, isWorstDay, weights) : '';
+  const planMessage = selected ? buildPlanAheadMessage(selected, isWorstDay, weights, topAggravator, isPro) : '';
 
   const pl = selected?.pollenLevels;
   const aq = selected?.airQuality;
