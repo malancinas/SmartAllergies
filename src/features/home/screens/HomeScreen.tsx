@@ -176,7 +176,7 @@ export default function HomeScreen() {
           {/* Today's pollen breakdown */}
           {todayPollen && (
             <>
-              <Text className="text-xs font-bold tracking-widest text-neutral-400 dark:text-neutral-500 uppercase px-0.5">
+              <Text className="font-bold tracking-widest text-neutral-400 dark:text-neutral-300 uppercase px-0.5" style={{ fontSize: 13 }}>
                 Today's Pollen
               </Text>
               <PollenSummary
@@ -192,7 +192,7 @@ export default function HomeScreen() {
           {/* 5-day forecast strip — days after tomorrow are Pro-only */}
           {upcoming.length > 0 && (
             <>
-              <Text className="text-xs font-bold tracking-widest text-neutral-400 dark:text-neutral-500 uppercase px-0.5">
+              <Text className="font-bold tracking-widest text-neutral-400 dark:text-neutral-300 uppercase px-0.5" style={{ fontSize: 13 }}>
                 Coming Up
               </Text>
               <ForecastStrip
@@ -205,7 +205,7 @@ export default function HomeScreen() {
 
           {/* Peak pollen hours — Pro feature using already-fetched hourly data */}
           <>
-            <Text className="text-xs font-bold tracking-widest text-neutral-400 dark:text-neutral-500 uppercase px-0.5">
+            <Text className="font-bold tracking-widest text-neutral-400 dark:text-neutral-300 uppercase px-0.5" style={{ fontSize: 13 }}>
               Peak Pollen Hours
             </Text>
             <PeakHoursCard

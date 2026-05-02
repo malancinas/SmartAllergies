@@ -139,15 +139,15 @@ function GroupedBar({
         ))}
       </View>
 
-      {/* Segmented bar */}
-      <View style={{ flexDirection: 'row', height: 36, borderRadius: 8, overflow: 'hidden', gap: 2 }}>
+      {/* Segmented bar — continuous, no gaps */}
+      <View style={{ flexDirection: 'row', height: 36, borderRadius: 8, overflow: 'hidden' }}>
         {groups.map(({ avg }, i) => {
           const color = segmentColor(avg, peakAvg);
           const lbl   = segmentLabel(avg, peakAvg);
           return (
             <View
               key={i}
-              style={{ flex: 1, backgroundColor: color, alignItems: 'center', justifyContent: 'center', borderRadius: i === 0 ? 6 : i === groups.length - 1 ? 6 : 2 }}
+              style={{ flex: 1, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}
             >
               <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', opacity: 0.9 }}>{lbl}</Text>
             </View>
@@ -184,6 +184,7 @@ function WindowRow({
   iconName,
   iconColor,
   iconBg,
+  rowBg,
   categoryLabel,
   timeLabel,
   description,
@@ -194,6 +195,7 @@ function WindowRow({
   iconName: IoniconName;
   iconColor: string;
   iconBg: string;
+  rowBg: string;
   categoryLabel: string;
   timeLabel: string;
   description: string;
@@ -202,30 +204,24 @@ function WindowRow({
   badgeBg: string;
 }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: rowBg, borderRadius: 16, padding: 14 }}>
       <View style={{
-        width: 40, height: 40, borderRadius: 20,
+        width: 44, height: 44, borderRadius: 22,
         backgroundColor: iconBg,
         alignItems: 'center', justifyContent: 'center',
       }}>
-        <Ionicons name={iconName} size={20} color={iconColor} />
+        <Ionicons name={iconName} size={22} color={iconColor} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 1 }}>{categoryLabel}</Text>
         <Text className="text-neutral-900 dark:text-white" style={{ fontSize: 16, fontWeight: '800', lineHeight: 20 }}>{timeLabel}</Text>
         <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{description}</Text>
       </View>
-      <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: badgeBg }}>
+      <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: badgeBg }}>
         <Text style={{ fontSize: 11, fontWeight: '700', color: badgeColor }}>{badge}</Text>
       </View>
     </View>
   );
-}
-
-// ─── Divider ─────────────────────────────────────────────────────────────────
-
-function Divider() {
-  return <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 2 }} />;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -298,7 +294,7 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
     : null;
 
   return (
-    <View className="bg-white dark:bg-neutral-800 rounded-2xl p-4 border border-neutral-100 dark:border-neutral-700">
+    <View className="bg-white dark:bg-neutral-800 rounded-3xl p-5">
       {noData || !best || !peak ? (
         <Text className="text-xs text-neutral-400">Hourly data unavailable for your location.</Text>
       ) : allergenAllClear ? (
@@ -316,7 +312,7 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
           </Text>
         </View>
       ) : (
-        <View style={{ gap: 16 }}>
+        <View style={{ gap: 10 }}>
           {/* Grouped time bar */}
           <GroupedBar
             points={daytimeHours}
@@ -325,52 +321,48 @@ export function PeakHoursCard({ todayHourly, isPro, onUpgradePress, activeAllerg
             weights={triggerWeights}
           />
 
-          <Divider />
-
           {/* Peak window */}
           <WindowRow
             iconName="warning-outline"
             iconColor="#ef4444"
-            iconBg="rgba(239,68,68,0.15)"
+            iconBg="rgba(239,68,68,0.18)"
+            rowBg="rgba(239,68,68,0.07)"
             categoryLabel="Peak pollen window"
             timeLabel={`${formatHour(peak.startTime)} – ${formatHour(peak.endTime)}`}
             description={`Highest ${allergenLabel} concentration`}
             badge="Avoid"
-            badgeColor="#ef4444"
-            badgeBg="rgba(239,68,68,0.12)"
+            badgeColor="#fff"
+            badgeBg="#ef4444"
           />
 
           {/* Moderate window */}
           {moderate && moderate.avgTotal > 0 && (
-            <>
-              <Divider />
-              <WindowRow
-                iconName="time-outline"
-                iconColor="#f59e0b"
-                iconBg="rgba(245,158,11,0.15)"
-                categoryLabel="Moderate window"
-                timeLabel={`${formatHour(moderate.startTime)} – ${formatHour(moderate.endTime)}`}
-                description="Limit time outdoors if sensitive"
-                badge="Caution"
-                badgeColor="#f59e0b"
-                badgeBg="rgba(245,158,11,0.12)"
-              />
-            </>
+            <WindowRow
+              iconName="time-outline"
+              iconColor="#f59e0b"
+              iconBg="rgba(245,158,11,0.18)"
+              rowBg="rgba(245,158,11,0.07)"
+              categoryLabel="Moderate window"
+              timeLabel={`${formatHour(moderate.startTime)} – ${formatHour(moderate.endTime)}`}
+              description="Limit time outdoors if sensitive"
+              badge="Caution"
+              badgeColor="#fff"
+              badgeBg="#f59e0b"
+            />
           )}
-
-          <Divider />
 
           {/* Best window */}
           <WindowRow
             iconName="checkmark-circle-outline"
             iconColor="#22c55e"
-            iconBg="rgba(34,197,94,0.15)"
+            iconBg="rgba(34,197,94,0.18)"
+            rowBg="rgba(34,197,94,0.07)"
             categoryLabel="Best time outside"
             timeLabel={`${formatHour(best.startTime)} – ${formatHour(best.endTime)}`}
             description="Pollen is at its lowest during this window"
             badge="Lower risk"
-            badgeColor="#22c55e"
-            badgeBg="rgba(34,197,94,0.12)"
+            badgeColor="#fff"
+            badgeBg="#22c55e"
           />
         </View>
       )}

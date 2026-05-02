@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, useColorScheme, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { RiskLevel } from '@/features/forecasting/types';
 import type { CorrelationResult } from '@/features/insights/correlationEngine';
@@ -30,11 +30,17 @@ const LEVEL_CONFIG: Record<
   RiskLevel,
   {
     bg: string;
+    bgLight: string;
+    bgDark: string;
     border: string;
     headerColor: string;
     titleColor: string;
+    titleColorDark: string;
     subColor: string;
+    subColorDark: string;
     dotColor: string;
+    dividerColor: string;
+    dividerColorDark: string;
     dotAlign: 'flex-start' | 'center' | 'flex-end';
     label: string;
     sub: string;
@@ -43,12 +49,18 @@ const LEVEL_CONFIG: Record<
   }
 > = {
   low: {
-    bg: 'bg-success-50 dark:bg-success-900/20',
-    border: 'border-success-200 dark:border-success-800',
+    bg: 'bg-success-100 dark:bg-success-900/40',
+    bgLight: '#dcfce7',
+    bgDark: 'rgba(74,222,128,0.28)',
+    border: 'border-success-200 dark:border-success-700',
     headerColor: '#22c55e',
     titleColor: '#14532d',
+    titleColorDark: '#bbf7d0',
     subColor: '#166534',
+    subColorDark: '#86efac',
     dotColor: '#22c55e',
+    dividerColor: '#bbf7d0',
+    dividerColorDark: 'rgba(74,222,128,0.35)',
     dotAlign: 'flex-start',
     label: 'Low risk today',
     sub: 'Pollen levels are low. Enjoy the outdoors!',
@@ -56,12 +68,18 @@ const LEVEL_CONFIG: Record<
     personalSub: 'Your allergens are manageable. A good day to go outside.',
   },
   medium: {
-    bg: 'bg-warning-50 dark:bg-warning-900/20',
-    border: 'border-warning-200 dark:border-warning-800',
+    bg: 'bg-warning-100 dark:bg-warning-900/40',
+    bgLight: '#fef3c7',
+    bgDark: 'rgba(251,191,36,0.28)',
+    border: 'border-warning-200 dark:border-warning-600',
     headerColor: '#f59e0b',
     titleColor: '#78350f',
+    titleColorDark: '#fde68a',
     subColor: '#92400e',
+    subColorDark: '#fcd34d',
     dotColor: '#f59e0b',
+    dividerColor: '#fde68a',
+    dividerColorDark: 'rgba(251,191,36,0.35)',
     dotAlign: 'center',
     label: 'Moderate allergy risk',
     sub: 'Consider taking antihistamines before going out.',
@@ -69,31 +87,24 @@ const LEVEL_CONFIG: Record<
     personalSub: 'Tree pollen elevated — consider antihistamines before going outside.',
   },
   high: {
-    bg: 'bg-error-50 dark:bg-error-900/20',
-    border: 'border-error-200 dark:border-error-800',
+    bg: 'bg-error-100 dark:bg-error-900/40',
+    bgLight: '#fee2e2',
+    bgDark: 'rgba(248,113,113,0.28)',
+    border: 'border-error-200 dark:border-error-600',
     headerColor: '#ef4444',
     titleColor: '#7f1d1d',
+    titleColorDark: '#fecaca',
     subColor: '#991b1b',
+    subColorDark: '#fca5a5',
     dotColor: '#ef4444',
+    dividerColor: '#fecaca',
+    dividerColorDark: 'rgba(248,113,113,0.35)',
     dotAlign: 'flex-end',
     label: 'High risk today',
     sub: 'Stay indoors if possible. Keep windows closed.',
     personalLabel: 'High risk for you today',
     personalSub: 'Your main allergens are high. Limit outdoor time.',
   },
-};
-
-const TRIGGER_EMOJI: Record<string, string> = {
-  grassPollen: '🌾',
-  treePollen: '🌳',
-  weedPollen: '🌿',
-  pm25: '💨',
-  pm10: '💨',
-  ozone: '🌫️',
-  no2: '🏭',
-  so2: '🏭',
-  uvIndex: '☀️',
-  dust: '🟤',
 };
 
 const ALLERGEN_META: Record<string, { emoji: string; label: string }> = {
@@ -197,11 +208,11 @@ function TriggerRow({
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-        <Text style={{ fontSize: 13, color: '#374151' }}>
-          <Text style={{ fontWeight: '500' }}>{name}</Text>
-          <Text style={{ color: '#6b7280' }}> · {rowLabel}</Text>
+        <Text style={{ fontSize: 14, color: dotColor }}>
+          <Text style={{ fontWeight: '700' }}>{name}</Text>
+          <Text style={{ fontWeight: '400', opacity: 0.7 }}> — {rowLabel}</Text>
         </Text>
       </View>
       <TouchableOpacity onPress={onChangeAllergensPress} activeOpacity={0.7} style={{ marginLeft: 8 }}>
@@ -212,6 +223,122 @@ function TriggerRow({
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
+
+function RiskInfoModal({
+  visible,
+  onClose,
+  level,
+  isPro,
+  allergenSource,
+  personalised,
+  activeAllergens,
+  daysNeeded,
+  topTrigger,
+  headerColor,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  level: RiskLevel;
+  isPro: boolean;
+  allergenSource?: 'model' | 'manual';
+  personalised: boolean;
+  activeAllergens?: string[];
+  daysNeeded?: number;
+  topTrigger?: CorrelationResult;
+  headerColor: string;
+}) {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
+  const bg = isDark ? '#1f2937' : '#ffffff';
+  const textPrimary = isDark ? '#f9fafb' : '#111827';
+  const textSecondary = isDark ? '#9ca3af' : '#6b7280';
+  const divider = isDark ? '#374151' : '#e5e7eb';
+  const pillBg = isDark ? '#374151' : '#f3f4f6';
+
+  const isModelPro = isPro && allergenSource === 'model';
+  const manualDisplay = allergenDisplayLabel(activeAllergens ?? []);
+
+  let methodText: string;
+  let triggerLine: string;
+  let confidenceLine: string | null = null;
+  let learningLine: string | null = null;
+
+  if (!isPro || allergenSource === 'manual') {
+    methodText = 'Your risk score is calculated from live pollen levels for the allergens you have manually selected.';
+    triggerLine = `📌  Manually selected: ${manualDisplay.name}`;
+  } else if (isModelPro && !personalised) {
+    methodText = 'Your risk uses a general pollen model. Keep logging your symptoms daily and the app will learn your personal triggers.';
+    triggerLine = daysNeeded && daysNeeded > 0
+      ? `🧬  ${daysNeeded} more day${daysNeeded === 1 ? '' : 's'} of logging to personalise your score`
+      : '🧬  Building your profile — keep logging!';
+    learningLine = 'The app is still learning from your data.';
+  } else {
+    methodText = 'Your risk score is personalised to your allergy history using machine learning trained on your symptom logs.';
+    triggerLine = topTrigger ? `🔬  Learnt trigger: ${topTrigger.label}` : '🔬  Personalised to your history';
+    if (topTrigger) {
+      const pct = Math.round(topTrigger.correlation * 100);
+      const pts = topTrigger.dataPoints;
+      confidenceLine = `${pct}% correlation · ${pts} symptom log${pts === 1 ? '' : 's'}`;
+    }
+    learningLine = 'The app continues to learn — accuracy improves as you log more days.';
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28 }}
+        onPress={onClose}
+      >
+        <Pressable onPress={() => {}} style={{ width: '100%' }}>
+          <View style={{ backgroundColor: bg, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 10 }}>
+            {/* Title */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: textPrimary }}>How your risk is calculated</Text>
+              <TouchableOpacity onPress={onClose} hitSlop={10}>
+                <Ionicons name="close" size={20} color={textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Method */}
+            <Text style={{ fontSize: 13, color: textSecondary, lineHeight: 19, marginBottom: 14 }}>{methodText}</Text>
+
+            <View style={{ height: 1, backgroundColor: divider, marginBottom: 14 }} />
+
+            {/* Trigger pill */}
+            <View style={{ backgroundColor: pillBg, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: confidenceLine || learningLine ? 10 : 0 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: textPrimary }}>{triggerLine}</Text>
+            </View>
+
+            {/* Confidence */}
+            {confidenceLine && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: headerColor }} />
+                <Text style={{ fontSize: 12, color: textSecondary }}>{confidenceLine}</Text>
+              </View>
+            )}
+
+            {/* Learning note */}
+            {learningLine && (
+              <Text style={{ fontSize: 12, color: headerColor, fontWeight: '600', marginTop: 2 }}>
+                {learningLine}
+              </Text>
+            )}
+
+            {/* Free upsell */}
+            {!isPro && (
+              <>
+                <View style={{ height: 1, backgroundColor: divider, marginTop: 14, marginBottom: 12 }} />
+                <Text style={{ fontSize: 12, color: textSecondary, lineHeight: 18 }}>
+                  🔒  Upgrade to <Text style={{ fontWeight: '700', color: textPrimary }}>Pro</Text> to unlock a personalised risk score based on your actual symptom history.
+                </Text>
+              </>
+            )}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
 
 export function RiskBanner({
   level,
@@ -224,32 +351,56 @@ export function RiskBanner({
   onProfilePress,
   onChangeAllergensPress,
 }: RiskBannerProps) {
+  const [showInfo, setShowInfo] = useState(false);
+  const scheme = useColorScheme();
   const cfg = LEVEL_CONFIG[level];
   const label = isPro ? cfg.personalLabel : cfg.label;
   const sub   = isPro ? cfg.personalSub   : cfg.sub;
   const manualDisplay = allergenDisplayLabel(activeAllergens ?? []);
+  const dividerColor = scheme === 'dark' ? cfg.dividerColorDark : cfg.dividerColor;
+
+  const titleColor = scheme === 'dark' ? cfg.titleColorDark : cfg.titleColor;
+  const bgColor    = scheme === 'dark' ? cfg.bgDark         : cfg.bgLight;
 
   return (
-    <View className={`rounded-2xl border p-4 ${cfg.bg} ${cfg.border}`}>
+    <>
+    <RiskInfoModal
+      visible={showInfo}
+      onClose={() => setShowInfo(false)}
+      level={level}
+      isPro={isPro}
+      allergenSource={allergenSource}
+      personalised={personalised}
+      activeAllergens={activeAllergens}
+      daysNeeded={daysNeeded}
+      topTrigger={topTrigger}
+      headerColor={cfg.headerColor}
+    />
+    <View
+      className="rounded-2xl p-4"
+      style={{ backgroundColor: bgColor }}
+    >
       {/* Header row */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: cfg.headerColor }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', letterSpacing: 1.2, color: cfg.headerColor }}>
           TODAY'S RISK
         </Text>
-        <View style={{
-          width: 26, height: 26, borderRadius: 13,
-          borderWidth: 1.5, borderColor: cfg.headerColor,
-          alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Ionicons name="information" size={13} color={cfg.headerColor} />
-        </View>
+        <TouchableOpacity onPress={() => setShowInfo(true)} activeOpacity={0.7} hitSlop={8}>
+          <View style={{
+            width: 26, height: 26, borderRadius: 13,
+            borderWidth: 1.5, borderColor: cfg.headerColor,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Ionicons name="information" size={13} color={cfg.headerColor} />
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Risk title + subtitle */}
-      <Text style={{ fontSize: 20, fontWeight: '800', color: cfg.titleColor, lineHeight: 26 }}>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: titleColor, lineHeight: 26 }}>
         {label}
       </Text>
-      <Text style={{ fontSize: 13, color: cfg.subColor, marginTop: 4, lineHeight: 19 }}>
+      <Text style={{ fontSize: 13, color: cfg.headerColor, marginTop: 4, lineHeight: 19 }}>
         {sub}
       </Text>
 
@@ -257,7 +408,7 @@ export function RiskBanner({
       <SeverityBar level={level} dotColor={cfg.dotColor} dotAlign={cfg.dotAlign} />
 
       {/* Divider + trigger */}
-      <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)' }}>
+      <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: dividerColor }}>
         {isPro ? (
           allergenSource === 'model' ? (
             personalised && topTrigger ? (
@@ -265,7 +416,7 @@ export function RiskBanner({
                 <TriggerRow
                   dotColor={cfg.dotColor}
                   name={topTrigger.label}
-                  rowLabel="your key trigger"
+                  rowLabel="Learnt Trigger"
                   onChangeAllergensPress={onChangeAllergensPress}
                 />
                 <TouchableOpacity onPress={onProfilePress} activeOpacity={0.7} style={{ marginTop: 10 }}>
@@ -285,7 +436,7 @@ export function RiskBanner({
             <TriggerRow
               dotColor={cfg.dotColor}
               name={manualDisplay.name}
-              rowLabel="your selected allergens"
+              rowLabel="Selected Trigger"
               onChangeAllergensPress={onChangeAllergensPress}
             />
           )
@@ -294,7 +445,7 @@ export function RiskBanner({
             <TriggerRow
               dotColor={cfg.dotColor}
               name={manualDisplay.name}
-              rowLabel="your selected allergens"
+              rowLabel="Selected Trigger"
               onChangeAllergensPress={onChangeAllergensPress}
             />
             <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>
@@ -304,5 +455,6 @@ export function RiskBanner({
         )}
       </View>
     </View>
+    </>
   );
 }

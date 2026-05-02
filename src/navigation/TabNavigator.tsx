@@ -20,8 +20,8 @@ function HistoryIcon({ color }: { color: string }) {
 function MapIcon({ color }: { color: string }) {
   return <Text style={{ color, fontSize: 20 }}>🗺️</Text>;
 }
-function ProfileIcon({ color }: { color: string }) {
-  return <Text style={{ color, fontSize: 20 }}>👤</Text>;
+function SettingsIcon({ color }: { color: string }) {
+  return <Text style={{ color, fontSize: 20 }}>⚙️</Text>;
 }
 
 function LogTabIcon({ focused }: { focused: boolean }) {
@@ -99,8 +99,8 @@ export default function TabNavigator() {
         name="Settings"
         component={SettingsNavigator}
         options={{
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color }) => <ProfileIcon color={color} />,
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color }) => <SettingsIcon color={color} />,
         }}
       />
     </Tab.Navigator>

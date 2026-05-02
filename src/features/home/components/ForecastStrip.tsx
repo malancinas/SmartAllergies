@@ -91,7 +91,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
 
   return (
     <>
-      <View>
+      <View className="bg-white dark:bg-neutral-800 rounded-3xl p-4">
         {/* Cards — flex row fills full width, no scroll */}
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {upcoming.map((day, index) => {
@@ -105,7 +105,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                 style={{ flex: 1 }}
               >
                 <View
-                  className="bg-white dark:bg-neutral-800 rounded-2xl border border-neutral-100 dark:border-neutral-700"
+                  className="bg-neutral-50 dark:bg-neutral-700/60 rounded-2xl"
                   style={{ paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center' }}
                 >
                   <Text className={locked ? 'text-neutral-600 dark:text-neutral-600' : 'text-neutral-400 dark:text-neutral-400'} style={{ fontSize: 11, fontWeight: '500' }}>
@@ -124,7 +124,7 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                     </>
                   ) : (
                     <>
-                      <View style={{ marginTop: 8, gap: 3, alignSelf: 'stretch' }}>
+                      <View style={{ marginTop: 8, gap: 3 }}>
                         {(['tree', 'grass', 'weed'] as const).map((type) => (
                           <View key={type} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                             <View
@@ -153,22 +153,6 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress }: ForecastStrip
                             <Text className="text-neutral-500 dark:text-neutral-400" style={{ fontSize: 10, fontWeight: '500' }}>Air</Text>
                           </View>
                         )}
-                      </View>
-                      {/* Risk badge */}
-                      <View
-                        style={{
-                          marginTop: 10,
-                          paddingHorizontal: 10,
-                          paddingVertical: 3,
-                          borderRadius: 20,
-                          borderWidth: 1,
-                          borderColor: RISK_COLOR[day.level],
-                          backgroundColor: RISK_BG[day.level],
-                        }}
-                      >
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: RISK_COLOR[day.level] }}>
-                          {RISK_LABEL[day.level]}
-                        </Text>
                       </View>
                     </>
                   )}

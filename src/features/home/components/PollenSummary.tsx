@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { MergedDailyPollenForecast, PollenLevel, SpeciesData, AirQualityData, AirQualityMetric } from '@/features/pollen/types';
 
 // ─── Level styles ─────────────────────────────────────────────────────────────
 
-const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string; rawBg: string; rawText: string }> = {
-  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',       text: 'text-neutral-400',                        label: 'None',      rawBg: '#e5e7eb', rawText: '#9ca3af' },
-  low:      { bg: 'bg-success-100 dark:bg-success-900/40',    text: 'text-success-700 dark:text-success-300',  label: 'Low',       rawBg: '#dcfce7', rawText: '#15803d' },
-  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',    text: 'text-warning-700 dark:text-warning-300',  label: 'Medium',    rawBg: '#fef3c7', rawText: '#b45309' },
-  high:     { bg: 'bg-error-100 dark:bg-error-900/40',        text: 'text-error-700 dark:text-error-300',      label: 'High',      rawBg: '#fee2e2', rawText: '#dc2626' },
-  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',        text: 'text-error-800 dark:text-error-200',      label: 'Very high', rawBg: '#fecaca', rawText: '#b91c1c' },
+const LEVEL_STYLE: Record<PollenLevel, { bg: string; text: string; label: string; rawBg: string; rawText: string; darkBg: string; darkText: string }> = {
+  none:     { bg: 'bg-neutral-100 dark:bg-neutral-700',       text: 'text-neutral-400',                        label: 'None',      rawBg: '#e5e7eb', rawText: '#9ca3af', darkBg: '#374151',                 darkText: '#9ca3af' },
+  low:      { bg: 'bg-success-100 dark:bg-success-900/40',    text: 'text-success-700 dark:text-success-300',  label: 'Low',       rawBg: '#dcfce7', rawText: '#15803d', darkBg: 'rgba(74,222,128,0.28)',   darkText: '#4ade80' },
+  medium:   { bg: 'bg-warning-100 dark:bg-warning-900/40',    text: 'text-warning-700 dark:text-warning-300',  label: 'Medium',    rawBg: '#fef3c7', rawText: '#b45309', darkBg: 'rgba(251,191,36,0.28)',   darkText: '#fbbf24' },
+  high:     { bg: 'bg-error-100 dark:bg-error-900/40',        text: 'text-error-700 dark:text-error-300',      label: 'High',      rawBg: '#fee2e2', rawText: '#dc2626', darkBg: 'rgba(248,113,113,0.28)',  darkText: '#f87171' },
+  very_high:{ bg: 'bg-error-200 dark:bg-error-900/60',        text: 'text-error-800 dark:text-error-200',      label: 'Very high', rawBg: '#fecaca', rawText: '#b91c1c', darkBg: 'rgba(248,113,113,0.40)',  darkText: '#f87171' },
 };
 
 const AQ_LEVEL_LABEL: Record<PollenLevel, string> = {
@@ -71,8 +71,11 @@ function PollenGridCell({
   active: boolean;
   onPress: () => void;
 }) {
+  const scheme = useColorScheme();
   const s = LEVEL_STYLE[level];
   const displayLabel = levelLabel ?? s.label;
+  const bg = scheme === 'dark' ? s.darkBg : s.rawBg;
+  const textColor = scheme === 'dark' ? s.darkText : s.rawText;
 
   return (
     <TouchableOpacity
@@ -81,15 +84,15 @@ function PollenGridCell({
       style={{ flex: 1 }}
     >
       <View
-        className={`rounded-2xl p-4 ${s.bg}`}
+        className="rounded-2xl p-4"
         style={[
-          { minHeight: 118 },
+          { minHeight: 118, backgroundColor: bg },
           !active && { opacity: 0.45 },
         ]}
       >
-        <Ionicons name={iconName} size={24} color={s.rawText} style={{ marginBottom: 10 }} />
-        <Text style={{ fontSize: 12, color: s.rawText, opacity: 0.75, marginBottom: 2 }}>{label}</Text>
-        <Text style={{ fontSize: 20, fontWeight: '800', color: s.rawText, lineHeight: 24 }}>{displayLabel}</Text>
+        <Ionicons name={iconName} size={24} color={textColor} style={{ marginBottom: 10 }} />
+        <Text style={{ fontSize: 12, color: textColor, opacity: 0.75, marginBottom: 2 }}>{label}</Text>
+        <Text style={{ fontSize: 20, fontWeight: '800', color: textColor, lineHeight: 24 }}>{displayLabel}</Text>
         <Text style={{ fontSize: 9, color: '#a5b4fc', marginTop: 6 }}>tap for detail</Text>
       </View>
     </TouchableOpacity>
