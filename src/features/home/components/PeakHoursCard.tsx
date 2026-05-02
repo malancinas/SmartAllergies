@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HourlyPollenPoint } from '@/features/pollen/types';
 
@@ -97,12 +97,25 @@ const TIME_GROUPS = [
 ];
 const TIME_AXIS_LABELS = ['6 am', '9 am', '12 pm', '3 pm', '6 pm', '9 pm'];
 
-function segmentColor(avg: number, peakAvg: number): string {
-  if (peakAvg === 0) return '#22c55e';
-  if (avg >= peakAvg * 0.75) return '#ef4444';
-  if (avg >= peakAvg * 0.35) return '#f59e0b';
-  return '#22c55e';
+function segmentColor(avg: number, peakAvg: number, isDark: boolean): string {
+  if (peakAvg === 0) return isDark ? 'rgba(74,222,128,0.28)' : '#dcfce7';
+  if (avg >= peakAvg * 0.75) return isDark ? 'rgba(248,113,113,0.28)' : '#fee2e2';
+  if (avg >= peakAvg * 0.35) return isDark ? 'rgba(251,191,36,0.28)' : '#fef3c7';
+  return isDark ? 'rgba(74,222,128,0.28)' : '#dcfce7';
 }
+
+function segmentTextColor(avg: number, peakAvg: number, isDark: boolean): string {
+  if (peakAvg === 0) return isDark ? '#4ade80' : '#15803d';
+  if (avg >= peakAvg * 0.75) return isDark ? '#f87171' : '#dc2626';
+  if (avg >= peakAvg * 0.35) return isDark ? '#fbbf24' : '#b45309';
+  return isDark ? '#4ade80' : '#15803d';
+}
+
+const LEGEND_COLORS = {
+  peak:     { light: '#fee2e2', dark: 'rgba(248,113,113,0.28)' },
+  moderate: { light: '#fef3c7', dark: 'rgba(251,191,36,0.28)'  },
+  low:      { light: '#dcfce7', dark: 'rgba(74,222,128,0.28)'  },
+};
 
 function segmentLabel(avg: number, peakAvg: number): string {
   if (peakAvg === 0) return 'Low';
@@ -122,6 +135,7 @@ function GroupedBar({
   activeAllergens: string[];
   weights?: Partial<Record<string, number>>;
 }) {
+  const isDark = useColorScheme() === 'dark';
   const groups = TIME_GROUPS.map(({ label, hours }) => {
     const groupPoints = points.filter((p) => hours.includes(parseInt(p.time.slice(11, 13), 10)));
     const avg = groupPoints.length
@@ -129,6 +143,12 @@ function GroupedBar({
       : 0;
     return { label, avg };
   });
+
+  const legendColors = [
+    { color: isDark ? LEGEND_COLORS.peak.dark     : LEGEND_COLORS.peak.light,     label: 'Peak pollen' },
+    { color: isDark ? LEGEND_COLORS.moderate.dark : LEGEND_COLORS.moderate.light, label: 'Moderate' },
+    { color: isDark ? LEGEND_COLORS.low.dark      : LEGEND_COLORS.low.light,      label: 'Low' },
+  ];
 
   return (
     <View>
@@ -142,14 +162,14 @@ function GroupedBar({
       {/* Segmented bar — continuous, no gaps */}
       <View style={{ flexDirection: 'row', height: 36, borderRadius: 8, overflow: 'hidden' }}>
         {groups.map(({ avg }, i) => {
-          const color = segmentColor(avg, peakAvg);
+          const color = segmentColor(avg, peakAvg, isDark);
           const lbl   = segmentLabel(avg, peakAvg);
           return (
             <View
               key={i}
               style={{ flex: 1, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Text style={{ fontSize: 10, fontWeight: '700', color: '#fff', opacity: 0.9 }}>{lbl}</Text>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: segmentTextColor(avg, peakAvg, isDark) }}>{lbl}</Text>
             </View>
           );
         })}
@@ -157,11 +177,7 @@ function GroupedBar({
 
       {/* Legend — outline squares, spread across width */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 2 }}>
-        {([
-          { color: '#ef4444', label: 'Peak pollen' },
-          { color: '#f59e0b', label: 'Moderate' },
-          { color: '#22c55e', label: 'Low' },
-        ] as const).map(({ color, label }) => (
+        {legendColors.map(({ color, label }) => (
           <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <View style={{
               width: 11, height: 11, borderRadius: 2,
