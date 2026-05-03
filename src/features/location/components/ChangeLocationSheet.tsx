@@ -2,6 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { usePollenStore } from '@/features/pollen/store';
+import { useSubscription } from '@/features/subscription/hooks/useSubscription';
+import { useSettingsStore } from '@/stores/persistent/settingsStore';
+import { isEurope } from '@/utils/regionDetection';
 
 interface GeoResult {
   latitude: number;
@@ -31,9 +34,11 @@ async function searchLocations(query: string): Promise<GeoResult[]> {
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** Called when a free user selects a location outside Europe — caller should show paywall */
+  onNonEuropeBlocked?: () => void;
 }
 
-export function ChangeLocationSheet({ visible, onClose }: Props) {
+export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeoResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,6 +46,8 @@ export function ChangeLocationSheet({ visible, onClose }: Props) {
   const [searchTimeout, setSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const { setLocationWithLabel, clearCustomLocation, locationLabel } = usePollenStore();
+  const { isPro } = useSubscription();
+  const checkAndAddSlot = useSettingsStore((s) => s.checkAndAddSlot);
 
   const handleChangeText = useCallback(
     (text: string) => {
@@ -69,6 +76,18 @@ export function ChangeLocationSheet({ visible, onClose }: Props) {
   );
 
   function handleSelect(result: GeoResult) {
+    if (!isEurope(result.latitude, result.longitude)) {
+      if (!isPro) {
+        onNonEuropeBlocked?.();
+        handleClose();
+        return;
+      }
+      const slotResult = checkAndAddSlot(result.latitude, result.longitude);
+      if (slotResult === 'limit_reached') {
+        setError('You can add up to 3 new locations per day outside Europe. Switch between your saved locations or try again tomorrow.');
+        return;
+      }
+    }
     setLocationWithLabel(
       { latitude: result.latitude, longitude: result.longitude },
       displayLabel(result),

@@ -19,6 +19,13 @@ export interface AlertSchedule {
   allergens: string[];
 }
 
+interface LocationSlots {
+  /** YYYY-MM-DD — slots reset when this changes */
+  date: string;
+  /** Rounded to 0 decimal places, max 3 entries */
+  cells: Array<{ lat: number; lon: number }>;
+}
+
 interface SettingsState {
   theme: 'light' | 'dark' | 'system';
   language: string;
@@ -32,6 +39,8 @@ interface SettingsState {
   allergenSource: 'model' | 'manual';
   /** Whether the user has completed the first-run onboarding flow */
   hasOnboarded: boolean;
+  /** Daily location slots for non-Europe Pro users (max 3 unique 1° cells per day) */
+  locationSlots: LocationSlots;
 }
 
 interface SettingsActions {
@@ -46,6 +55,8 @@ interface SettingsActions {
   setAllergenProfileLastAutoUpdated: (date: string | null) => void;
   setAllergenSource: (source: 'model' | 'manual') => void;
   setHasOnboarded: (done: boolean) => void;
+  /** Check if a location cell (rounded to 0dp) is available and add it if so. GPS locations never call this. */
+  checkAndAddSlot: (lat: number, lon: number) => 'allowed' | 'existing' | 'limit_reached';
 }
 
 const DEFAULT_SCHEDULES: AlertSchedule[] = [
@@ -63,7 +74,7 @@ const DEFAULT_SCHEDULES: AlertSchedule[] = [
 
 export const useSettingsStore = create<SettingsState & SettingsActions>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       theme: 'dark',
       language: 'en',
       notificationsEnabled: true,
@@ -72,6 +83,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       allergenProfileLastAutoUpdated: null,
       allergenSource: 'manual',
       hasOnboarded: false,
+      locationSlots: { date: '', cells: [] },
 
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
@@ -92,6 +104,23 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         set({ allergenProfileLastAutoUpdated }),
       setAllergenSource: (allergenSource) => set({ allergenSource }),
       setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
+
+      checkAndAddSlot: (lat, lon) => {
+        const today = new Date().toISOString().slice(0, 10);
+        const roundedLat = Math.round(lat);
+        const roundedLon = Math.round(lon);
+        const current = get().locationSlots;
+        const prevCells = current.date === today ? current.cells : [];
+
+        if (prevCells.some((c) => c.lat === roundedLat && c.lon === roundedLon)) {
+          return 'existing';
+        }
+        if (prevCells.length < 3) {
+          set({ locationSlots: { date: today, cells: [...prevCells, { lat: roundedLat, lon: roundedLon }] } });
+          return 'allowed';
+        }
+        return 'limit_reached';
+      },
     }),
     {
       name: 'settings-storage',

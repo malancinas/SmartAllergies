@@ -40,24 +40,8 @@ interface GoogleDayInfo {
   pollenTypeInfo?: GooglePollenTypeInfo[];
 }
 
-export async function fetchGooglePollenForecast(
-  lat: number,
-  lon: number,
-): Promise<DailyPollenForecast[]> {
-  if (!ENV.GOOGLE_POLLEN_API_KEY) {
-    throw new Error('Google Pollen API key not configured');
-  }
-
-  const cacheKey = `gpollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 13)}`;
-  const cached = await getPollenCache<DailyPollenForecast[]>(cacheKey);
-  if (cached) return cached;
-
-  const userId = getUserId();
-  const currentCount = await getApiCallCount(userId);
-  if (currentCount >= DAILY_API_LIMIT) {
-    throw new QuotaExceededError();
-  }
-
+// Shared HTTP fetch + parse logic used by both public functions
+async function callGooglePollenApi(lat: number, lon: number): Promise<DailyPollenForecast[]> {
   const url =
     `https://pollen.googleapis.com/v1/forecast:lookup` +
     `?location.longitude=${lon}` +
@@ -73,7 +57,7 @@ export async function fetchGooglePollenForecast(
 
   const json: { dailyInfo?: GoogleDayInfo[] } = await res.json();
 
-  const daily: DailyPollenForecast[] = (json.dailyInfo ?? []).map((day) => {
+  return (json.dailyInfo ?? []).map((day) => {
     const { year, month, day: d } = day.date;
     const date = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
@@ -99,8 +83,65 @@ export async function fetchGooglePollenForecast(
 
     return { date, tree, grass, weed, overallLevel };
   });
+}
 
+// Used by the Pro map screen — 1-hour cache, quota-tracked per user
+export async function fetchGooglePollenForecast(
+  lat: number,
+  lon: number,
+): Promise<DailyPollenForecast[]> {
+  if (!ENV.GOOGLE_POLLEN_API_KEY) {
+    throw new Error('Google Pollen API key not configured');
+  }
+
+  const cacheKey = `gpollen_${lat.toFixed(2)}_${lon.toFixed(2)}_${new Date().toISOString().slice(0, 13)}`;
+  const cached = await getPollenCache<DailyPollenForecast[]>(cacheKey);
+  if (cached) return cached;
+
+  const userId = getUserId();
+  const currentCount = await getApiCallCount(userId);
+  if (currentCount >= DAILY_API_LIMIT) {
+    throw new QuotaExceededError();
+  }
+
+  const daily = await callGooglePollenApi(lat, lon);
   await incrementApiCallCount(userId);
   await setPollenCache(cacheKey, daily);
   return daily;
+}
+
+// Used by the home page for non-Europe Pro users — 12-hour cache, 0-decimal rounded coords,
+// coastal fallback to exact coords if rounded point returns no data
+export async function fetchGooglePollenHome(
+  lat: number,
+  lon: number,
+): Promise<DailyPollenForecast[]> {
+  if (!ENV.GOOGLE_POLLEN_API_KEY) {
+    throw new Error('Google Pollen API key not configured');
+  }
+
+  const roundedLat = Math.round(lat);
+  const roundedLon = Math.round(lon);
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const bucket = Math.floor(now.getHours() / 12); // 0 = midnight–noon, 1 = noon–midnight
+  const cacheKey = `gpollen_home_${roundedLat}_${roundedLon}_${dateStr}_${bucket}`;
+
+  const cached = await getPollenCache<DailyPollenForecast[]>(cacheKey);
+  if (cached) return cached;
+
+  const primary = await callGooglePollenApi(roundedLat, roundedLon);
+  if (primary.length > 0) {
+    await setPollenCache(cacheKey, primary);
+    return primary;
+  }
+
+  // Coastal fallback: rounded point may be over ocean — retry with exact coords
+  const exactKey = `gpollen_home_exact_${lat.toFixed(2)}_${lon.toFixed(2)}_${dateStr}_${bucket}`;
+  const exactCached = await getPollenCache<DailyPollenForecast[]>(exactKey);
+  if (exactCached) return exactCached;
+
+  const fallback = await callGooglePollenApi(lat, lon);
+  if (fallback.length > 0) await setPollenCache(exactKey, fallback);
+  return fallback;
 }

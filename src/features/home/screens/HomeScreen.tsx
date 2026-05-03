@@ -18,6 +18,7 @@ import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { useAllergyProfile } from '@/features/insights/hooks/useAllergyProfile';
 import { AddressSearch } from '../components/AddressSearch';
 import { ChangeLocationSheet } from '@/features/location/components/ChangeLocationSheet';
+import { isEurope } from '@/utils/regionDetection';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
@@ -77,6 +78,31 @@ export default function HomeScreen() {
     setShowLocationPicker(true);
   }
   const loading = pollenLoading || forecastLoading;
+
+  const isOutsideEurope = location != null && !isEurope(location.latitude, location.longitude);
+
+  if (!loading && isOutsideEurope && !effectiveIsPro) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ fontSize: 40, marginBottom: 12 }}>🌍</Text>
+          <Text className="text-lg font-bold text-neutral-900 dark:text-white text-center mb-2">
+            Pro required outside Europe
+          </Text>
+          <Text className="text-sm text-neutral-500 dark:text-neutral-400 text-center mb-8">
+            Live pollen data outside Europe is available on SmartAllergies Pro.
+          </Text>
+          <TouchableOpacity
+            onPress={() => showPaywall('SmartAllergies Pro')}
+            style={{ backgroundColor: '#6366f1', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Upgrade to Pro</Text>
+          </TouchableOpacity>
+        </View>
+        <PaywallSheet {...paywallProps} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -306,6 +332,7 @@ export default function HomeScreen() {
       <ChangeLocationSheet
         visible={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
+        onNonEuropeBlocked={() => { setShowLocationPicker(false); showPaywall('SmartAllergies Pro'); }}
       />
       <PaywallSheet {...paywallProps} />
     </Screen>
