@@ -20,15 +20,16 @@ const linking = {
   },
 };
 
-// ⚠️ DEV BYPASS — set to false before shipping (see NEXT_STEPS.md §0)
+// ⚠️ DEV FLAGS — set both to false before shipping
 const BYPASS_AUTH = false;
+const FORCE_ONBOARDING = false;
 
 export default function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasOnboarded = useSettingsStore((s) => s.hasOnboarded);
 
   const showMain = BYPASS_AUTH || isAuthenticated;
-  const showOnboarding = !BYPASS_AUTH && !hasOnboarded;
+  const showOnboarding = FORCE_ONBOARDING || (!BYPASS_AUTH && !hasOnboarded);
 
   return (
     <NavigationContainer linking={linking}>

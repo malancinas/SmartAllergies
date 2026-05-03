@@ -4,6 +4,8 @@ import type { OnboardingStackParamList } from '@/types/navigation';
 import OnboardingWelcomeScreen from '@/features/onboarding/screens/OnboardingWelcomeScreen';
 import OnboardingLocationScreen from '@/features/onboarding/screens/OnboardingLocationScreen';
 import OnboardingAllergensScreen from '@/features/onboarding/screens/OnboardingAllergensScreen';
+import OnboardingNotificationsScreen from '@/features/onboarding/screens/OnboardingNotificationsScreen';
+import OnboardingProScreen from '@/features/onboarding/screens/OnboardingProScreen';
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
@@ -13,6 +15,8 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
       <Stack.Screen name="OnboardingLocation" component={OnboardingLocationScreen} />
       <Stack.Screen name="OnboardingAllergens" component={OnboardingAllergensScreen} />
+      <Stack.Screen name="OnboardingNotifications" component={OnboardingNotificationsScreen} />
+      <Stack.Screen name="OnboardingPro" component={OnboardingProScreen} />
     </Stack.Navigator>
   );
 }

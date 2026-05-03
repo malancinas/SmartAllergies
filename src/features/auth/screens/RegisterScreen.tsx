@@ -18,20 +18,33 @@ export default function RegisterScreen() {
   return (
     <Screen scrollable>
       <Stack spacing={4}>
-        <View className="items-center mb-4 mt-8">
-          <View className="w-12 h-12 bg-neutral-900 rounded-xl" />
+        <View className="items-center mb-2 mt-8">
+          <Text style={{ fontSize: 48 }}>🌿</Text>
         </View>
 
         <Text className="text-2xl font-bold text-center text-neutral-900 dark:text-white">
           Create account
         </Text>
-        <Text className="text-sm text-center text-neutral-500 mb-4">
+        <Text className="text-sm text-center text-neutral-500 mb-2">
           Start your journey today
         </Text>
 
-        {errors.general ? (
-          <Text className="text-sm text-error-500 text-center">{errors.general}</Text>
+        {(errors.general || googleMutation.error) ? (
+          <Text className="text-sm text-error-500 text-center">
+            {errors.general ?? (googleMutation.error as Error).message}
+          </Text>
         ) : null}
+
+        <Button
+          variant="outline"
+          onPress={() => googleMutation.mutate()}
+          loading={googleMutation.isPending}
+          testID="register-google-btn"
+        >
+          Continue with Google
+        </Button>
+
+        <Divider />
 
         <Input
           label="Full name"
@@ -78,17 +91,6 @@ export default function RegisterScreen() {
           testID="register-submit-btn"
         >
           Create Account
-        </Button>
-
-        <Divider />
-
-        <Button
-          variant="outline"
-          onPress={() => googleMutation.mutate()}
-          loading={googleMutation.isPending}
-          testID="register-google-btn"
-        >
-          Continue with Google
         </Button>
 
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>

@@ -20,26 +20,44 @@ export default function LoginScreen() {
   return (
     <Screen scrollable>
       <Stack spacing={4}>
-        <View className="items-center mb-4 mt-8">
-          <View className="w-12 h-12 bg-neutral-900 rounded-xl" />
+        <View className="items-center mb-2 mt-8">
+          <Text style={{ fontSize: 48 }}>🌿</Text>
         </View>
 
         <Text className="text-2xl font-bold text-center text-neutral-900 dark:text-white">
           Welcome back
         </Text>
-        <Text className="text-sm text-center text-neutral-500 mb-4">
+        <Text className="text-sm text-center text-neutral-500 mb-2">
           Sign in to your account
         </Text>
 
-        {errors.general ? (
-          <Text className="text-sm text-error-500 text-center">{errors.general}</Text>
-        ) : null}
-
-        {googleMutation.error ? (
+        {(errors.general || googleMutation.error) ? (
           <Text className="text-sm text-error-500 text-center">
-            {(googleMutation.error as Error).message}
+            {errors.general ?? (googleMutation.error as Error).message}
           </Text>
         ) : null}
+
+        <Button
+          variant="outline"
+          onPress={() => googleMutation.mutate()}
+          loading={googleMutation.isPending}
+          testID="login-google-btn"
+        >
+          Continue with Google
+        </Button>
+
+        {Platform.OS === 'ios' && (
+          <Button
+            variant="outline"
+            onPress={() => appleMutation.mutate()}
+            loading={appleMutation.isPending}
+            testID="login-apple-btn"
+          >
+            Continue with Apple
+          </Button>
+        )}
+
+        <Divider />
 
         <Input
           label="Email address"
@@ -72,28 +90,6 @@ export default function LoginScreen() {
         >
           Sign In
         </Button>
-
-        <Divider />
-
-        <Button
-          variant="outline"
-          onPress={() => googleMutation.mutate()}
-          loading={googleMutation.isPending}
-          testID="login-google-btn"
-        >
-          Continue with Google
-        </Button>
-
-        {Platform.OS === 'ios' && (
-          <Button
-            variant="outline"
-            onPress={() => appleMutation.mutate()}
-            loading={appleMutation.isPending}
-            testID="login-apple-btn"
-          >
-            Continue with Apple
-          </Button>
-        )}
 
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text className="text-sm text-center text-neutral-500">

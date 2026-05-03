@@ -8,6 +8,8 @@ export type OnboardingStackParamList = {
   OnboardingWelcome: undefined;
   OnboardingLocation: undefined;
   OnboardingAllergens: undefined;
+  OnboardingNotifications: undefined;
+  OnboardingPro: undefined;
 };
 
 export type AuthStackParamList = {
