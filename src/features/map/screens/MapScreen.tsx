@@ -219,14 +219,14 @@ export default function MapScreen() {
       {/* Shared: colour legend — switches between pollen and AQ scale */}
       <PollenLegend layerType={selectedLayer} onLayout={handleLegendLayout} />
 
-      {/* Change location pill — top-left */}
+      {/* Change location pill — bottom-left for easy thumb access */}
       <TouchableOpacity
         onPress={handleChangeLocationPress}
         activeOpacity={0.85}
         disabled={adPlaying}
         style={{
           position: 'absolute',
-          top: 12,
+          bottom: 160,
           left: 12,
           flexDirection: 'row',
           alignItems: 'center',

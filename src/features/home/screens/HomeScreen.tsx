@@ -84,30 +84,6 @@ export default function HomeScreen() {
         <Stack spacing={5} className="py-4">
           {/* Greeting */}
           <View>
-            {/* Location chip — own row at top */}
-            <TouchableOpacity
-              onPress={handleChangeLocationPress}
-              activeOpacity={0.8}
-              disabled={adPlaying}
-              style={{ alignSelf: 'flex-start' }}
-              className="flex-row items-center gap-1.5 bg-neutral-800 rounded-full px-3 py-1.5 mb-3"
-            >
-              {adPlaying ? (
-                <ActivityIndicator size="small" color="#6366f1" style={{ marginHorizontal: 4 }} />
-              ) : (
-                <>
-                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#ef4444' }} />
-                  <Text
-                    className="text-xs font-medium text-neutral-200"
-                    numberOfLines={1}
-                    style={{ maxWidth: 160 }}
-                  >
-                    {locationLabel ?? 'My location'}
-                  </Text>
-                  <Text className="text-xs text-neutral-500">▾</Text>
-                </>
-              )}
-            </TouchableOpacity>
             <Text className="text-3xl font-bold text-neutral-900 dark:text-white">
               Hello, {user?.name ?? 'there'} 👋
             </Text>
@@ -118,6 +94,30 @@ export default function HomeScreen() {
                 month: 'long',
               })}
             </Text>
+            {/* Location chip — below greeting for easy thumb access */}
+            <TouchableOpacity
+              onPress={handleChangeLocationPress}
+              activeOpacity={0.8}
+              disabled={adPlaying}
+              style={{ alignSelf: 'center', marginTop: 14 }}
+              className="flex-row items-center gap-1.5 bg-neutral-800 rounded-full px-4 py-2"
+            >
+              {adPlaying ? (
+                <ActivityIndicator size="small" color="#6366f1" style={{ marginHorizontal: 4 }} />
+              ) : (
+                <>
+                  <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#ef4444' }} />
+                  <Text
+                    className="text-xs font-medium text-neutral-200"
+                    numberOfLines={1}
+                    style={{ maxWidth: 200 }}
+                  >
+                    {locationLabel ?? 'My location'}
+                  </Text>
+                  <Text className="text-xs text-neutral-500">▾</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Stale data badge — shown when offline and serving cached data */}
