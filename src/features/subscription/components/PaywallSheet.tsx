@@ -52,7 +52,7 @@ export function PaywallSheet({ visible, onClose, featureName, onUpgraded, subtit
             Upgrade to Pro
           </Text>
           <Text className="text-sm text-neutral-500 dark:text-neutral-400 text-center mt-1">
-            {subtitle ?? `${featureName} is a Pro feature`}
+            {subtitle ?? `Local Allergies Pro features`}
           </Text>
         </View>
 

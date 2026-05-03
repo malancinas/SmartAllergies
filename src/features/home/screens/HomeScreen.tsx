@@ -17,6 +17,7 @@ import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { useAllergyProfile } from '@/features/insights/hooks/useAllergyProfile';
 import { AddressSearch } from '../components/AddressSearch';
+import { toTitleCase } from '@/utils/formatters';
 import { ChangeLocationSheet } from '@/features/location/components/ChangeLocationSheet';
 import { isEurope } from '@/utils/regionDetection';
 
@@ -90,10 +91,10 @@ export default function HomeScreen() {
             Pro required outside Europe
           </Text>
           <Text className="text-sm text-neutral-500 dark:text-neutral-400 text-center mb-8">
-            Live pollen data outside Europe is available on SmartAllergies Pro.
+            Live pollen data outside Europe is available on Local Allergies Pro.
           </Text>
           <TouchableOpacity
-            onPress={() => showPaywall('SmartAllergies Pro')}
+            onPress={() => showPaywall('Worldwide pollen data')}
             style={{ backgroundColor: '#6366f1', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
           >
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Upgrade to Pro</Text>
@@ -111,7 +112,7 @@ export default function HomeScreen() {
           {/* Greeting */}
           <View>
             <Text className="text-3xl font-bold text-neutral-900 dark:text-white">
-              Hello, {user?.name ?? 'there'} 👋
+              Hello, {user?.name ? toTitleCase(user.name.split(' ')[0]) : 'there'} 👋
             </Text>
             <Text className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
               {new Date().toLocaleDateString(undefined, {
@@ -276,7 +277,7 @@ export default function HomeScreen() {
       {!effectiveIsPro && (
         <View style={{ position: 'absolute', bottom: 16, left: 0, right: 0, alignItems: 'center' }} pointerEvents="box-none">
           <TouchableOpacity
-            onPress={() => showPaywall('SmartAllergies Pro')}
+            onPress={() => showPaywall('Worldwide pollen data')}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -331,7 +332,7 @@ export default function HomeScreen() {
       <ChangeLocationSheet
         visible={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
-        onNonEuropeBlocked={() => { setShowLocationPicker(false); showPaywall('SmartAllergies Pro'); }}
+        onNonEuropeBlocked={() => { setShowLocationPicker(false); showPaywall('Worldwide pollen data'); }}
       />
       <PaywallSheet {...paywallProps} />
     </Screen>
