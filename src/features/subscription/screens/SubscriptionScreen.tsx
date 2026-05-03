@@ -66,7 +66,7 @@ export default function SubscriptionScreen() {
               <Text className="text-xs font-semibold text-neutral-500 mb-2">FREE</Text>
               {[
                 `Regional pollen index`,
-                `Symptom logging (up to ${FREE_LIMITS.MAX_SYMPTOM_LOGS} entries)`,
+                `Symptom logging (up to ${FREE_LIMITS.MAX_LOG_DAYS} days)`,
                 `${FREE_LIMITS.HISTORY_DAYS}-day history`,
               ].map((f) => (
                 <View key={f} className="flex-row items-start mb-1.5">

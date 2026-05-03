@@ -66,9 +66,9 @@ export default function LogSymptomsScreen() {
     if (tier === 'pro') return true;
     const db = await getDatabase();
     const result = await db.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM symptom_logs',
+      "SELECT COUNT(DISTINCT DATE(logged_at)) as count FROM symptom_logs",
     );
-    return (result?.count ?? 0) < FREE_LIMITS.MAX_SYMPTOM_LOGS;
+    return (result?.count ?? 0) < FREE_LIMITS.MAX_LOG_DAYS;
   }
 
   async function handleSubmit() {
@@ -236,7 +236,7 @@ export default function LogSymptomsScreen() {
           {/* Free tier notice */}
           {tier === 'free' && (
             <Text className="text-xs text-neutral-400 text-center">
-              Free plan: up to {FREE_LIMITS.MAX_SYMPTOM_LOGS} logs. Upgrade to Pro for unlimited.
+              Free plan: log on up to {FREE_LIMITS.MAX_LOG_DAYS} days. Upgrade to Pro for unlimited.
             </Text>
           )}
 
@@ -253,6 +253,7 @@ export default function LogSymptomsScreen() {
         visible={paywallVisible}
         onClose={() => setPaywallVisible(false)}
         featureName="Unlimited symptom logging"
+        subtitle={`You've logged your symptoms on ${FREE_LIMITS.MAX_LOG_DAYS} days — we've been storing the pollen and air quality data alongside every log. Upgrade now and your personalised allergen profile will be ready to go.`}
       />
     </Screen>
   );

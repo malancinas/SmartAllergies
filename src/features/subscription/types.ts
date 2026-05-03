@@ -13,6 +13,6 @@ export const PRO_FEATURES = [
 ] as const;
 
 export const FREE_LIMITS = {
-  MAX_SYMPTOM_LOGS: 30,
+  MAX_LOG_DAYS: 30,
   HISTORY_DAYS: 7,
 } as const;

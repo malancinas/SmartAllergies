@@ -11,9 +11,10 @@ interface PaywallSheetProps {
   onClose: () => void;
   featureName: string;
   onUpgraded?: () => void;
+  subtitle?: string;
 }
 
-export function PaywallSheet({ visible, onClose, featureName, onUpgraded }: PaywallSheetProps) {
+export function PaywallSheet({ visible, onClose, featureName, onUpgraded, subtitle }: PaywallSheetProps) {
   const { data: offerings, isLoading: offeringsLoading } = useOfferings();
   const { purchase, restorePurchases, isLoading: purchasing } = usePurchase();
 
@@ -51,7 +52,7 @@ export function PaywallSheet({ visible, onClose, featureName, onUpgraded }: Payw
             Upgrade to Pro
           </Text>
           <Text className="text-sm text-neutral-500 dark:text-neutral-400 text-center mt-1">
-            {featureName} is a Pro feature
+            {subtitle ?? `${featureName} is a Pro feature`}
           </Text>
         </View>
 
