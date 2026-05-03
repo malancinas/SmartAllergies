@@ -78,8 +78,9 @@ function findModerateWindow(
 ): WindowResult | null {
   if (points.length < windowSize) return null;
   let modAvg = -Infinity, modIdx = -1;
+  const peakEndIdx = peakIdx + 2; // peak window is always 3 hours
   for (let i = 0; i <= points.length - windowSize; i++) {
-    if (Math.abs(i - peakIdx) < windowSize) continue;
+    if (i + windowSize - 1 >= peakIdx && i <= peakEndIdx) continue;
     const avg = points.slice(i, i + windowSize).reduce((s, p) => s + pollenScore(p, activeAllergens, weights), 0) / windowSize;
     if (avg > modAvg) { modAvg = avg; modIdx = i; }
   }
