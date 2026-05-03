@@ -8,6 +8,10 @@ import { GOOGLE_LAYER_TYPE, type PollenLayerType } from '../types';
 // Session-level cache: memory → SQLite → network. Cleared on app restart.
 const memoryTileCache = new Map<string, string>();
 
+// After ZOOM_DOWNGRADE_THRESHOLD calls, new unseen tiles are fetched at z=5
+// instead of z=6. Cached z=6 tiles keep their full resolution.
+const ZOOM_DOWNGRADE_THRESHOLD = 100;
+
 interface TileCoord { x: number; y: number; z: number }
 
 interface Props {
@@ -64,9 +68,7 @@ async function fetchAsDataUri(url: string): Promise<string> {
 }
 
 export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }: Props) {
-  // layerType is narrowed to PollenLayerType — caller must not pass AQ layer types here
   const apiKey = ENV.GOOGLE_POLLEN_API_KEY;
-  // Increments whenever new tiles land, triggering a re-render to display them.
   const [, setRenderTick] = useState(0);
   const cancelledRef = useRef(false);
 
@@ -88,7 +90,7 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
       let anyNew = false;
       console.log(`[TileLayer] load — layer=${type} tiles=${tileCoords.length}`);
 
-      // Check SQLite cache for all tiles in parallel, populate memory cache
+      // Check SQLite cache for all z=6 tiles in parallel, populate memory cache
       const cacheResults = await Promise.all(
         tileCoords.map(async ({ x, y, z }) => {
           const cacheKey = `pollen_tile_${today}_${type}_${z}_${x}_${y}`;
@@ -118,33 +120,88 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
           return;
         }
 
-        const toFetch = toFetchAll.slice(0, remaining);
-        if (toFetch.length < toFetchAll.length && !cancelledRef.current) {
-          onQuotaExceeded?.();
-        }
-
-        let fetchedCount = 0;
-        await Promise.allSettled(
-          toFetch.map(async ({ x, y, z, cacheKey }) => {
-            if (cancelledRef.current) return;
-            const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
-            try {
-              const dataUri = await fetchAsDataUri(url);
-              await setTileCache(cacheKey, dataUri);
-              memoryTileCache.set(cacheKey, dataUri);
-              anyNew = true;
-              fetchedCount++;
-            } catch (err) {
-              console.error(`[TileLayer] ❌ tile fetch failed z=${z} x=${x} y=${y}`, err);
+        if (currentCount >= ZOOM_DOWNGRADE_THRESHOLD) {
+          // Past threshold: fetch z=5 parent tiles for uncached z=6 areas.
+          // Each z=5 tile covers a 2×2 block of z=6 tiles, so deduplicate.
+          const z5Candidates = new Map<string, { x: number; y: number }>();
+          for (const { x, y } of toFetchAll) {
+            const z5x = Math.floor(x / 2);
+            const z5y = Math.floor(y / 2);
+            const z5CacheKey = `pollen_tile_${today}_${type}_5_${z5x}_${z5y}`;
+            if (!memoryTileCache.has(z5CacheKey) && !z5Candidates.has(z5CacheKey)) {
+              z5Candidates.set(z5CacheKey, { x: z5x, y: z5y });
             }
-          }),
-        );
-        console.log(`[TileLayer] fetched ${fetchedCount}/${toFetch.length} tiles from network`);
+          }
 
-        if (fetchedCount > 0) {
-          const newCount = await incrementApiCallCount(userId, fetchedCount);
-          if (!cancelledRef.current && newCount >= DAILY_API_LIMIT) {
+          // Check SQLite cache for z=5 candidates
+          const z5NeedsNetwork: Array<{ x: number; y: number; cacheKey: string }> = [];
+          await Promise.all(
+            Array.from(z5Candidates.entries()).map(async ([cacheKey, { x, y }]) => {
+              const cached = await getTileCache(cacheKey);
+              if (cached) {
+                memoryTileCache.set(cacheKey, cached);
+                anyNew = true;
+              } else {
+                z5NeedsNetwork.push({ x, y, cacheKey });
+              }
+            }),
+          );
+
+          const z5ToFetch = z5NeedsNetwork.slice(0, remaining);
+          console.log(`[TileLayer] z5 fallback: ${z5Candidates.size - z5NeedsNetwork.length} hits, ${z5NeedsNetwork.length} need network`);
+
+          let fetchedCount = 0;
+          await Promise.allSettled(
+            z5ToFetch.map(async ({ x, y, cacheKey }) => {
+              if (cancelledRef.current) return;
+              const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/5/${x}/${y}?key=${apiKey}`;
+              try {
+                const dataUri = await fetchAsDataUri(url);
+                await setTileCache(cacheKey, dataUri);
+                memoryTileCache.set(cacheKey, dataUri);
+                anyNew = true;
+                fetchedCount++;
+              } catch (err) {
+                console.error(`[TileLayer] ❌ z5 tile fetch failed x=${x} y=${y}`, err);
+              }
+            }),
+          );
+          console.log(`[TileLayer] z5 fetched ${fetchedCount}/${z5ToFetch.length} tiles from network`);
+
+          if (fetchedCount > 0) {
+            const newCount = await incrementApiCallCount(userId, fetchedCount);
+            if (!cancelledRef.current && newCount >= DAILY_API_LIMIT) onQuotaExceeded?.();
+          }
+        } else {
+          // Below threshold: fetch at full z=6 resolution
+          const toFetch = toFetchAll.slice(0, remaining);
+          if (toFetch.length < toFetchAll.length && !cancelledRef.current) {
             onQuotaExceeded?.();
+          }
+
+          let fetchedCount = 0;
+          await Promise.allSettled(
+            toFetch.map(async ({ x, y, z, cacheKey }) => {
+              if (cancelledRef.current) return;
+              const url = `https://pollen.googleapis.com/v1/mapTypes/${type}/heatmapTiles/${z}/${x}/${y}?key=${apiKey}`;
+              try {
+                const dataUri = await fetchAsDataUri(url);
+                await setTileCache(cacheKey, dataUri);
+                memoryTileCache.set(cacheKey, dataUri);
+                anyNew = true;
+                fetchedCount++;
+              } catch (err) {
+                console.error(`[TileLayer] ❌ tile fetch failed z=${z} x=${x} y=${y}`, err);
+              }
+            }),
+          );
+          console.log(`[TileLayer] fetched ${fetchedCount}/${toFetch.length} tiles from network`);
+
+          if (fetchedCount > 0) {
+            const newCount = await incrementApiCallCount(userId, fetchedCount);
+            if (!cancelledRef.current && newCount >= DAILY_API_LIMIT) {
+              onQuotaExceeded?.();
+            }
           }
         }
       }
@@ -161,6 +218,23 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
   const type = GOOGLE_LAYER_TYPE[layerType];
   const today = new Date().toISOString().slice(0, 10);
 
+  // Collect unique z=5 fallback tiles for z=6 positions that have no cached data.
+  // A z=5 tile covers a 2×2 block of z=6 tiles, so deduplicate by z=5 key.
+  const z5Rendered = new Set<string>();
+  const z5FallbackTiles: Array<{ x: number; y: number; cacheKey: string }> = [];
+  for (const { x, y, z } of tileCoords) {
+    const z6Key = `pollen_tile_${today}_${type}_${z}_${x}_${y}`;
+    if (!memoryTileCache.has(z6Key)) {
+      const z5x = Math.floor(x / 2);
+      const z5y = Math.floor(y / 2);
+      const z5Key = `pollen_tile_${today}_${type}_5_${z5x}_${z5y}`;
+      if (memoryTileCache.has(z5Key) && !z5Rendered.has(z5Key)) {
+        z5Rendered.add(z5Key);
+        z5FallbackTiles.push({ x: z5x, y: z5y, cacheKey: z5Key });
+      }
+    }
+  }
+
   return (
     <>
       {tileCoords.map(({ x, y, z }) => {
@@ -171,6 +245,19 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
         return (
           <Overlay
             key={`${z}-${x}-${y}-${type}`}
+            bounds={[[latMin, lonMin], [latMax, lonMax]]}
+            image={{ uri }}
+            opacity={0.65}
+          />
+        );
+      })}
+      {z5FallbackTiles.map(({ x, y, cacheKey }) => {
+        const uri = memoryTileCache.get(cacheKey);
+        if (!uri) return null;
+        const { latMin, latMax, lonMin, lonMax } = tileBounds(x, y, 5);
+        return (
+          <Overlay
+            key={`5-${x}-${y}-${type}`}
             bounds={[[latMin, lonMin], [latMax, lonMax]]}
             image={{ uri }}
             opacity={0.65}
