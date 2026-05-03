@@ -384,44 +384,73 @@ function AggravatorCard({ profile }: { profile: AdvancedAllergyProfile }) {
   );
 }
 
+type AQTier = { label: string; color: string; bgColor: string; subtitle: string };
+
+function aqTier(rc: number): AQTier & { show: boolean } {
+  const abs = Math.abs(rc);
+  const pct = Math.round(abs * 100);
+  if (abs >= 0.5) return { show: true, label: 'Strong effect',      color: '#ef4444', bgColor: '#fef2f2', subtitle: `${pct}% correlation` };
+  if (abs >= 0.3) return { show: true, label: 'Likely affects you', color: '#f97316', bgColor: '#fff7ed', subtitle: `${pct}% correlation · still being confirmed` };
+  if (abs >= 0.15) return { show: true, label: 'Possible link',     color: '#22c55e', bgColor: '#f0fdf4', subtitle: `${pct}% correlation · needs more data` };
+  return               { show: false, label: 'No link found',       color: '#94a3b8', bgColor: 'transparent', subtitle: '' };
+}
+
 function AirQualityCard({ aggravators }: { aggravators: AggravatorResult[] }) {
   if (aggravators.length === 0) return null;
 
-  function aqRowLabel(rc: number, significant: boolean): { label: string; color: string } {
-    if (!significant) return { label: 'No link found', color: '#94a3b8' };
-    const abs = Math.abs(rc);
-    if (abs >= 0.5) return { label: 'Strong effect',      color: '#ef4444' };
-    if (abs >= 0.3) return { label: 'Likely affects you', color: '#f97316' };
-    return                  { label: 'May affect you',    color: '#eab308' };
-  }
+  const shown = aggravators.filter((a) => aqTier(a.residualCorrelation).show);
+  const hidden = aggravators.filter((a) => !aqTier(a.residualCorrelation).show);
+
+  const shortLabel = (label: string) => {
+    const map: Record<string, string> = {
+      'PM2.5 (fine particles)': 'PM2.5',
+      'PM10 (coarse particles)': 'PM10',
+      'Nitrogen dioxide': 'NO₂',
+      'Sulphur dioxide': 'SO₂',
+      'Ozone': 'O₃',
+      'Dust': 'Dust',
+    };
+    return map[label] ?? label;
+  };
 
   return (
     <Card variant="outlined">
       <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-4">
         Air quality correlations
       </Text>
-      {aggravators.map((a) => {
-        const { label, color } = aqRowLabel(a.residualCorrelation, a.isSignificant);
-        const pct = Math.min(100, Math.abs(a.residualCorrelation) * 100);
+
+      {shown.map((a) => {
+        const tier = aqTier(a.residualCorrelation);
+        const barPct = Math.min(100, Math.abs(a.residualCorrelation) * 100);
         return (
-          <View key={a.key} className="mb-4 last:mb-0">
+          <View key={a.key} className="mb-4">
             <View className="flex-row items-center justify-between mb-1.5">
               <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200 flex-1 mr-2">
                 {a.label}
               </Text>
-              <Text className="text-xs font-semibold" style={{ color }}>
-                {label}
-              </Text>
+              <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: tier.bgColor }}>
+                <Text className="text-xs font-semibold" style={{ color: tier.color }}>
+                  {tier.label}
+                </Text>
+              </View>
             </View>
-            <View className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-              <View
-                className="h-full rounded-full"
-                style={{ width: `${pct}%`, backgroundColor: color }}
-              />
+            <View className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-1">
+              <View className="h-full rounded-full" style={{ width: `${barPct}%`, backgroundColor: tier.color }} />
             </View>
+            <Text className="text-xs text-neutral-400">{tier.subtitle}</Text>
           </View>
         );
       })}
+
+      {hidden.length > 0 && (
+        <View className="flex-row items-center gap-2 mt-1">
+          <Text className="text-xs text-neutral-400">ⓘ</Text>
+          <Text className="text-xs text-neutral-400">
+            No link found for{' '}
+            <Text className="font-semibold">{hidden.map((a) => shortLabel(a.label)).join(', ')}</Text>
+          </Text>
+        </View>
+      )}
     </Card>
   );
 }
