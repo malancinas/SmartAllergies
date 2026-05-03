@@ -46,7 +46,9 @@
       "Bash(grep -E \"\\(tensorflow|onnx|ml|tflite\\)\" c:\\\\\\\\Users\\\\\\\\malan\\\\\\\\git\\\\\\\\SmartAllergies\\\\\\\\package.json)",
       "PowerShell(Select-String -Path \"c:\\\\Users\\\\malan\\\\git\\\\SmartAllergies\\\\package.json\" -Pattern \"\\(tensorflow|onnx|ml|tflite\\)\" -Simple)",
       "Bash(xargs cat *)",
-      "Bash(cd c:\\\\\\\\Users\\\\\\\\malan\\\\\\\\git\\\\\\\\SmartAllergies)"
+      "Bash(cd c:\\\\\\\\Users\\\\\\\\malan\\\\\\\\git\\\\\\\\SmartAllergies)",
+      "WebFetch(domain:docs.tomorrow.io)",
+      "WebFetch(domain:docs.ambeedata.com)"
     ]
   }
 }
