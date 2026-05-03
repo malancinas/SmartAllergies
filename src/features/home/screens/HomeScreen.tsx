@@ -235,7 +235,6 @@ export default function HomeScreen() {
               <ForecastStrip
                 upcoming={upcoming}
                 isPro={effectiveIsPro}
-                onUpgradePress={() => showPaywall('Extended forecast')}
                 weights={weights}
                 riskToday={riskToday}
                 locationLabel={locationLabel ?? undefined}

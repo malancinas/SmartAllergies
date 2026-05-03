@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, useColorScheme, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { MergedDailyPollenForecast, PollenLevel, SpeciesData, AirQualityData, AirQualityMetric, HourlyPollenPoint } from '@/features/pollen/types';
@@ -314,6 +314,18 @@ export function PollenSummary({ today, limitedCoverage, allergenProfile, isPro, 
   const allSelected = profile.length === 0;
   const [openCategory, setOpenCategory] = useState<'tree' | 'grass' | 'weed' | null>(null);
   const [aqOpen, setAqOpen] = useState(false);
+  const [pillAdSeen, setPillAdSeen] = useState(false);
+  const [pillAdPlaying, setPillAdPlaying] = useState(false);
+
+  async function handlePillPress(action: () => void) {
+    if (isPro || pillAdSeen) { action(); return; }
+    setPillAdPlaying(true);
+    // TODO: swap for real rewarded-ad call
+    await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+    setPillAdPlaying(false);
+    setPillAdSeen(true);
+    action();
+  }
 
   const categorySpecies = openCategory ? (today.species ?? []).filter((s) => s.category === openCategory) : [];
   const categoryLevel = openCategory ? today[openCategory].level : 'none';
@@ -370,21 +382,21 @@ export function PollenSummary({ today, limitedCoverage, allergenProfile, isPro, 
   return (
     <>
       {/* 2×2 grid */}
-      <View style={{ gap: 10 }}>
+      <View pointerEvents={pillAdPlaying ? 'none' : 'auto'} style={{ gap: 10, opacity: pillAdPlaying ? 0.5 : 1 }}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <PollenGridCell
             iconName={CATEGORY_ICON.tree}
             label={CATEGORY_LABEL.tree}
             level={today.tree.level}
             active={allSelected || profile.includes('tree')}
-            onPress={() => setOpenCategory('tree')}
+            onPress={() => handlePillPress(() => setOpenCategory('tree'))}
           />
           <PollenGridCell
             iconName={CATEGORY_ICON.grass}
             label={CATEGORY_LABEL.grass}
             level={today.grass.level}
             active={allSelected || profile.includes('grass')}
-            onPress={() => setOpenCategory('grass')}
+            onPress={() => handlePillPress(() => setOpenCategory('grass'))}
           />
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -393,7 +405,7 @@ export function PollenSummary({ today, limitedCoverage, allergenProfile, isPro, 
             label={CATEGORY_LABEL.weed}
             level={today.weed.level}
             active={allSelected || profile.includes('weed')}
-            onPress={() => setOpenCategory('weed')}
+            onPress={() => handlePillPress(() => setOpenCategory('weed'))}
           />
           {aq ? (
             <PollenGridCell
@@ -402,13 +414,18 @@ export function PollenSummary({ today, limitedCoverage, allergenProfile, isPro, 
               level={aqLevel}
               levelLabel={AQ_LEVEL_LABEL[aqLevel]}
               active
-              onPress={() => setAqOpen(true)}
+              onPress={() => handlePillPress(() => setAqOpen(true))}
             />
           ) : (
             <View style={{ flex: 1 }} />
           )}
         </View>
       </View>
+      {pillAdPlaying && (
+        <View style={{ alignItems: 'center', marginTop: 4 }}>
+          <ActivityIndicator size="small" color="#6366f1" />
+        </View>
+      )}
 
       {limitedCoverage && (
         <Text className="text-xs text-neutral-400 mt-1 text-center">

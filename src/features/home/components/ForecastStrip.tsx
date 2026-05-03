@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, useColorScheme, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { DailyRiskScore, RiskLevel, CorrelationWeights } from '@/features/forecasting/types';
@@ -173,7 +173,6 @@ function PollenCell({ label, level, levelLabel }: { label: string; level: Pollen
 interface ForecastStripProps {
   upcoming: DailyRiskScore[];
   isPro: boolean;
-  onUpgradePress: () => void;
   weights?: CorrelationWeights;
   riskToday?: DailyRiskScore | null;
   locationLabel?: string;
@@ -183,12 +182,24 @@ interface ForecastStripProps {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskToday, locationLabel, weatherForecast = [], topAggravator }: ForecastStripProps) {
+export function ForecastStrip({ upcoming, isPro, weights, riskToday: _riskToday, locationLabel, weatherForecast = [], topAggravator }: ForecastStripProps) {
   const [selected, setSelected] = useState<DailyRiskScore | null>(null);
+  const [forecastAdSeen, setForecastAdSeen] = useState(false);
+  const [forecastAdPlaying, setForecastAdPlaying] = useState(false);
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
   if (upcoming.length === 0) return null;
+
+  async function handleDaySelect(day: DailyRiskScore, isAdGated: boolean) {
+    if (!isAdGated || forecastAdSeen) { setSelected(day); return; }
+    setForecastAdPlaying(true);
+    // TODO: swap for real rewarded-ad call
+    await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+    setForecastAdPlaying(false);
+    setForecastAdSeen(true);
+    setSelected(day);
+  }
 
   // Find the worst upcoming day for the "plan ahead" message
   const worstDay = [...upcoming].sort((a, b) => b.score - a.score)[0];
@@ -212,60 +223,51 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskTo
   return (
     <>
       {/* ── Compact strip ─────────────────────────────────────────────────── */}
-      <View style={{ flexDirection: 'row', gap: 6 }}>
+      <View pointerEvents={forecastAdPlaying ? 'none' : 'auto'} style={{ flexDirection: 'row', gap: 6, opacity: forecastAdPlaying ? 0.5 : 1 }}>
         {upcoming.map((day, index) => {
-          const locked = !isPro && index >= 1;
+          const adGated = !isPro && index >= 1;
           const dayBg = isDark ? '#374151' : '#e5e7eb';
 
           return (
             <TouchableOpacity
               key={day.date}
               activeOpacity={1}
-              onPress={locked ? onUpgradePress : () => setSelected(day)}
+              onPress={() => handleDaySelect(day, adGated)}
               style={{ flex: 1 }}
             >
               <View style={{ paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: dayBg, borderRadius: 16 }}>
-                <Text
-                  style={{ fontSize: 11, fontWeight: '500', color: locked ? (isDark ? '#4b5563' : '#9ca3af') : (isDark ? '#9ca3af' : '#6b7280') }}
-                >
+                <Text style={{ fontSize: 11, fontWeight: '500', color: isDark ? '#9ca3af' : '#6b7280' }}>
                   {formatWeekday(day.date)}
                 </Text>
-                <Text
-                  style={{ fontSize: 18, fontWeight: '800', lineHeight: 24, marginTop: 1, color: locked ? (isDark ? '#4b5563' : '#9ca3af') : (isDark ? '#fff' : '#111827') }}
-                >
+                <Text style={{ fontSize: 18, fontWeight: '800', lineHeight: 24, marginTop: 1, color: isDark ? '#fff' : '#111827' }}>
                   {formatDayNumber(day.date)}
                 </Text>
-
-                {locked ? (
-                  <>
-                    <Text style={{ fontSize: 16, marginTop: 8 }}>🔒</Text>
-                    <View style={{ marginTop: 4, backgroundColor: 'rgba(139,92,246,0.2)', borderRadius: 20, paddingHorizontal: 6, paddingVertical: 2 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: '#a78bfa' }}>PRO</Text>
+                <View style={{ marginTop: 8, gap: 3 }}>
+                  {(['tree', 'grass', 'weed'] as const).map((type) => (
+                    <View key={type} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: POLLEN_DOT_COLOR[day.pollenLevels?.[type] ?? 'none'] }} />
+                      <Text style={{ fontSize: 10, fontWeight: '500', color: isDark ? '#9ca3af' : '#6b7280' }}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </Text>
                     </View>
-                  </>
-                ) : (
-                  <View style={{ marginTop: 8, gap: 3 }}>
-                    {(['tree', 'grass', 'weed'] as const).map((type) => (
-                      <View key={type} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: POLLEN_DOT_COLOR[day.pollenLevels?.[type] ?? 'none'] }} />
-                        <Text style={{ fontSize: 10, fontWeight: '500', color: isDark ? '#9ca3af' : '#6b7280' }}>
-                          {type.charAt(0).toUpperCase() + type.slice(1)}
-                        </Text>
-                      </View>
-                    ))}
-                    {day.airQuality && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: POLLEN_DOT_COLOR[day.airQuality.overallLevel] }} />
-                        <Text style={{ fontSize: 10, fontWeight: '500', color: isDark ? '#9ca3af' : '#6b7280' }}>Air</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
+                  ))}
+                  {day.airQuality && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: POLLEN_DOT_COLOR[day.airQuality.overallLevel] }} />
+                      <Text style={{ fontSize: 10, fontWeight: '500', color: isDark ? '#9ca3af' : '#6b7280' }}>Air</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </TouchableOpacity>
           );
         })}
       </View>
+      {forecastAdPlaying && (
+        <View style={{ alignItems: 'center', marginTop: 4 }}>
+          <ActivityIndicator size="small" color="#6366f1" />
+        </View>
+      )}
 
       {/* ── Detail sheet ─────────────────────────────────────────────────── */}
       <BottomSheet
@@ -301,14 +303,14 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskTo
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {upcoming.map((day, index) => {
-                    const locked = !isPro && index >= 1;
+                    const adGated = !isPro && index >= 1;
                     const isActive = selected.date === day.date;
                     return (
                       <TouchableOpacity
                         key={day.date}
-                        onPress={locked ? onUpgradePress : () => setSelected(day)}
+                        onPress={() => handleDaySelect(day, adGated)}
                         activeOpacity={0.8}
-                        disabled={isActive}
+                        disabled={isActive || forecastAdPlaying}
                       >
                         <View style={{
                           backgroundColor: isActive ? RISK_COLOR[day.level] : '#1f2937',
@@ -317,7 +319,6 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskTo
                           paddingVertical: 10,
                           alignItems: 'center',
                           minWidth: 56,
-                          opacity: locked && !isActive ? 0.4 : 1,
                         }}>
                           <Text style={{ fontSize: 11, fontWeight: '600', color: isActive ? '#fff' : '#6b7280' }}>
                             {formatWeekday(day.date)}
@@ -413,17 +414,6 @@ export function ForecastStrip({ upcoming, isPro, onUpgradePress, weights, riskTo
                 </Text>
               </View>
 
-              {/* Pro upgrade CTA for locked future days hint */}
-              {!isPro && (
-                <TouchableOpacity onPress={onUpgradePress} activeOpacity={0.8} style={{ marginTop: 14 }}>
-                  <View style={{ backgroundColor: 'rgba(124,58,237,0.15)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <Text style={{ fontSize: 13 }}>🔒</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#a78bfa' }}>
-                      Upgrade to Pro to unlock the full 5-day forecast
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
             </>
           )}
         </ScrollView>
