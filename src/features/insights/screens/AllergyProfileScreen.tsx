@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import { Screen, Stack } from '@/components/layout';
-import { Card } from '@/components/ui';
-import { useAllergyProfile } from '../hooks/useAllergyProfile';
+import { Card, Modal } from '@/components/ui';
+import { useAllergyProfile, type AllergyProfileData } from '../hooks/useAllergyProfile';
 import { correlationStrength, type CorrelationResult } from '../correlationEngine';
-import type { AdvancedAllergyProfile, TriggerResult, MedicationEffect } from '../types';
+import type { AdvancedAllergyProfile, AggravatorResult, TriggerResult, MedicationEffect } from '../types';
 
-// ─── Shared sub-components ────────────────────────────────────────────────────
+// ─── Building / learning phase cards ─────────────────────────────────────────
 
 function ProgressCard({ daysWithData, daysNeeded }: { daysWithData: number; daysNeeded: number }) {
   const pct = Math.min(daysWithData / daysNeeded, 1);
@@ -75,17 +75,13 @@ function ModelLearningCard({ currentRSquared }: { currentRSquared: number }) {
   );
 }
 
-function aqStrength(r: number): { label: string; color: string } {
-  const abs = Math.abs(r);
-  if (abs >= 0.7) return { label: 'Strong effect',       color: '#ef4444' };
-  if (abs >= 0.4) return { label: 'Likely affects you',  color: '#f97316' };
-  if (abs >= 0.2) return { label: 'May affect you',      color: '#eab308' };
-  return                  { label: 'No clear effect',    color: '#94a3b8' };
-}
+// ─── Phase 1 correlation components ──────────────────────────────────────────
 
 function CorrelationBar({ result, category }: { result: CorrelationResult; category?: string }) {
   const displayValue = Math.max(0, result.correlation);
-  const strength = category === 'air_quality' ? aqStrength(displayValue) : correlationStrength(displayValue);
+  const strength = category === 'air_quality'
+    ? aqStrengthFromCorrelation(displayValue)
+    : correlationStrength(displayValue);
   const pct = displayValue * 100;
 
   return (
@@ -108,7 +104,12 @@ function CorrelationBar({ result, category }: { result: CorrelationResult; categ
   );
 }
 
-function CorrelationSection({ title, subtitle, results, category }: { title: string; subtitle?: string; results: CorrelationResult[]; category?: string }) {
+function CorrelationSection({ title, subtitle, results, category }: {
+  title: string;
+  subtitle?: string;
+  results: CorrelationResult[];
+  category?: string;
+}) {
   const visible = results.filter((r) => r.dataPoints > 0);
   if (visible.length === 0) return null;
 
@@ -129,16 +130,67 @@ function CorrelationSection({ title, subtitle, results, category }: { title: str
   );
 }
 
-// ─── Phase 2 sub-components ───────────────────────────────────────────────────
+// ─── Phase 2 helpers ──────────────────────────────────────────────────────────
 
+function aqStrengthFromCorrelation(abs: number): { label: string; color: string } {
+  if (abs >= 0.7) return { label: 'Strong effect',      color: '#ef4444' };
+  if (abs >= 0.4) return { label: 'Likely affects you', color: '#f97316' };
+  if (abs >= 0.2) return { label: 'May affect you',     color: '#eab308' };
+  return                  { label: 'No clear effect',   color: '#94a3b8' };
+}
 
-function ModelStatusChip({ data }: { data: AllergyProfileData }) {
-  if (!data.ready) return null;
+type ConfidenceBucket = {
+  chip: string;
+  chipBg: string;
+  chipText: string;
+  dotColor: string;
+  cardLabel: string;
+  cardMessage: string;
+};
 
+function getConfidenceBucket(r2: number): ConfidenceBucket {
+  if (r2 >= 0.50) return {
+    chip: 'Very Confident',
+    chipBg: 'bg-teal-50 dark:bg-teal-900/40',
+    chipText: 'text-teal-700 dark:text-teal-300',
+    dotColor: '#14b8a6',
+    cardLabel: 'Highly predictable allergy profile',
+    cardMessage: 'Your symptoms are strongly driven by identifiable triggers.',
+  };
+  if (r2 >= 0.40) return {
+    chip: 'Confident',
+    chipBg: 'bg-teal-50 dark:bg-teal-900/40',
+    chipText: 'text-teal-700 dark:text-teal-300',
+    dotColor: '#14b8a6',
+    cardLabel: 'Clear patterns detected',
+    cardMessage: 'Your allergy triggers are clear and your symptoms are becoming predictable.',
+  };
+  if (r2 >= 0.30) return {
+    chip: 'Moderate confidence',
+    chipBg: 'bg-green-50 dark:bg-green-900/40',
+    chipText: 'text-green-700 dark:text-green-300',
+    dotColor: '#22c55e',
+    cardLabel: 'Patterns starting to emerge',
+    cardMessage: 'Your symptoms are consistently linked to certain environmental triggers.',
+  };
+  return {
+    chip: 'Still Learning',
+    chipBg: 'bg-amber-50 dark:bg-amber-900/40',
+    chipText: 'text-amber-700 dark:text-amber-300',
+    dotColor: '#f59e0b',
+    cardLabel: 'Patterns starting to emerge',
+    cardMessage: "We're beginning to see some links between your symptoms and environmental factors.",
+  };
+}
+
+// ─── Phase 2 components ───────────────────────────────────────────────────────
+
+function ConfidenceChip({ data }: { data: AllergyProfileData }) {
   if (data.advancedReady && data.advancedProfile) {
     const bucket = getConfidenceBucket(data.advancedProfile.rSquared);
     return (
-      <View className={`self-start px-2.5 py-1 rounded-full ${bucket.chipBg}`}>
+      <View className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full ${bucket.chipBg}`}>
+        <View className="w-2 h-2 rounded-full" style={{ backgroundColor: bucket.dotColor }} />
         <Text className={`text-xs font-semibold ${bucket.chipText}`}>{bucket.chip}</Text>
       </View>
     );
@@ -147,116 +199,166 @@ function ModelStatusChip({ data }: { data: AllergyProfileData }) {
   if (data.daysWithData >= data.advancedDaysNeeded) {
     const pct = Math.min(Math.round((data.currentRSquared / 0.15) * 100), 99);
     return (
-      <View className="self-start px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900">
+      <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/40">
+        <View className="w-2 h-2 rounded-full bg-amber-400" />
         <Text className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-          ML training · {pct}%
+          Training · {pct}%
         </Text>
       </View>
     );
   }
 
   return (
-    <View className="self-start px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900">
+    <View className="flex-row items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/40">
+      <View className="w-2 h-2 rounded-full bg-blue-400" />
       <Text className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-        Pearson · {data.daysWithData} days
+        {data.daysWithData} days logged
       </Text>
     </View>
   );
 }
 
-function TriggerBar({ trigger, maxBeta }: { trigger: TriggerResult; maxBeta: number }) {
-  const pct = maxBeta === 0 ? 0 : Math.min(100, Math.max(0, (trigger.partialBeta / maxBeta)) * 100);
-  const color = trigger.isPrimary ? '#ef4444' : trigger.isSecondary ? '#f97316' : '#94a3b8';
+function StatsRow({ daysWithData, rSquared }: { daysWithData: number; rSquared: number }) {
+  const accuracy = Math.round(rSquared * 100);
+  const [showInfo, setShowInfo] = useState(false);
 
   return (
-    <View className="mb-3">
-      <View className="flex-row items-center justify-between mb-1">
-        <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200 flex-1 mr-2">
-          {trigger.label}
-          {trigger.isPrimary ? (
-            <Text className="text-xs text-red-500"> · Primary trigger</Text>
-          ) : trigger.isSecondary ? (
-            <Text className="text-xs text-orange-500"> · Secondary trigger</Text>
-          ) : null}
+    <>
+      <View className="flex-row gap-3">
+        <View className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl p-3">
+          <Text className="text-2xl font-bold text-neutral-900 dark:text-white">{daysWithData}</Text>
+          <Text className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">days logged</Text>
+        </View>
+        <View className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl p-3">
+          <View className="flex-row items-center gap-1.5">
+            <Text className="text-2xl font-bold text-neutral-900 dark:text-white">{accuracy}%</Text>
+            <Pressable
+              onPress={() => setShowInfo(true)}
+              hitSlop={8}
+              className="w-5 h-5 rounded-full border border-neutral-400 dark:border-neutral-500 items-center justify-center"
+            >
+              <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500" style={{ lineHeight: 14 }}>i</Text>
+            </Pressable>
+          </View>
+          <Text className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">profile accuracy</Text>
+        </View>
+      </View>
+
+      <Modal visible={showInfo} onClose={() => setShowInfo(false)} title="Profile accuracy">
+        <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">
+          What does this number mean?
         </Text>
-      </View>
-      <View className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
-        <View className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-      </View>
-    </View>
+        <Text className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
+          This is R² — the share of your day-to-day symptom variation that your identified triggers (pollen, air quality) can explain. A score of {accuracy}% means the model accounts for {accuracy}% of what drives your symptoms.
+        </Text>
+
+        <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">
+          Why is {accuracy}% actually good?
+        </Text>
+        <Text className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
+          Human symptoms are noisy by nature. Sleep quality, stress, hydration, illness, and dozens of other factors the app doesn't track all contribute. In clinical environmental health research, an R² of 0.15–0.30 is considered a meaningful result. Anything above 0.40 is strong. You're above that bar.
+        </Text>
+
+        <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-2">
+          What about the rest?
+        </Text>
+        <Text className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+          The remaining {100 - accuracy}% isn't error — it's normal biological variability. Even the best models in academic allergy studies leave a large portion unexplained for the same reason.
+        </Text>
+      </Modal>
+    </>
   );
 }
 
-type ConfidenceBucket = {
-  chip: string;
-  chipBg: string;
-  chipText: string;
-  cardLabel: string;
-  cardMessage: string;
-};
+function TriggerBar({ trigger, maxBeta }: {
+  trigger: TriggerResult;
+  maxBeta: number;
+}) {
+  const pct = maxBeta === 0 ? 0 : Math.round(Math.min(100, Math.max(0, (trigger.partialBeta / maxBeta) * 100)));
+  const color = trigger.isPrimary ? '#ef4444' : trigger.isSecondary ? '#f97316' : '#94a3b8';
+  const tagColor = trigger.isPrimary ? 'text-red-500' : trigger.isSecondary ? 'text-orange-500' : null;
+  const tagLabel = trigger.isPrimary ? 'Primary trigger' : trigger.isSecondary ? 'Secondary trigger' : null;
 
-function getConfidenceBucket(r2: number): ConfidenceBucket {
-  if (r2 >= 0.50) return {
-    chip: '🟢 Very Confident',
-    chipBg: 'bg-green-100 dark:bg-green-900',
-    chipText: 'text-green-700 dark:text-green-300',
-    cardLabel: 'Highly predictable allergy profile',
-    cardMessage: 'Your symptoms are strongly driven by identifiable triggers.',
-  };
-  if (r2 >= 0.40) return {
-    chip: '🟢 Confident',
-    chipBg: 'bg-green-100 dark:bg-green-900',
-    chipText: 'text-green-700 dark:text-green-300',
-    cardLabel: 'Clear patterns detected',
-    cardMessage: 'Your allergy triggers are clear and your symptoms are becoming predictable.',
-  };
-  if (r2 >= 0.30) return {
-    chip: '🟢 Moderate confidence',
-    chipBg: 'bg-green-100 dark:bg-green-900',
-    chipText: 'text-green-700 dark:text-green-300',
-    cardLabel: 'Patterns starting to emerge',
-    cardMessage: 'Your symptoms are consistently linked to certain environmental triggers.',
-  };
-  return {
-    chip: '🟡 Still Learning',
-    chipBg: 'bg-amber-100 dark:bg-amber-900',
-    chipText: 'text-amber-700 dark:text-amber-300',
-    cardLabel: 'Patterns starting to emerge',
-    cardMessage: "We're beginning to see some links between your symptoms and environmental factors.",
-  };
+  return (
+    <View className="mb-4">
+      <View className="flex-row items-center gap-2 mb-1.5 flex-wrap">
+        <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+          {trigger.label}
+        </Text>
+        {tagLabel && (
+          <Text className={`text-xs font-medium ${tagColor}`}>{tagLabel}</Text>
+        )}
+      </View>
+      <View className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-1">
+        <View className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </View>
+      <Text className="text-xs text-neutral-400">Correlation strength: {pct}%</Text>
+    </View>
+  );
 }
 
 function TriggerCard({ profile }: { profile: AdvancedAllergyProfile }) {
   const sorted = [...profile.triggers].sort((a, b) => b.partialBeta - a.partialBeta);
   const maxBeta = Math.max(...sorted.map((t) => Math.abs(t.partialBeta)), 0.01);
-  const bucket = getConfidenceBucket(profile.rSquared);
-
-  const secondaryTriggers = sorted.filter((t) => t.isSecondary);
-  const hasSecondaryTrigger = secondaryTriggers.length > 0;
-
-  const triggerNote = hasSecondaryTrigger
-    ? `We're detecting a potential second trigger alongside your primary one. Keep logging to confirm whether ${secondaryTriggers.map((t) => t.label.toLowerCase()).join(' and ')} is independently affecting your symptoms.`
-    : 'Other pollen types have little to no noticeable impact on your symptoms.';
 
   return (
     <Card variant="outlined">
-      <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">
+      <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-4">
         Your main triggers
       </Text>
       {sorted.map((t) => (
         <TriggerBar key={t.key} trigger={t} maxBeta={maxBeta} />
       ))}
-      <View className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-        <Text className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
-          {bucket.cardLabel}
-        </Text>
-        <Text className="text-xs text-neutral-400">
-          {bucket.cardMessage}
-          {!profile.regressionStable ? ' Your breakdown will sharpen as more seasons are captured.' : ''}
-        </Text>
-        <Text className="text-xs text-neutral-400 mt-2">{triggerNote}</Text>
-      </View>
     </Card>
+  );
+}
+
+function PatternsSection({ profile }: { profile: AdvancedAllergyProfile }) {
+  const bucket = getConfidenceBucket(profile.rSquared);
+  const secondaryTriggers = profile.triggers.filter((t) => t.isSecondary);
+
+  return (
+    <>
+      <Card variant="outlined">
+        <View className="flex-row items-start gap-3">
+          <View className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-900/40 items-center justify-center mt-0.5">
+            <Text className="text-teal-600 dark:text-teal-400 text-sm font-bold">✓</Text>
+          </View>
+          <View className="flex-1">
+            <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
+              {bucket.cardLabel}
+            </Text>
+            <Text className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              {bucket.cardMessage}
+              {!profile.regressionStable ? ' Your breakdown will sharpen as more seasons are captured.' : ''}
+            </Text>
+          </View>
+        </View>
+      </Card>
+
+      {secondaryTriggers.length > 0 && (
+        <Card variant="outlined">
+          <View className="flex-row items-start gap-3">
+            <View className="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/40 items-center justify-center mt-0.5">
+              <Text className="text-orange-500 text-sm font-bold">!</Text>
+            </View>
+            <View className="flex-1">
+              <View className="flex-row items-center gap-2 mb-1 flex-wrap">
+                <Text className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">
+                  Second trigger forming
+                </Text>
+                <Text className="text-xs font-medium text-orange-500">needs more data</Text>
+              </View>
+              <Text className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                We're detecting a potential second trigger alongside your primary one. Keep logging on{' '}
+                {secondaryTriggers.map((t) => t.label.toLowerCase()).join(' and ')} days to confirm
+                whether it's independently affecting your symptoms.
+              </Text>
+            </View>
+          </View>
+        </Card>
+      )}
+    </>
   );
 }
 
@@ -266,18 +368,60 @@ function AggravatorCard({ profile }: { profile: AdvancedAllergyProfile }) {
   const secondary = profile.aggravators.filter((a) => a.isSignificant).slice(1);
 
   return (
-    <Card variant="filled">
-      <Text className="text-sm font-semibold text-primary-700 dark:text-primary-300 mb-2">
+    <View className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-4">
+      <Text className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">
         What makes it worse
       </Text>
-      <Text className="text-sm text-neutral-700 dark:text-neutral-300 mb-2">
+      <Text className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
         {profile.insightSentence}
       </Text>
       {secondary.map((a) => (
-        <Text key={a.key} className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+        <Text key={a.key} className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
           · {a.label} also tends to amplify your symptoms
         </Text>
       ))}
+    </View>
+  );
+}
+
+function AirQualityCard({ aggravators }: { aggravators: AggravatorResult[] }) {
+  if (aggravators.length === 0) return null;
+
+  function aqRowLabel(rc: number, significant: boolean): { label: string; color: string } {
+    if (!significant) return { label: 'No link found', color: '#94a3b8' };
+    const abs = Math.abs(rc);
+    if (abs >= 0.5) return { label: 'Strong effect',      color: '#ef4444' };
+    if (abs >= 0.3) return { label: 'Likely affects you', color: '#f97316' };
+    return                  { label: 'May affect you',    color: '#eab308' };
+  }
+
+  return (
+    <Card variant="outlined">
+      <Text className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-4">
+        Air quality correlations
+      </Text>
+      {aggravators.map((a) => {
+        const { label, color } = aqRowLabel(a.residualCorrelation, a.isSignificant);
+        const pct = Math.min(100, Math.abs(a.residualCorrelation) * 100);
+        return (
+          <View key={a.key} className="mb-4 last:mb-0">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-sm font-medium text-neutral-800 dark:text-neutral-200 flex-1 mr-2">
+                {a.label}
+              </Text>
+              <Text className="text-xs font-semibold" style={{ color }}>
+                {label}
+              </Text>
+            </View>
+            <View className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+              <View
+                className="h-full rounded-full"
+                style={{ width: `${pct}%`, backgroundColor: color }}
+              />
+            </View>
+          </View>
+        );
+      })}
     </Card>
   );
 }
@@ -349,11 +493,9 @@ function MedicationCard({ effect }: { effect: MedicationEffect }) {
 export default function AllergyProfileScreen() {
   const { data, loading, error } = useAllergyProfile();
   const modelLearning = data && !data.advancedReady && data.daysWithData >= data.advancedDaysNeeded;
-  const [showPearson, setShowPearson] = useState(false);
 
   const pollenResults = data?.correlations.filter((r) => r.category === 'pollen') ?? [];
   const aqResults = data?.correlations.filter((r) => r.category === 'air_quality') ?? [];
-
 
   return (
     <Screen>
@@ -366,7 +508,7 @@ export default function AllergyProfileScreen() {
               <Text className="text-2xl font-bold text-neutral-900 dark:text-white">
                 Allergy profile
               </Text>
-              {data && <ModelStatusChip data={data} />}
+              {data && <ConfidenceChip data={data} />}
             </View>
             <Text className="text-sm text-neutral-500 mt-1">
               How your environment affects your symptoms
@@ -396,12 +538,12 @@ export default function AllergyProfileScreen() {
                 </Card>
               )}
 
-              {/* Building Phase 1 — day count progress */}
+              {/* Building Phase 1 */}
               {!data.ready && data.daysWithData > 0 && (
                 <ProgressCard daysWithData={data.daysWithData} daysNeeded={data.daysNeeded} />
               )}
 
-              {/* Phase 1 → Phase 2 — model quality progress */}
+              {/* Phase 1 → Phase 2 model quality */}
               {modelLearning && (
                 <ModelLearningCard currentRSquared={data.currentRSquared} />
               )}
@@ -409,25 +551,16 @@ export default function AllergyProfileScreen() {
               {/* ── Phase 2 ── */}
               {data.advancedReady && data.advancedProfile && (
                 <>
+                  <StatsRow
+                    daysWithData={data.daysWithData}
+                    rSquared={data.advancedProfile.rSquared}
+                  />
                   <TriggerCard profile={data.advancedProfile} />
+                  <PatternsSection profile={data.advancedProfile} />
                   <AggravatorCard profile={data.advancedProfile} />
-
-                  {aqResults.length > 0 && (
-                    <>
-                      <Pressable
-                        onPress={() => setShowPearson((v) => !v)}
-                        className="flex-row items-center justify-between py-2"
-                      >
-                        <Text className="text-sm text-primary-600 dark:text-primary-400 font-medium">
-                          {showPearson ? 'Hide' : 'View'} air quality correlations
-                        </Text>
-                        <Text className="text-sm text-neutral-400">{showPearson ? '▲' : '▼'}</Text>
-                      </Pressable>
-
-                      {showPearson && (
-                        <CorrelationSection title="Air quality" results={aqResults} category="air_quality" />
-                      )}
-                    </>
+                  <AirQualityCard aggravators={data.advancedProfile.aggravators} />
+                  {data.advancedProfile.medicationEffect && (
+                    <MedicationCard effect={data.advancedProfile.medicationEffect} />
                   )}
                 </>
               )}
@@ -451,10 +584,8 @@ export default function AllergyProfileScreen() {
                       </Text>
                     </Card>
                   )}
-
                   <CorrelationSection title="Pollen" subtitle="Pearson correlation" results={pollenResults} />
                   <CorrelationSection title="Air quality" subtitle="Pearson correlation" results={aqResults} category="air_quality" />
-
                 </>
               )}
             </>

@@ -305,11 +305,6 @@ function RiskInfoModal({
   } else {
     methodText = 'Your risk score is personalised to your allergy history using machine learning trained on your symptom logs.';
     triggerLine = topTrigger ? `🔬  Learnt trigger: ${topTrigger.label}` : '🔬  Personalised to your history';
-    if (topTrigger) {
-      const pct = Math.round(topTrigger.correlation * 100);
-      const pts = topTrigger.dataPoints;
-      confidenceLine = `${pct}% correlation · ${pts} symptom log${pts === 1 ? '' : 's'}`;
-    }
     learningLine = 'The app continues to learn — accuracy improves as you log more days.';
   }
 
