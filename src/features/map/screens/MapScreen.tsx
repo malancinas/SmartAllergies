@@ -175,9 +175,7 @@ export default function MapScreen() {
     : undefined;
 
   // AQ layers always render as polygons — there is no Google Pollen tile equivalent.
-  // For pollen layers, Pro uses tile overlay; Free uses polygon overlay.
   const showingAq = isAqLayer(selectedLayer);
-  const pollenLayerForTile: PollenLayerType = showingAq ? 'grass' : (selectedLayer as PollenLayerType);
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -207,13 +205,18 @@ export default function MapScreen() {
         <PollenPolygonLayer
           geojson={(!effectiveMapIsPro || showingAq) ? gridData[selectedLayer] : null}
         />
-        {/* Tile layer: only for Pro + pollen layers */}
-        <PollenTileLayer
-          layerType={pollenLayerForTile}
-          visible={effectiveMapIsPro && !showingAq}
-          region={currentRegion ?? initialRegion}
-          onQuotaExceeded={handleQuotaExceeded}
-        />
+        {/* Tile layers: all 3 pollen types are fetched together on each region load.
+            Only the selected layer renders overlays; the others stay cached in the background. */}
+        {(['tree', 'grass', 'weed'] as PollenLayerType[]).map((lt) => (
+          <PollenTileLayer
+            key={lt}
+            layerType={lt}
+            visible={effectiveMapIsPro && !showingAq}
+            active={!showingAq && selectedLayer === lt}
+            region={currentRegion ?? initialRegion}
+            onQuotaExceeded={handleQuotaExceeded}
+          />
+        ))}
       </MapView>
 
       {/* Shared: colour legend — switches between pollen and AQ scale */}

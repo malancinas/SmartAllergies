@@ -17,6 +17,8 @@ interface TileCoord { x: number; y: number; z: number }
 interface Props {
   layerType: PollenLayerType;
   visible: boolean;
+  /** Controls overlay rendering. When false, tiles are still fetched and cached but not drawn. */
+  active: boolean;
   region: Region | null;
   onQuotaExceeded?: () => void;
 }
@@ -67,7 +69,7 @@ async function fetchAsDataUri(url: string): Promise<string> {
   return `data:image/png;base64,${btoa(binary)}`;
 }
 
-export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }: Props) {
+export function PollenTileLayer({ layerType, visible, active, region, onQuotaExceeded }: Props) {
   const apiKey = ENV.GOOGLE_POLLEN_API_KEY;
   const [, setRenderTick] = useState(0);
   const cancelledRef = useRef(false);
@@ -213,7 +215,7 @@ export function PollenTileLayer({ layerType, visible, region, onQuotaExceeded }:
     return () => { cancelledRef.current = true; };
   }, [tileCoords, layerType, visible, apiKey]);
 
-  if (!visible || !apiKey || !region) return null;
+  if (!visible || !apiKey || !region || !active) return null;
 
   const type = GOOGLE_LAYER_TYPE[layerType];
   const today = new Date().toISOString().slice(0, 10);
