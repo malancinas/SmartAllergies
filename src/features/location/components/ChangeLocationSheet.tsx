@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, ActivityIndicator, TextInput, ScrollView } from 'react-native';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { usePollenStore } from '@/features/pollen/store';
 import { useSubscription } from '@/features/subscription/hooks/useSubscription';
@@ -48,6 +48,8 @@ export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Pr
   const { setLocationWithLabel, clearCustomLocation, locationLabel } = usePollenStore();
   const { isPro } = useSubscription();
   const checkAndAddSlot = useSettingsStore((s) => s.checkAndAddSlot);
+  const addRecentLocation = useSettingsStore((s) => s.addRecentLocation);
+  const recentLocations = useSettingsStore((s) => s.recentLocations);
 
   const handleChangeText = useCallback(
     (text: string) => {
@@ -75,7 +77,16 @@ export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Pr
     [searchTimeout],
   );
 
+  function commitLocation(latitude: number, longitude: number, label: string) {
+    addRecentLocation(latitude, longitude, label);
+    setLocationWithLabel({ latitude, longitude }, label);
+    setQuery('');
+    setResults([]);
+    onClose();
+  }
+
   function handleSelect(result: GeoResult) {
+    const label = displayLabel(result);
     if (!isEurope(result.latitude, result.longitude)) {
       if (!isPro) {
         onNonEuropeBlocked?.();
@@ -84,17 +95,27 @@ export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Pr
       }
       const slotResult = checkAndAddSlot(result.latitude, result.longitude);
       if (slotResult === 'limit_reached') {
-        setError('You can add up to 3 new locations per day outside Europe. Switch between your saved locations or try again tomorrow.');
+        setError("Daily limit reached — you can view up to 3 new locations outside Europe per day. Switch between your saved locations, try again tomorrow, or explore pollen on the Pro map.");
         return;
       }
     }
-    setLocationWithLabel(
-      { latitude: result.latitude, longitude: result.longitude },
-      displayLabel(result),
-    );
-    setQuery('');
-    setResults([]);
-    onClose();
+    commitLocation(result.latitude, result.longitude, label);
+  }
+
+  function handleSelectRecent(recent: { latitude: number; longitude: number; label: string }) {
+    if (!isEurope(recent.latitude, recent.longitude)) {
+      if (!isPro) {
+        onNonEuropeBlocked?.();
+        handleClose();
+        return;
+      }
+      const slotResult = checkAndAddSlot(recent.latitude, recent.longitude);
+      if (slotResult === 'limit_reached') {
+        setError("Daily limit reached — you can view up to 3 new locations outside Europe per day. Switch between your saved locations, try again tomorrow, or explore pollen on the Pro map.");
+        return;
+      }
+    }
+    commitLocation(recent.latitude, recent.longitude, recent.label);
   }
 
   function handleUseGps() {
@@ -110,6 +131,8 @@ export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Pr
     setError(null);
     onClose();
   }
+
+  const showRecents = !query.trim() && recentLocations.length > 0;
 
   return (
     <BottomSheet visible={visible} onClose={handleClose} snapPoints={[0.75]}>
@@ -141,30 +164,28 @@ export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Pr
           <Text className="text-xs text-error-500 mb-2">{error}</Text>
         )}
 
-        {/* GPS reset — shown when a custom location is active */}
-        {locationLabel && (
-          <TouchableOpacity
-            onPress={handleUseGps}
-            className="flex-row items-center gap-2 py-3 border-b border-neutral-100 dark:border-neutral-700"
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 18 }}>📡</Text>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                Use my current GPS location
-              </Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">Currently viewing: {locationLabel}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Results */}
-        <FlatList
-          data={results}
-          keyExtractor={(_, i) => String(i)}
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => (
+        <ScrollView keyboardShouldPersistTaps="handled">
+          {/* GPS reset — shown when a custom location is active */}
+          {locationLabel && (
             <TouchableOpacity
+              onPress={handleUseGps}
+              className="flex-row items-center gap-2 py-3 border-b border-neutral-100 dark:border-neutral-700"
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 18 }}>📡</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                  Use my current GPS location
+                </Text>
+                <Text className="text-xs text-neutral-400 mt-0.5">Currently viewing: {locationLabel}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Search results */}
+          {results.map((item, i) => (
+            <TouchableOpacity
+              key={i}
               onPress={() => handleSelect(item)}
               activeOpacity={0.7}
               className="flex-row items-center gap-3 py-3 border-b border-neutral-100 dark:border-neutral-700"
@@ -177,8 +198,30 @@ export function ChangeLocationSheet({ visible, onClose, onNonEuropeBlocked }: Pr
                 <Text className="text-xs text-neutral-400 mt-0.5">{item.country}</Text>
               </View>
             </TouchableOpacity>
+          ))}
+
+          {/* Recent locations — shown when search is empty */}
+          {showRecents && (
+            <>
+              <Text className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mt-2 mb-1">
+                Recent
+              </Text>
+              {recentLocations.slice(0, 5).map((recent, i) => (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => handleSelectRecent(recent)}
+                  activeOpacity={0.7}
+                  className="flex-row items-center gap-3 py-3 border-b border-neutral-100 dark:border-neutral-700"
+                >
+                  <Text style={{ fontSize: 18 }}>🕐</Text>
+                  <Text className="text-sm text-neutral-700 dark:text-neutral-200 flex-1" numberOfLines={1}>
+                    {recent.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </>
           )}
-        />
+        </ScrollView>
       </View>
     </BottomSheet>
   );

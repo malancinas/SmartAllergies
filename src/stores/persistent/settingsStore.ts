@@ -41,6 +41,8 @@ interface SettingsState {
   hasOnboarded: boolean;
   /** Daily location slots for non-Europe Pro users (max 3 unique 1° cells per day) */
   locationSlots: LocationSlots;
+  /** Last 8 manually selected locations, most recent first */
+  recentLocations: Array<{ latitude: number; longitude: number; label: string }>;
 }
 
 interface SettingsActions {
@@ -57,6 +59,8 @@ interface SettingsActions {
   setHasOnboarded: (done: boolean) => void;
   /** Check if a location cell (rounded to 0dp) is available and add it if so. GPS locations never call this. */
   checkAndAddSlot: (lat: number, lon: number) => 'allowed' | 'existing' | 'limit_reached';
+  /** Prepend a manually chosen location to the recent list (deduped by label, max 8). */
+  addRecentLocation: (latitude: number, longitude: number, label: string) => void;
 }
 
 const DEFAULT_SCHEDULES: AlertSchedule[] = [
@@ -84,6 +88,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
       allergenSource: 'manual',
       hasOnboarded: false,
       locationSlots: { date: '', cells: [] },
+      recentLocations: [],
 
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
@@ -120,6 +125,13 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
           return 'allowed';
         }
         return 'limit_reached';
+      },
+
+      addRecentLocation: (latitude, longitude, label) => {
+        set((s) => {
+          const filtered = s.recentLocations.filter((r) => r.label !== label);
+          return { recentLocations: [{ latitude, longitude, label }, ...filtered].slice(0, 8) };
+        });
       },
     }),
     {
