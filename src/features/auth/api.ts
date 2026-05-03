@@ -54,10 +54,27 @@ export function useGoogleSignInMutation() {
   return useMutation({
     mutationFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const idToken = userInfo.data?.idToken;
+      const { GoogleSignin, statusCodes } = require('@react-native-google-signin/google-signin');
+      console.log('[Google] checking play services...');
+      try {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      } catch (e: any) {
+        console.log('[Google] hasPlayServices error:', JSON.stringify(e));
+        throw e;
+      }
+      console.log('[Google] calling signIn...');
+      let userInfo: any;
+      try {
+        userInfo = await GoogleSignin.signIn();
+      } catch (e: any) {
+        console.log('[Google] signIn error code:', e.code);
+        console.log('[Google] signIn error:', JSON.stringify(e));
+        console.log('[Google] statusCodes.DEVELOPER_ERROR:', statusCodes.DEVELOPER_ERROR);
+        throw new Error(`Google sign-in failed: ${e.message ?? e.code ?? JSON.stringify(e)}`);
+      }
+      const idToken = userInfo.data?.idToken ?? (userInfo as any).idToken;
+      console.log('[Google] userInfo keys:', Object.keys(userInfo));
+      console.log('[Google] idToken:', idToken ? 'present' : 'MISSING');
       if (!idToken) throw new Error('Google sign-in failed: no idToken returned');
       return loginWithGoogle(idToken);
     },

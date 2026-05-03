@@ -35,6 +35,12 @@ export default function LoginScreen() {
           <Text className="text-sm text-error-500 text-center">{errors.general}</Text>
         ) : null}
 
+        {googleMutation.error ? (
+          <Text className="text-sm text-error-500 text-center">
+            {(googleMutation.error as Error).message}
+          </Text>
+        ) : null}
+
         <Input
           label="Email address"
           placeholder="you@example.com"

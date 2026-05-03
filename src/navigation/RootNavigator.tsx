@@ -21,7 +21,7 @@ const linking = {
 };
 
 // ⚠️ DEV BYPASS — set to false before shipping (see NEXT_STEPS.md §0)
-const BYPASS_AUTH = true;
+const BYPASS_AUTH = false;
 
 export default function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

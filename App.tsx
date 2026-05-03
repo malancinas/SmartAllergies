@@ -39,6 +39,11 @@ import { useColorScheme as useNativewindColorScheme } from 'nativewind';
 import { useSettingsStore } from '@/stores/persistent/settingsStore';
 import { useAuthStore } from '@/stores/persistent/authStore';
 import { initRevenueCat, syncEntitlement, loginRevenueCat } from '@/features/subscription/service';
+import { ENV } from '@/config/env';
+
+const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+console.log('[Google] configuring with webClientId:', ENV.GOOGLE_CLIENT_ID);
+GoogleSignin.configure({ webClientId: ENV.GOOGLE_CLIENT_ID });
 
 i18n.use(initReactI18next).init({
   lng: useSettingsStore.getState().language ?? 'en',

@@ -16,6 +16,7 @@ import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { useSubscriptionStore } from '@/stores/persistent/subscriptionStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAllergyProfileStore } from '@/stores/persistent/allergyProfileStore';
+import { useAuthStore } from '@/stores/persistent/authStore';
 
 export function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
@@ -26,6 +27,7 @@ export function SettingsScreen() {
   const { tier, setTier } = useSubscriptionStore();
   const queryClient = useQueryClient();
   const { clearCommittedProfile } = useAllergyProfileStore();
+  const { clearAuth } = useAuthStore();
   const [seeding, setSeeding] = useState(false);
   const [alertDebugExpanded, setAlertDebugExpanded] = useState(false);
   const isDark = theme === 'dark';
@@ -287,6 +289,24 @@ export function SettingsScreen() {
           ))}
         </View>
       )}
+
+      {/* Account */}
+      <View className="px-6 pt-6">
+        <Text className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
+          Account
+        </Text>
+        <Pressable
+          onPress={() =>
+            Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign out', style: 'destructive', onPress: clearAuth },
+            ])
+          }
+          className="py-3 border-b border-gray-100 dark:border-gray-800"
+        >
+          <Text className="text-base text-red-500">Sign out</Text>
+        </Pressable>
+      </View>
 
       {/* About */}
       <View className="px-6 pt-6 pb-10">

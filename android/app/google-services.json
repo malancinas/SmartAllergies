@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "356012542328",
+    "project_id": "majestic-bounty-398917",
+    "storage_bucket": "majestic-bounty-398917.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356012542328:android:be9c6fc27025c1e9b8608d",
+        "android_client_info": {
+          "package_name": "com.malancinas.localallergies"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "356012542328-rbj8dhmhslus3kp2np7pdre5kp8tgjma.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.malancinas.localallergies",
+            "certificate_hash": "f3f7e13b3851d4d88c2c3cab1245c00083c7e54c"
+          }
+        },
+        {
+          "client_id": "356012542328-4aknf741dacvpc4a7efsgk0qfs5bj32b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtX5xC3OXrFxZqz6LlZ9Ds877ixH_v0wg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "356012542328-4aknf741dacvpc4a7efsgk0qfs5bj32b.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "356012542328-bhc46uh02rl7tpmf0m2qhm24g8rhoe3v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.malancinas.localallergies"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
