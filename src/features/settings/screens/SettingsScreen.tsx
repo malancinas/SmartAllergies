@@ -205,6 +205,7 @@ export function SettingsScreen() {
                   await fn();
                   await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
                   await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
+                  await queryClient.invalidateQueries({ queryKey: ['export-data'] });
                   Alert.alert('Done', `${label} of test logs added.`);
                 } catch (e) {
                   Alert.alert('Error', String(e));
@@ -231,6 +232,7 @@ export function SettingsScreen() {
                     clearCommittedProfile();
                     await queryClient.invalidateQueries({ queryKey: ['symptom-history'] });
                     await queryClient.invalidateQueries({ queryKey: ['allergy-profile'] });
+                    await queryClient.invalidateQueries({ queryKey: ['export-data'] });
                     Alert.alert('Done', 'Test logs cleared.');
                   },
                 },

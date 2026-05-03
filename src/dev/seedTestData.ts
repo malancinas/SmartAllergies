@@ -159,6 +159,5 @@ export const seedTestLogs40 = () => seedDays(DAYS, 500);
 
 export async function clearTestLogs(): Promise<void> {
   const db = await getDatabase();
-  // Cascade deletes log_symptoms and log_environment via FK
-  await db.runAsync(`DELETE FROM symptom_logs WHERE notes IS NULL AND latitude = 51.5074`);
+  await db.runAsync(`DELETE FROM symptom_logs WHERE id LIKE 'seed-%'`);
 }
