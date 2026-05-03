@@ -14,14 +14,6 @@
       },
       "oauth_client": [
         {
-          "client_id": "356012542328-rbj8dhmhslus3kp2np7pdre5kp8tgjma.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.malancinas.localallergies",
-            "certificate_hash": "f3f7e13b3851d4d88c2c3cab1245c00083c7e54c"
-          }
-        },
-        {
           "client_id": "356012542328-4aknf741dacvpc4a7efsgk0qfs5bj32b.apps.googleusercontent.com",
           "client_type": 3
         }

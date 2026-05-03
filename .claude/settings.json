@@ -51,7 +51,8 @@
       "WebFetch(domain:docs.ambeedata.com)",
       "Bash(grep -r \"//.*[Aa]uth\\\\|/\\\\*.*[Aa]uth\\\\|TODO.*auth\" /c/Users/malan/git/SmartAllergies/src --include=\"*.ts\" --include=\"*.tsx\")",
       "Bash(keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android)",
-      "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\Android\\\\Sdk\\\\platform-tools\\\\adb.exe\" -ErrorAction SilentlyContinue)",
+      "Bash(keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android)"
     ]
   }
 }
