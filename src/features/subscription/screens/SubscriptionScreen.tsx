@@ -1,34 +1,19 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
+import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { Screen, Stack } from '@/components/layout';
 import { Button, Card } from '@/components/ui';
 import { useSubscription } from '../hooks/useSubscription';
-import { useOfferings } from '../hooks/useOfferings';
-import { usePurchase } from '../hooks/usePurchase';
+import { syncEntitlement } from '../service';
 import { PRO_FEATURES, FREE_LIMITS } from '../types';
 
 export default function SubscriptionScreen() {
   const { tier, isPro } = useSubscription();
-  const { data: offerings, isLoading: offeringsLoading } = useOfferings();
-  const { purchase, restorePurchases, isLoading: purchasing } = usePurchase();
 
-  const monthlyPackage = offerings?.current?.monthly ?? null;
-
-  async function handleUpgrade() {
-    if (!monthlyPackage) {
-      Alert.alert('Unavailable', 'Could not load subscription options. Please try again.');
-      return;
-    }
-    const success = await purchase(monthlyPackage);
-    if (!success) {
-      Alert.alert('Purchase cancelled', 'Your subscription was not activated.');
-    }
-  }
-
-  async function handleRestore() {
-    const success = await restorePurchases();
-    if (!success) {
-      Alert.alert('No purchases found', 'No active Pro subscription was found to restore.');
+  async function handleSeePlans() {
+    const result = await RevenueCatUI.presentPaywall();
+    if (result === PAYWALL_RESULT.PURCHASED || result === PAYWALL_RESULT.RESTORED) {
+      await syncEntitlement();
     }
   }
 
@@ -90,29 +75,7 @@ export default function SubscriptionScreen() {
 
           {/* Upgrade CTA (shown only for free users) */}
           {!isPro && (
-            <View>
-              {offeringsLoading ? (
-                <ActivityIndicator />
-              ) : monthlyPackage ? (
-                <Text className="text-center text-sm text-neutral-500 mb-3">
-                  {monthlyPackage.product.priceString} / month · Cancel anytime
-                </Text>
-              ) : null}
-
-              <Button
-                label={purchasing ? 'Processing…' : 'Upgrade to Pro'}
-                onPress={handleUpgrade}
-                disabled={purchasing || offeringsLoading || !monthlyPackage}
-              />
-              <View className="mt-2">
-                <Button
-                  label="Restore purchases"
-                  variant="ghost"
-                  onPress={handleRestore}
-                  disabled={purchasing}
-                />
-              </View>
-            </View>
+            <Button label="See Plans" onPress={handleSeePlans} />
           )}
 
           {/* Current plan — already Pro */}

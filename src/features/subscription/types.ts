@@ -1,6 +1,6 @@
 export type SubscriptionTier = 'free' | 'pro';
 
-export const PRO_ENTITLEMENT = 'pro';
+export const PRO_ENTITLEMENT = 'Local Allergies Pro';
 
 export const PRO_FEATURES = [
   'Personal allergen model — learns your triggers from your daily logs',
