@@ -91,6 +91,11 @@ async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
     try { await db.execAsync(`ALTER TABLE log_environment ADD COLUMN ${col} REAL`); } catch { /* exists */ }
   }
 
+  // Additive migration: human-readable location label at time of logging
+  try {
+    await db.execAsync(`ALTER TABLE symptom_logs ADD COLUMN location_label TEXT`);
+  } catch { /* exists */ }
+
   logger.debug('Database initialised');
   return db;
 }
@@ -110,6 +115,7 @@ export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 export interface SymptomLogRow {
   id: string;
   logged_at: string;
+  location_label: string | null;
   created_at: string;
   severity: number;
   latitude: number | null;
@@ -150,19 +156,21 @@ export async function insertSymptomLog(params: {
   symptoms: string[];
   latitude?: number;
   longitude?: number;
+  locationLabel?: string;
   notes?: string;
   medications?: string;
 }): Promise<void> {
   const db = await getDatabase();
 
   await db.runAsync(
-    `INSERT INTO symptom_logs (id, logged_at, created_at, severity, latitude, longitude, notes, medications)
-     VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?)`,
+    `INSERT INTO symptom_logs (id, logged_at, created_at, severity, latitude, longitude, location_label, notes, medications)
+     VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)`,
     params.id,
     params.loggedAt,
     params.severity,
     params.latitude ?? null,
     params.longitude ?? null,
+    params.locationLabel ?? null,
     params.notes ?? null,
     params.medications ?? null,
   );
@@ -207,7 +215,7 @@ export async function getSymptomLogsForExport(
   const db = await getDatabase();
 
   const logs = await db.getAllAsync<Omit<SymptomLogExportRow, 'symptoms'>>(
-    `SELECT sl.id, sl.logged_at, sl.created_at, sl.severity, sl.latitude, sl.longitude, sl.notes, sl.medications,
+    `SELECT sl.id, sl.logged_at, sl.created_at, sl.severity, sl.latitude, sl.longitude, sl.location_label, sl.notes, sl.medications,
             le.grass_pollen, le.tree_pollen, le.weed_pollen,
             le.alder_pollen, le.birch_pollen, le.olive_pollen, le.mugwort_pollen, le.ragweed_pollen,
             le.pm25, le.pm10, le.ozone, le.no2, le.so2, le.uv_index, le.dust,

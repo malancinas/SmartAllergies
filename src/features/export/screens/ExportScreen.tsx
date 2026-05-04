@@ -6,6 +6,7 @@ import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { useExportData } from '../hooks/useExportData';
 import { generateAndSharePdf } from '../exportService';
+import { useAllergyProfile } from '@/features/insights/hooks/useAllergyProfile';
 
 const DATE_RANGES = [
   { label: '30 days', days: 30 },
@@ -20,6 +21,7 @@ export default function ExportScreen() {
   const [generating, setGenerating] = useState(false);
 
   const { exportLogs, summary, isLoading } = useExportData(isPro ? selectedDays : 7);
+  const { data: allergyData } = useAllergyProfile();
 
   async function handleGenerate() {
     if (exportLogs.length === 0) {
@@ -28,7 +30,7 @@ export default function ExportScreen() {
     }
     setGenerating(true);
     try {
-      await generateAndSharePdf(exportLogs, summary);
+      await generateAndSharePdf(exportLogs, summary, allergyData?.advancedProfile);
     } catch (err: unknown) {
       const e = err as { message?: string };
       Alert.alert('Export failed', e.message ?? 'Could not generate the PDF. Please try again.');

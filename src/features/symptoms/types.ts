@@ -67,5 +67,6 @@ export interface CreateSymptomLogInput {
   medications?: string;
   latitude?: number;
   longitude?: number;
+  locationLabel?: string;
   environment?: EnvironmentSnapshot;
 }

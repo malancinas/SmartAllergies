@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import { Screen, Stack } from '@/components/layout';
 import { Button } from '@/components/ui';
 import { useLocation } from '@/features/pollen/hooks/useLocation';
+import { usePollenStore } from '@/features/pollen/store';
 import { useCurrentPollen } from '@/features/pollen/hooks/useCurrentPollen';
 import { SymptomGrid } from '../components/SymptomGrid';
 import { SeverityInput } from '../components/SeverityInput';
@@ -30,7 +31,8 @@ export default function LogSymptomsScreen() {
   const navigation = useNavigation<any>();
 
   const { logSymptoms } = useSymptomLogger();
-  const { location } = useLocation();
+  const { location, locationLabel } = usePollenStore();
+  useLocation(); // ensure GPS is requested if no location is set yet
   const { today: todayPollen, todayWeather } = useCurrentPollen();
   const tier = useSubscriptionStore((s) => s.tier);
 
@@ -39,7 +41,7 @@ export default function LogSymptomsScreen() {
   }, []);
 
   useEffect(() => {
-    if (!location) return;
+    if (!location || locationLabel !== null) return;
     Location.reverseGeocodeAsync({ latitude: location.latitude, longitude: location.longitude })
       .then((results) => {
         const r = results[0];
@@ -48,7 +50,7 @@ export default function LogSymptomsScreen() {
         setLocationName(parts.slice(0, 2).join(', '));
       })
       .catch(() => {});
-  }, [location]);
+  }, [location, locationLabel]);
 
   function toggleSymptom(symptom: SymptomType) {
     setSelectedSymptoms((prev) => {
@@ -93,6 +95,7 @@ export default function LogSymptomsScreen() {
         medications: medications.length > 0 ? medications.join(', ') : undefined,
         latitude: location?.latitude,
         longitude: location?.longitude,
+        locationLabel: locationLabel ?? locationName ?? undefined,
         environment: todayPollen
           ? {
               grassPollen: todayPollen.grass.rawValue,
@@ -149,6 +152,33 @@ export default function LogSymptomsScreen() {
               Record how you felt during any part of the day.
             </Text>
           </View>
+
+          {/* Location notice */}
+          {location ? (
+            <View className="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-xl px-4 py-3">
+              <Text className="text-xs font-semibold text-blue-400 dark:text-blue-500 uppercase tracking-widest mb-0.5">
+                Location
+              </Text>
+              <Text className="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+                {locationLabel ?? locationName ?? 'Current location'}
+              </Text>
+              <Text className="text-xs text-blue-500 dark:text-blue-400 leading-relaxed">
+                Pollen and air quality data for this location will be attached to your log and used for trigger detection — make sure it's accurate.
+              </Text>
+            </View>
+          ) : (
+            <View className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3">
+              <Text className="text-xs font-semibold text-amber-400 dark:text-amber-500 uppercase tracking-widest mb-0.5">
+                Location
+              </Text>
+              <Text className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                Unavailable
+              </Text>
+              <Text className="text-xs text-amber-600 dark:text-amber-400 leading-relaxed">
+                Enable GPS or grant location permission — without it, no pollen or air quality data can be attached to this log.
+              </Text>
+            </View>
+          )}
 
           {/* Symptom picker */}
           <View>
@@ -226,11 +256,6 @@ export default function LogSymptomsScreen() {
               className="border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white"
               style={{ minHeight: 80 }}
             />
-            {location && (
-              <Text className="text-xs text-neutral-400 mt-2">
-                📍 Logging with your current location{locationName ? ` — ${locationName}` : ''}
-              </Text>
-            )}
           </View>
 
           {/* Free tier notice */}

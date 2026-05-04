@@ -114,9 +114,9 @@ async function seedDays(days: DayEntry[], idOffset: number): Promise<void> {
     const dateStr = loggedAt.slice(0, 10);
 
     await db.runAsync(
-      `INSERT INTO symptom_logs (id, logged_at, created_at, severity, latitude, longitude, notes, medications)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      id, loggedAt, loggedAt, entry.severity, 51.5074, -0.1278, null, entry.medications ?? null,
+      `INSERT INTO symptom_logs (id, logged_at, created_at, severity, latitude, longitude, location_label, notes, medications)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, loggedAt, loggedAt, entry.severity, 51.5074, -0.1278, 'London, United Kingdom', null, entry.medications ?? null,
     );
 
     for (const symptom of entry.symptoms) {

@@ -72,6 +72,7 @@ async function fetchExportData(days: number): Promise<{ logs: ExportSymptomLog[]
     longitude: row.longitude,
     notes: row.notes,
     medications: row.medications,
+    locationLabel: row.location_label,
     grassPollen: row.grass_pollen,
     treePollen: row.tree_pollen,
     weedPollen: row.weed_pollen,

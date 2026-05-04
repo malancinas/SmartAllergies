@@ -39,6 +39,7 @@ export function useSymptomLogger() {
           symptoms: input.symptoms,
           latitude: input.latitude,
           longitude: input.longitude,
+          locationLabel: input.locationLabel,
           notes: input.notes,
           medications: input.medications,
         });
