@@ -8,7 +8,7 @@ import { useProGate } from '@/features/subscription/hooks/useProGate';
 import { usePollenStore } from '@/features/pollen/store';
 import { PaywallSheet } from '@/features/subscription/components/PaywallSheet';
 import { ChangeLocationSheet } from '@/features/location/components/ChangeLocationSheet';
-import { usePollenMapData } from '../hooks/usePollenMapData';
+import { usePollenMapData, type MapBounds } from '../hooks/usePollenMapData';
 import { PollenLegend } from '../components/PollenLegend';
 import { LayerSelector } from '../components/LayerSelector';
 import { PollenTileLayer } from '../components/PollenTileLayer';
@@ -101,7 +101,19 @@ export default function MapScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [showUpgradeSheet, setShowUpgradeSheet] = useState(false);
 
-  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, cacheBucketHours);
+  const pollenBounds = useMemo<MapBounds>(() => {
+    const r = currentRegion ?? (location
+      ? { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 1.8, longitudeDelta: 1.8 }
+      : DEFAULT_REGION);
+    return {
+      minLat: r.latitude - r.latitudeDelta / 2,
+      maxLat: r.latitude + r.latitudeDelta / 2,
+      minLon: r.longitude - r.longitudeDelta / 2,
+      maxLon: r.longitude + r.longitudeDelta / 2,
+    };
+  }, [currentRegion, location]);
+
+  const { gridData, loading: gridLoading, error: gridError } = usePollenMapData(true, cacheBucketHours, pollenBounds);
   if (__DEV__) {
     console.log('[MapScreen] isPro:', effectiveIsPro, '| layer:', selectedLayer, '| gridLoading:', gridLoading, '| gridError:', gridError, '| features:', gridData[selectedLayer]?.features?.length ?? 'null');
   }

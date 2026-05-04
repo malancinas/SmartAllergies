@@ -6,10 +6,7 @@ import type { PollenLevel } from '@/features/pollen/types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const ALL_ADMIN_REGIONS = require('../data/admin_regions.json') as AdminRegionCollection;
-const ADMIN_REGIONS: AdminRegionCollection = {
-  type: 'FeatureCollection',
-  features: ALL_ADMIN_REGIONS.features.filter((f) => f.properties.country_code === 'GBR'),
-};
+const ADMIN_REGIONS: AdminRegionCollection = ALL_ADMIN_REGIONS;
 
 interface AdminRegionProperties {
   id: string;
@@ -49,7 +46,18 @@ const memoryCache = new Map<string, GridData>();
 
 const CHUNK_SIZE = 100;
 
-const UK_BOUNDS: MapBounds = { minLat: 49.5, maxLat: 61.0, minLon: -8.0, maxLon: 2.5 };
+const WORLD_BOUNDS: MapBounds = { minLat: -90, maxLat: 90, minLon: -180, maxLon: 180 };
+
+// Snap bounds to a 5-degree grid so nearby pans share the same cache key.
+const SNAP = 5;
+function snapBounds(b: MapBounds): MapBounds {
+  return {
+    minLat: Math.floor(b.minLat / SNAP) * SNAP,
+    maxLat: Math.ceil(b.maxLat / SNAP) * SNAP,
+    minLon: Math.floor(b.minLon / SNAP) * SNAP,
+    maxLon: Math.ceil(b.maxLon / SNAP) * SNAP,
+  };
+}
 
 function bboxOverlaps(fb: [number, number, number, number], bounds: MapBounds): boolean {
   return !(fb[2] < bounds.minLon || fb[0] > bounds.maxLon || fb[3] < bounds.minLat || fb[1] > bounds.maxLat);
@@ -307,6 +315,7 @@ async function fetchPollenForCentroids(
 export function useOpenMeteoPollenGrid(
   enabled: boolean,
   cacheBucketHours: 3 | 6 = 6,
+  bounds?: MapBounds,
 ) {
   const [gridData, setGridData] = useState<GridData>(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -323,9 +332,10 @@ export function useOpenMeteoPollenGrid(
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const bucket = Math.floor(now.getHours() / cacheBucketHours);
-    const visibleFeatures = getVisibleFeatures(UK_BOUNDS);
+    const snapped = snapBounds(bounds ?? WORLD_BOUNDS);
+    const visibleFeatures = getVisibleFeatures(snapped);
 
-    console.log('[PollenGrid] uk-wide →', visibleFeatures.length, 'features, bucket', bucket);
+    console.log('[PollenGrid] viewport →', visibleFeatures.length, 'features, bucket', bucket, snapped);
 
     if (visibleFeatures.length === 0) {
       setGridData(EMPTY);
@@ -337,8 +347,9 @@ export function useOpenMeteoPollenGrid(
       lon: f.properties.centroid[0],
     }));
 
-    const cacheKey = `open_meteo_grid_v2_${todayStr}_b${bucket}_uk`;
-    const cachePrefix = `open_meteo_grid_v2_${todayStr}_`;
+    const { minLat, maxLat, minLon, maxLon } = snapped;
+    const cacheKey = `open_meteo_grid_v3_${todayStr}_b${bucket}_${minLat}_${maxLat}_${minLon}_${maxLon}`;
+    const cachePrefix = `open_meteo_grid_v3_${todayStr}_`;
 
     const memHit = memoryCache.get(cacheKey);
     if (memHit) {
@@ -411,7 +422,7 @@ export function useOpenMeteoPollenGrid(
 
     load();
     return () => controller.abort();
-  }, [enabled, cacheBucketHours]);
+  }, [enabled, cacheBucketHours, bounds?.minLat, bounds?.maxLat, bounds?.minLon, bounds?.maxLon]);
 
   return { gridData, loading, error };
 }
